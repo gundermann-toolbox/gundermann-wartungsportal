@@ -7,20 +7,23 @@
 <title>Wartungsportal Lüftung</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700;800&family=Fira+Sans+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-/* Layout: Büro-Ansicht = App-Shell mit Navigation links; Techniker-Ansicht = schmale Handy-App in der Mitte. Bewusst immer hell. */
+/* Layout im Stil der Gundermann-Webseite: weißer Kopf mit Logo, schräges dunkelblaues Navigationsband, Inhalt darunter.
+   Techniker-Ansicht = schmale Handy-App in der Mitte. Farben aus dem Logo: Dunkelblau und Magenta. Bewusst immer hell. */
 :root{
-  --bg:#f3f6f8; --surface:#ffffff; --sunk:#e9eef1; --ink:#14212a; --muted:#566974; --line:#d6dee3;
-  --accent:#0a6a85; --accent-ink:#ffffff; --accent-soft:#dcedf3;
-  --signal:#f2b01e; --signal-ink:#2a1e00;
+  --brand:#12355b; --mag:#e5007d;
+  --bg:#f4f6f9; --surface:#ffffff; --sunk:#eaeef3; --ink:#0f2a47; --muted:#5a6b7d; --line:#d7dee6;
+  --accent:#12355b; --accent-ink:#ffffff; --accent-soft:#e2e9f1;
+  --signal:#e5007d; --signal-ink:#ffffff;
   --ok:#23784a; --ok-soft:#dcefe3; --warn:#9a6200; --warn-soft:#f8ead0; --bad:#b4332a; --bad-soft:#f6dcd9;
   --paper:#ffffff; --paper-ink:#1a1f24; --paper-line:#c9d0d5; --paper-muted:#5d6870; --paper-ok:#1f6e43; --paper-bad:#b02a20; --paper-sunk:#eef1f3;
-  --map-bg:#eaf0ec; --map-grid:#d5dfd8; --map-town:#7d8b84;
-  --shade:rgba(10,20,26,.45);
-  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
-  --f-body:'Barlow','Segoe UI',system-ui,sans-serif;
+  --paper-brand:#12355b; --paper-mag:#e5007d;
+  --map-bg:#eef2f6; --map-grid:#dae1e9; --map-town:#7f8ea0;
+  --shade:rgba(10,25,45,.45);
+  --f-display:'Fira Sans Condensed','Arial Narrow',sans-serif;
+  --f-body:'Fira Sans','Segoe UI',system-ui,sans-serif;
   --f-mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
   color-scheme:light;
 }
@@ -32,13 +35,18 @@ a{color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
-.top-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding-block:10px}
-.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
-.mark{width:36px;height:36px;border-radius:50%;background:var(--signal);color:var(--signal-ink);display:grid;place-items:center;font:700 15px var(--f-display);letter-spacing:.02em;flex:none;box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--signal)}
-.brand b{font:700 19px/1.1 var(--f-display);letter-spacing:.01em;display:block}
-.brand small{color:var(--muted);font-size:12.5px}
-.demo{font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:4px}
+.top{background:var(--surface)}
+.top-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding-block:14px 8px}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0;text-decoration:none;color:var(--brand)}
+.brand svg{width:70px;height:auto;flex:none}
+.brand b{font:800 30px/1 var(--f-body);letter-spacing:.005em;display:block;color:var(--brand)}
+.brand small{display:block;font:400 13.5px/1.2 var(--f-body);letter-spacing:.09em;color:var(--brand);margin-top:5px;text-transform:uppercase;white-space:nowrap}
+.slash{color:var(--mag);font-weight:700;font-style:italic;margin-inline:.35em}
+@media (max-width:520px){.brand svg{width:52px}.brand b{font-size:23px}.brand small{font-size:11px;letter-spacing:.05em}}
+.demo{font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mag);border:1px solid var(--mag);padding:2px 8px;border-radius:4px}
+.band{background:var(--brand);clip-path:polygon(0 16px,26% 0,100% 20px,100% 100%,0 100%);padding-top:18px;margin-top:4px}
+.band-in{max-width:1320px;margin:0 auto;min-height:52px;display:flex;align-items:center}
+.bandlabel{color:#fff;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:14px 0}
 .who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .who select{min-height:34px;padding:5px 8px;width:auto}
 .modes{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -47,24 +55,20 @@ a{color:var(--accent)}
 .modes button.on{background:var(--accent);color:var(--accent-ink)}
 .modes button[disabled]{opacity:.4;cursor:not-allowed}
 
-.shell{max-width:1320px;margin:0 auto;display:grid;gap:18px;padding-block:16px 48px}
-.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-inline:-4px;padding:2px 4px}
-.nav button{border:0;background:none;padding:8px 12px;border-radius:8px;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left}
-.nav button:hover{color:var(--ink);background:var(--sunk)}
-.nav button.on{background:var(--accent-soft);color:var(--accent)}
-.nav .cnt{font:600 11.5px var(--f-mono);background:var(--bad);color:var(--surface);border-radius:999px;padding:1px 7px}
-.nav .cnt.live{background:var(--signal);color:var(--signal-ink)}
-@media (min-width:900px){
-  .shell{grid-template-columns:196px minmax(0,1fr);gap:28px}
-  .nav{flex-direction:column;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);align-self:start;overflow:visible;margin:0;padding:0}
-}
-.shell.appmode{grid-template-columns:1fr}
-.shell.appmode .nav{display:none}
+.shell{max-width:1320px;margin:0 auto;display:grid;gap:18px;padding-block:22px 48px}
+.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;width:100%;justify-content:center}
+@media (max-width:1100px){.nav{justify-content:flex-start}}
+.nav button{border:0;background:none;padding:14px 14px 12px;font-weight:500;font-size:15.5px;letter-spacing:.03em;text-transform:uppercase;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:8px;cursor:pointer;border-bottom:3px solid transparent}
+.nav button:hover{border-bottom-color:rgba(255,255,255,.45)}
+.nav button.on{border-bottom-color:var(--mag);font-weight:600}
+.nav button:focus-visible{outline-color:#fff}
+.nav .cnt{font:600 11.5px var(--f-mono);background:var(--mag);color:#fff;border-radius:999px;padding:1px 7px;letter-spacing:0}
+.nav .cnt.live{background:#fff;color:var(--brand)}
 main{min-width:0;display:grid;gap:18px;align-content:start}
 
-h1{font:700 30px/1.1 var(--f-display);margin:0;letter-spacing:.005em;text-wrap:balance}
-h1 .mono{font-size:.8em;color:var(--accent);margin-right:6px}
-h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em}
+h1{font:800 32px/1.1 var(--f-display);margin:0;letter-spacing:.005em;text-wrap:balance;color:var(--brand)}
+h1 .mono{font-size:.75em;color:var(--mag);margin-right:8px}
+h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em;color:var(--brand)}
 .sub{color:var(--muted);margin:4px 0 0}
 .eyebrow{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .mono{font-family:var(--f-mono);font-size:.85em;font-variant-numeric:tabular-nums}
@@ -195,7 +199,7 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 /* Techniker-App */
 .appwrap{width:100%;max-width:440px;margin:0 auto;background:var(--bg);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;min-height:680px;box-shadow:0 12px 40px rgba(10,30,40,.12)}
 @media (max-width:520px){.appwrap{border-radius:0;border-inline:0;box-shadow:none;min-height:calc(100vh - 140px)}}
-.appbar{background:var(--accent);color:var(--accent-ink);padding:14px 16px;display:flex;align-items:center;gap:10px;min-height:58px}
+.appbar{background:var(--brand);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;min-height:58px;border-bottom:4px solid var(--mag)}
 .appbar b{font:700 19px/1.15 var(--f-display);letter-spacing:.01em;display:block}
 .appbar small{opacity:.85;font-size:12.5px}
 .appbar button{border:0;background:rgba(255,255,255,.16);color:var(--accent-ink);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;flex:none}
@@ -215,8 +219,11 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 /* Wartungsbericht */
 .doc{background:var(--paper);color:var(--paper-ink);max-width:840px;width:100%;padding:40px 44px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.14),0 10px 30px rgba(0,0,0,.08);font-size:13.5px;line-height:1.45;display:grid;gap:22px}
 @media (max-width:620px){.doc{padding:22px 18px}}
-.doc-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--paper-ink);padding-bottom:14px}
-.doc-firm{font:700 24px/1 var(--f-display)}
+.doc-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--paper-brand);padding-bottom:14px}
+.doc-firm{font:800 26px/1 var(--f-body);color:var(--paper-brand);letter-spacing:.005em}
+.doc-sub{font-size:11.5px;letter-spacing:.09em;color:var(--paper-brand);margin-top:4px}
+.doc-sub i{color:var(--paper-mag);font-weight:700;margin-inline:.35em}
+.doc-type{color:var(--paper-brand)}
 .doc-type{font:700 26px/1 var(--f-display);text-transform:uppercase;letter-spacing:.06em;text-align:right}
 .doc .r{text-align:right}
 .doc-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 24px;margin:0}
@@ -254,17 +261,26 @@ ul.list{margin:0;padding-left:20px;display:grid;gap:6px}
 
 <header class="top">
   <div class="top-in gut">
-    <div class="brand">
-      <div class="mark" aria-hidden="true">GM</div>
-      <div><b>Wartungsportal</b><small>Gundermann GmbH · Service Lüftungstechnik</small></div>
+    <div class="brand" aria-label="Gundermann Wartungsportal">
+      <svg viewBox="0 0 132 92" aria-hidden="true">
+        <g fill="none">
+          <path d="M128 8H46A38 38 0 1 0 84 46" stroke="#12355b" stroke-width="13"/>
+          <path d="M128 8H46A38 38 0 1 0 84 46" stroke="#e5007d" stroke-width="6.5"/>
+          <path d="M118 25H46A21 21 0 1 0 67 46" stroke="#12355b" stroke-width="13"/>
+          <path d="M118 25H46A21 21 0 1 0 67 46" stroke="#e5007d" stroke-width="6.5"/>
+          <path d="M53 46H67" stroke="#12355b" stroke-width="11" stroke-linecap="round"/>
+          <path d="M53 46H67" stroke="#e5007d" stroke-width="5" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <div><b>GUNDERMANN</b><small>Service<span class="slash">/</span>Wartungsportal</small></div>
     </div>
     <span class="demo">Prototyp</span>
     <div class="modes" id="modes" role="group" aria-label="Ansicht"></div>
     <label class="who" for="who">Angemeldet als <select id="who"></select></label>
   </div>
+  <div class="band"><div class="band-in gut"><nav class="nav" id="nav" aria-label="Bereiche"></nav></div></div>
 </header>
 <div class="shell gut" id="shell">
-  <nav class="nav" id="nav" aria-label="Bereiche"></nav>
   <main id="app"></main>
 </div>
 <div id="modal" hidden></div>
@@ -579,6 +595,7 @@ function renderChrome(){
   document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
   document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
   const cur = {anlage:'kunden', auftrag:'auftraege'}[UI.view] || UI.view;
+  if(S.mode==='app'){ document.getElementById('nav').innerHTML = `<span class="bandlabel">Techniker-App · ${h(u.name)}</span>`; return; }
   document.getElementById('nav').innerHTML = NAV.filter(([v]) => v!=='admin' || u.rolle==='admin').map(([v,l]) => {
     let extra = '';
     if(v==='stoerungen'){ const c = offeneSt().length; if(c) extra = `<span class="cnt">${c}</span>`; }
@@ -1016,7 +1033,7 @@ function vBericht(A){
   return `
   <article class="doc">
     <div class="doc-head">
-      <div><div class="doc-firm">Gundermann GmbH</div><div>Service · Lüftungs- und Klimatechnik</div><div style="color:var(--paper-muted)">76846 Hauenstein</div></div>
+      <div><div class="doc-firm">GUNDERMANN</div><div class="doc-sub">LÜFTUNG<i>/</i>KLIMA<i>/</i>REGELUNG</div><div style="color:var(--paper-muted);margin-top:6px">Gundermann GmbH · 76846 Hauenstein</div></div>
       <div class="r"><div class="doc-type">Wartungsbericht</div><div class="mono" style="margin-top:6px">Auftrag ${A.nr}</div><div>${aDatum(A)}</div></div>
     </div>
     <dl class="doc-meta">
