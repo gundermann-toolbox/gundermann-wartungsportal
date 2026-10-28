@@ -218,6 +218,8 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px}
 .krow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;text-align:left;width:100%}
 .krow:hover{border-color:var(--accent)}
+.gtoggle{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:11px 12px;font-weight:600;cursor:pointer;text-align:left;margin-top:4px}
+.gtoggle[aria-expanded="false"]{background:var(--accent-soft);color:var(--brand)}
 .krow b{font-weight:600}
 .okbig{text-align:center;padding:26px 10px;display:grid;gap:8px;justify-items:center}
 .okbig .tick{width:64px;height:64px;border-radius:50%;background:var(--ok);color:var(--surface);display:grid;place-items:center;font-size:34px;font-weight:700}
@@ -498,7 +500,7 @@ function by(arr,id){ return arr.find(x => x.id===id); }
 const ctx = aid => { const a = by(S.anlagen,aid); const o = a && by(S.objekte,a.objektId); const k = o && by(S.kunden,o.kundeId); return {a,o,k}; };
 let kIdx = null;
 const kompsOf = aid => {
-  if(!kIdx){ kIdx = {}; S.komponenten.forEach(c => (kIdx[c.anlageId] = kIdx[c.anlageId] || []).push(c)); Object.values(kIdx).forEach(l => l.sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0))); }
+  if(!kIdx){ kIdx = {}; S.komponenten.forEach(c => !c.entfernt && (kIdx[c.anlageId] = kIdx[c.anlageId] || []).push(c)); Object.values(kIdx).forEach(l => l.sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0))); }
   return kIdx[aid] || [];
 };
 const typOf = c => by(S.typen, c.typId);
@@ -653,7 +655,7 @@ function auftragTable(list, compact){
       <td>${statusPill(a.status)}${n ? ` <span class="pill bad">${n} Störung${n>1?'en':''}</span>` : ''}${compact ? `<span class="t2">${h(techNames(a.techIds))}</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
 }
 function vStart(){
-  const all = S.komponenten.map(st);
+  const all = S.komponenten.filter(c => !c.entfernt).map(st);
   const offen = S.auftraege.filter(isOpen).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
   const ohneAuftrag = S.anlagen.filter(a => ['bad','warn'].includes(anlSt(a.id).cls) && !offenerAuftrag(a.id));
   const pts = mapPoints('alle');
@@ -719,7 +721,7 @@ function vKarte(){
 /* ---------- Büro: Kunden & Anlagen ---------- */
 function vKunden(){
   return `
-  <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.length} Komponenten</p></div>
+  <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.filter(c => !c.entfernt).length} Komponenten</p></div>
     <div class="row"><button class="btn" data-act="importieren">Foxtag-Export importieren</button><button class="btn pri" data-act="neuobjekt">Kunde / Objekt anlegen</button></div></div>
   <section class="panel">
     <div class="row" style="justify-content:space-between">
@@ -810,7 +812,7 @@ function vAnlage(){
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
         <td>${h(c.standort)}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
         <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}</td>
-        <td><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></div></td>
       </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
   </section>
   <div class="grid2">${notizPanel(a)}${dateiPanel(a)}</div>
@@ -913,6 +915,7 @@ function vAuftrag(){
   <section class="panel"><div class="facts">
     <div><span>Termin</span>${aDatum(A)}</div>
     <div><span>Techniker</span>${h(techNames(A.techIds))}</div>
+    <div><span>Ansprechpartner vor Ort</span>${kontaktText(A) || '<span class="muted">nicht angegeben</span>'}</div>
     <div><span>Umfang</span>${A.umfang==='ganz' ? 'Ganze Anlage' : 'Nur fällige Komponenten'} (${ks.length})</div>
     <div><span>Kunde</span><span class="code">${h(k.nr)}</span> ${h(k.name)}</div>
     <div><span>Objekt</span>${h(o.adresse)}, ${h(o.ort)}</div>
@@ -1162,7 +1165,7 @@ function vApp(){
   if(sc==='auftrag'){
     let lastG = 0;
     const info = `<div class="card"><div><b style="font-size:17px">${h(o.name)}</b><div class="muted small">${h(o.adresse)}, ${h(o.ort)}</div></div>
-      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`
+      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${kontaktText(A) ? `<br><span class="muted">Ansprechpartner:</span> ${kontaktText(A)}` : ''}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`
       + ((a.notizen||[]).length ? `<div class="card"><b>Notizen</b>${notizList(a, true)}</div>` : '')
       + ((a.dateien||[]).length ? `<div class="card"><b>Dokumente zur Anlage</b>${dokList(a, true)}</div>` : '');
     if(A.status==='geplant') return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
@@ -1171,9 +1174,12 @@ function vApp(){
     if(['erledigt','abgerechnet'].includes(A.status)) return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
       info + `<div class="card">${pill('ok','Bericht übermittelt')}<div class="small">Am ${fmt(A.abgeschlossen)} zurückgeschickt. Das Büro hat den Bericht als PDF.</div></div>`);
     return appShell(appBar(A.nr, `${done} von ${ks.length} geprüft · ${h(o.nr)}`, 'liste'),
-      info + `<div class="prog"><i style="width:${ks.length ? done/ks.length*100 : 0}%"></i></div>` +
-      ks.map(c => { const g = c.gruppe!==lastG ? `<div class="gtitle">${c.gruppe} · ${gname(c.gruppe)}</div>` : ''; lastG = c.gruppe; const t = typOf(c); return g + `
-        <button class="krow" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></span>${kompState(A,c)}</button>`; }).join(''),
+      info + `<div class="prog"><i style="width:${ks.length ? done/ks.length*100 : 0}%"></i></div>
+      <div class="card" style="gap:8px">
+        <input type="search" id="appq" data-in="appq" value="${h(UI.app.q||'')}" placeholder="Suchen: Nummer, Typ, Standort oder S/N" aria-label="Komponenten suchen">
+        <div class="row"><button class="btn sm" data-act="appgrp" data-v="alle-zu">Alle Gruppen zuklappen</button><button class="btn sm" data-act="appgrp" data-v="alle-auf">Alle aufklappen</button></div>
+      </div>
+      <div id="klist" style="display:grid;gap:8px">${appKompList(A)}</div>`,
       `<button class="btn pri block" data-act="appabschluss" ${done?'':'disabled'}>Abschließen (${done}/${ks.length})</button>`);
   }
   if(sc==='komp'){
@@ -1200,6 +1206,20 @@ function vApp(){
       `<button class="btn pri block" data-act="appback" data-v="liste">Zurück zu meinen Aufträgen</button>`);
   }
   return '';
+}
+function appKompList(A){
+  const q = (UI.app.q||'').trim().toLowerCase();
+  const zu = (UI.app.zu = UI.app.zu || {})[A.id] = UI.app.zu[A.id] || {};
+  const ks = auftragKomps(A).filter(c => !q || [kNr(c), tname(typOf(c)), typLabel(typOf(c)), gname(c.gruppe), c.standort, c.sn, c.baujahr].join(' ').toLowerCase().includes(q));
+  if(!ks.length) return `<div class="empty">Keine Komponente passt zu „${h(UI.app.q)}“.</div>`;
+  const gruppen = [...new Set(ks.map(c => c.gruppe))];
+  return gruppen.map(g => {
+    const gk = ks.filter(c => c.gruppe===g), gd = gk.filter(c => A.pr[c.id] && A.pr[c.id].done).length;
+    const offen = q || !zu[g];
+    return `<button class="gtoggle" data-act="appgrp" data-v="${g}" aria-expanded="${!!offen}">
+        <span>${offen ? '▾' : '▸'} Gruppe ${g} · ${gname(g)}</span><span class="small">${gd}/${gk.length} geprüft</span></button>
+      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></span>${kompState(A,c)}</button>`; }).join('') : ''}`;
+  }).join('');
 }
 function kompState(A,c){
   const p = A.pr[c.id];
@@ -1258,12 +1278,49 @@ function drawQr(root){
     catch(e){ el.textContent = 'QR'; }
   });
 }
+function kontaktFelder(name, tel){
+  return `<div class="fgrid"><label class="f" for="kpn">Ansprechpartner vor Ort<input id="kpn" name="ansp" value="${h(name||'')}" placeholder="z. B. Hausmeister Herr Müller" autocomplete="off"></label>
+    <label class="f" for="kpt">Telefon<input id="kpt" name="tel" type="tel" value="${h(tel||'')}" placeholder="z. B. 06392 123456" autocomplete="off"></label></div>`;
+}
+const telLink = t => `<a href="tel:${h(String(t).replace(/[^\d+]/g,''))}">${h(t)}</a>`;
+function kontaktText(A){
+  if(!A.ansp && !A.tel) return '';
+  return [h(A.ansp||''), A.tel ? telLink(A.tel) : ''].filter(Boolean).join(' · ');
+}
+function kontaktMerken(A){
+  const a = by(S.anlagen, A.anlageId);
+  if(a && (A.ansp || A.tel)) a.kontakt = {name:A.ansp||'', tel:A.tel||''};
+}
+function kompEditModal(c){
+  UI.kEdit = c.id;
+  openModal(`<h2>Komponente ${kNr(c)} bearbeiten</h2>
+    <form data-form="kedit" style="display:grid;gap:12px">
+      <label class="f" for="ket">Typ<select id="ket" name="typ">${S.typen.map(t => `<option value="${t.id}" ${t.id===c.typId?'selected':''}>${h(typLabel(t))} · ${t.intervall} Monate</option>`).join('')}</select></label>
+      <div class="fgrid">
+        <label class="f" for="keg">Gruppe<input id="keg" name="gruppe" type="number" min="1" value="${c.gruppe}" required></label>
+        <label class="f" for="ken">Nummer<input id="ken" name="nr" type="number" min="1" value="${c.nr}" required></label>
+        <label class="f" for="kes">Sub-Nummer<input id="kes" name="sub" type="number" min="0" value="${c.sub||0}"></label>
+      </div>
+      <label class="f" for="keo">Standort / Details<input id="keo" name="standort" value="${h(c.standort)}" placeholder="Hersteller | Typ | Raum"></label>
+      <div class="fgrid">
+        <label class="f" for="kesn">S/N<input id="kesn" name="sn" value="${h(c.sn)}"></label>
+        <label class="f" for="kebj">Baujahr<input id="kebj" name="baujahr" inputmode="numeric" value="${h(c.baujahr)}"></label>
+        <label class="f" for="kel">Letzte Prüfung<input id="kel" name="letzte" type="date" value="${c.letzte||''}"></label>
+      </div>
+      <p class="muted small" style="margin:0">Die nächste Fälligkeit ergibt sich aus letzter Prüfung und Prüfintervall des Typs.</p>
+      <div class="row" style="justify-content:space-between">
+        <button type="button" class="btn ghost danger" data-act="kdel">Komponente entfernen</button>
+        <div class="row"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div>
+      </div>
+    </form>`);
+}
 function editModal(A){
   const {o} = ctx(A.anlageId);
   openModal(`<h2>Auftrag ${A.nr} bearbeiten</h2>
     <p class="muted" style="margin:0"><span class="code">${h(o.nr)}</span> ${h(o.name)}</p>
     <form data-form="aedit" style="display:grid;gap:12px">
       <div class="fgrid"><label class="f" for="ed">Datum<input id="ed" name="datum" type="date" value="${A.datum}" required></label><label class="f" for="ez">Uhrzeit<input id="ez" name="zeit" type="time" value="${h(A.zeit)}"></label></div>
+      ${kontaktFelder(A.ansp, A.tel)}
       <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}" ${A.techIds.includes(t.id)?'checked':''}>${h(t.name)}</label>`).join('')}</div></div>
       <p class="muted small" style="margin:0">Ohne Techniker geht der Auftrag zurück auf „In Planung“ und ist in keiner App mehr zu sehen.</p>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div>
@@ -1276,6 +1333,7 @@ function planenModal(aid){
     <form data-form="planen" style="display:grid;gap:12px">
       <label class="f" for="pa">Objekt / Anlage<select id="pa" name="anlage">${opts}</select></label>
       <div class="fgrid"><label class="f" for="pd">Datum<input id="pd" name="datum" type="date" value="${iso(TODAY)}" required></label><label class="f" for="pz">Uhrzeit<input id="pz" name="zeit" type="time"></label></div>
+      ${kontaktFelder(...(() => { const a0 = by(S.anlagen, aid); const kt = (a0 && a0.kontakt) || {}; return [kt.name, kt.tel]; })())}
       <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}">${h(t.name)}</label>`).join('')}</div></div>
       <label class="f" for="pu">Umfang<select id="pu" name="umfang"><option value="ganz">Ganze Anlage</option><option value="faellig">Nur fällige Komponenten</option></select></label>
       <div class="checks"><label><input type="checkbox" name="frei" checked>Direkt an die Techniker freigeben</label></div>
@@ -1455,7 +1513,10 @@ function importModal(){
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Importieren</button></div>
     </form>`);
 }
-modal.addEventListener('change', e => { if(e.target.dataset.m==='k') neuObjektModal(e.target.value==='neu'); });
+modal.addEventListener('change', e => {
+  if(e.target.dataset.m==='k') neuObjektModal(e.target.value==='neu');
+  if(e.target.id==='pa'){ const kt = (by(S.anlagen, e.target.value)||{}).kontakt || {}; document.getElementById('kpn').value = kt.name || ''; document.getElementById('kpt').value = kt.tel || ''; }
+});
 modal.addEventListener('submit', e => {
   e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
   if(kind==='import'){
@@ -1481,13 +1542,22 @@ modal.addEventListener('submit', e => {
     const aid = f.get('anlage'), umfang = f.get('umfang');
     const ks = kompsOf(aid).filter(c => umfang==='ganz' || ['bad','warn'].includes(st(c).cls) || !c.letzte);
     const techs = f.getAll('tech');
-    const A = {id:uid(), nr:'A-'+(S.nextAuftrag++), anlageId:aid, datum:f.get('datum'), zeit:f.get('zeit')||'', techIds:techs, status: techs.length && f.get('frei') ? 'geplant' : 'planung', umfang, kompIds:ks.map(c => c.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null};
+    const A = {id:uid(), nr:'A-'+(S.nextAuftrag++), anlageId:aid, datum:f.get('datum'), zeit:f.get('zeit')||'', techIds:techs, status: techs.length && f.get('frei') ? 'geplant' : 'planung', umfang, kompIds:ks.map(c => c.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null, ansp:(f.get('ansp')||'').trim(), tel:(f.get('tel')||'').trim()};
+    kontaktMerken(A);
     S.auftraege.push(A); save(); closeModal(); UI.view = 'auftrag'; UI.auftrag = A.id; render(); window.scrollTo(0,0);
     toast(A.status==='geplant' ? `Auftrag ${A.nr} liegt jetzt in der App bei ${techNames(techs)}` : `Auftrag ${A.nr} angelegt, noch nicht freigegeben`);
+  }
+  if(kind==='kedit'){
+    const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
+    const g = parseInt(f.get('gruppe'),10) || c.gruppe, nr = parseInt(f.get('nr'),10) || c.nr, sub = parseInt(f.get('sub'),10) || 0;
+    if(S.komponenten.some(x => x!==c && !x.entfernt && x.anlageId===c.anlageId && x.gruppe===g && x.nr===nr && (x.sub||0)===sub)){ toast(`Nummer ${g}.${nr}${sub ? '.'+sub : ''} ist in dieser Anlage schon vergeben`); return; }
+    Object.assign(c, {typId:f.get('typ'), gruppe:g, nr, sub, standort:f.get('standort')||'', sn:f.get('sn')||'', baujahr:f.get('baujahr')||'', letzte:f.get('letzte')||null});
+    save(); closeModal(); render(); toast(`Komponente ${kNr(c)} gespeichert`);
   }
   if(kind==='aedit'){
     const A = curA(), techs = f.getAll('tech');
     A.datum = f.get('datum'); A.zeit = f.get('zeit') || ''; A.techIds = techs;
+    A.ansp = (f.get('ansp')||'').trim(); A.tel = (f.get('tel')||'').trim(); kontaktMerken(A);
     if(!techs.length && A.status!=='planung') A.status = 'planung';
     save(); closeModal(); render();
     toast(techs.length ? `Auftrag ${A.nr} gespeichert` : `Auftrag ${A.nr} ohne Techniker, zurück auf „In Planung“`);
@@ -1535,6 +1605,22 @@ const ACT = {
     try{ await IDB.del(id, 'files'); }catch(e){}
     save(); closeModal(); render(); toast('Datei gelöscht');
   },
+  kedit: d => kompEditModal(by(S.komponenten, d.c)),
+  kdel: () => {
+    const c = by(S.komponenten, UI.kEdit); if(!c) return;
+    const offen = S.auftraege.filter(a => isOpen(a) && a.kompIds.includes(c.id));
+    openModal(`<h2>Komponente ${kNr(c)} entfernen?</h2>
+      <p style="margin:0">${h(typLabel(typOf(c)))} · ${h(c.standort)}</p>
+      <p style="margin:0">Sie verschwindet aus der Anlage und aus künftigen Prüfungen. Alte Wartungsberichte bleiben unverändert.</p>
+      ${offen.length ? `<p class="err" style="margin:0">Sie wird auch aus ${offen.length===1 ? 'dem offenen Auftrag' : offen.length+' offenen Aufträgen'} ${offen.map(a => a.nr).join(', ')} genommen.</p>` : ''}
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="kdelok" style="background:var(--bad);border-color:var(--bad)">Entfernen</button></div>`);
+  },
+  kdelok: () => {
+    const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
+    c.entfernt = true;
+    S.auftraege.filter(a => isOpen(a)).forEach(a => { a.kompIds = a.kompIds.filter(id => id!==c.id); delete a.pr[c.id]; });
+    save(); closeModal(); render(); toast(`Komponente ${kNr(c)} entfernt`);
+  },
   aedit: () => editModal(curA()),
   azurueck: () => {
     const A = curA(), lauf = A.status==='laeuft';
@@ -1554,7 +1640,15 @@ const ACT = {
   adelok: () => { const A = curA(); S.auftraege = S.auftraege.filter(x => x.id!==A.id); save(); closeModal(); UI.view = 'auftraege'; UI.auftrag = null; render(); window.scrollTo(0,0); toast(`Auftrag ${A.nr} gelöscht`); },
   inapp: d => { S.mode = 'app'; UI.auftrag = d.id; UI.app.screen = 'auftrag'; save(); render(); window.scrollTo(0,0); },
   apptab: d => { UI.app.tab = d.v; render(); },
-  appopen: d => { UI.auftrag = d.id; UI.app.screen = 'auftrag'; render(); window.scrollTo(0,0); },
+  appopen: d => { UI.auftrag = d.id; UI.app.screen = 'auftrag'; UI.app.q = ''; render(); window.scrollTo(0,0); },
+  appgrp: d => {
+    const A = curA(); const zu = (UI.app.zu = UI.app.zu || {})[A.id] = UI.app.zu[A.id] || {};
+    const gruppen = [...new Set(auftragKomps(A).map(c => c.gruppe))];
+    if(d.v==='alle-zu') gruppen.forEach(g => zu[g] = true);
+    else if(d.v==='alle-auf') gruppen.forEach(g => zu[g] = false);
+    else zu[d.v] = !zu[d.v];
+    document.getElementById('klist').innerHTML = appKompList(A);
+  },
   appback: d => { UI.app.screen = d.v; render(); window.scrollTo(0,0); },
   appstart: () => { const A = curA(); A.status = 'laeuft'; save(); render(); },
   appkomp: d => { UI.app.komp = d.c; UI.app.screen = 'komp'; render(); window.scrollTo(0,0); },
@@ -1585,7 +1679,7 @@ const ACT = {
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
-  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok'].includes(t.dataset.act)) return;
+  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok','kdel','kdelok'].includes(t.dataset.act)) return;
   ACT[t.dataset.act](t.dataset, t, e);
 });
 const app = document.getElementById('app');
@@ -1594,6 +1688,7 @@ app.addEventListener('input', e => {
   if(t.hasAttribute('data-calc')) return calc();
   if(!k) return;
   if(k==='q'){ UI.q = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
+  if(k==='appq'){ UI.app.q = t.value; document.getElementById('klist').innerHTML = appKompList(curA()); return; }
   const A = curA(); if(!A) return;
   if(k==='bem' || k==='kunde'){ A[k] = t.value; return save(); }
   const p = prOf(A, t.dataset.c);
