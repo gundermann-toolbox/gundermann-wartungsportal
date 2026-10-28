@@ -756,6 +756,11 @@ function vAuftrag(){
   if(A.status==='erledigt') actions = `<button class="btn pri" data-act="setstatus" data-v="abgerechnet">Als abgerechnet markieren</button>`;
   const canApp = me().app && (A.techIds.includes(me().id) || me().rolle==='admin');
   if(['geplant','laeuft'].includes(A.status) && canApp) actions += `<button class="btn" data-act="inapp" data-id="${A.id}">In der App öffnen</button>`;
+  if(isOpen(A)){
+    actions += `<button class="btn" data-act="aedit">Bearbeiten</button>`;
+    if(A.status!=='planung') actions += `<button class="btn" data-act="azurueck">Vom Techniker zurückziehen</button>`;
+    actions += `<button class="btn danger" data-act="adel">Löschen</button>`;
+  }
   return `
   <button class="back" data-act="go" data-v="auftraege">← Alle Aufträge</button>
   <div class="head"><div><div class="eyebrow">Wartung · <span class="code">${h(o.nr)}</span> ${h(o.name)}</div><h1><span class="mono">${A.nr}</span>Wartung ${fmt(A.datum)}</h1></div>
@@ -1107,6 +1112,17 @@ function drawQr(root){
     catch(e){ el.textContent = 'QR'; }
   });
 }
+function editModal(A){
+  const {o} = ctx(A.anlageId);
+  openModal(`<h2>Auftrag ${A.nr} bearbeiten</h2>
+    <p class="muted" style="margin:0"><span class="code">${h(o.nr)}</span> ${h(o.name)}</p>
+    <form data-form="aedit" style="display:grid;gap:12px">
+      <div class="fgrid"><label class="f" for="ed">Datum<input id="ed" name="datum" type="date" value="${A.datum}" required></label><label class="f" for="ez">Uhrzeit<input id="ez" name="zeit" type="time" value="${h(A.zeit)}"></label></div>
+      <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}" ${A.techIds.includes(t.id)?'checked':''}>${h(t.name)}</label>`).join('')}</div></div>
+      <p class="muted small" style="margin:0">Ohne Techniker geht der Auftrag zurück auf „In Planung“ und ist in keiner App mehr zu sehen.</p>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div>
+    </form>`);
+}
 function planenModal(aid){
   const opts = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id); if(!os.length) return '';
     return `<optgroup label="${h(k.nr+' '+k.name)}">${os.map(o => S.anlagen.filter(x => x.objektId===o.id).map(a => `<option value="${a.id}" ${a.id===aid?'selected':''}>${h(o.nr+' '+o.name)}</option>`).join('')).join('')}</optgroup>`; }).join('');
@@ -1323,6 +1339,13 @@ modal.addEventListener('submit', e => {
     S.auftraege.push(A); save(); closeModal(); UI.view = 'auftrag'; UI.auftrag = A.id; render(); window.scrollTo(0,0);
     toast(A.status==='geplant' ? `Auftrag ${A.nr} liegt jetzt in der App bei ${techNames(techs)}` : `Auftrag ${A.nr} angelegt, noch nicht freigegeben`);
   }
+  if(kind==='aedit'){
+    const A = curA(), techs = f.getAll('tech');
+    A.datum = f.get('datum'); A.zeit = f.get('zeit') || ''; A.techIds = techs;
+    if(!techs.length && A.status!=='planung') A.status = 'planung';
+    save(); closeModal(); render();
+    toast(techs.length ? `Auftrag ${A.nr} gespeichert` : `Auftrag ${A.nr} ohne Techniker, zurück auf „In Planung“`);
+  }
   if(kind==='neuobjekt'){
     let kid = f.get('k');
     if(kid==='neu'){ kid = 'k'+uid(); S.kunden.push({id:kid, nr:f.get('knr'), name:f.get('kname'), adresse:f.get('kadr')||'', ort:f.get('kort')||''}); }
@@ -1350,6 +1373,23 @@ const ACT = {
   mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
   clopen: d => { UI.at = 'checklisten'; UI.cl = d.id; render(); },
   setstatus: d => { const A = curA(); A.status = d.v; if(d.v==='geplant' && !A.techIds.length) A.techIds = [me().id]; save(); render(); toast(d.v==='geplant' ? `Freigegeben: liegt jetzt in der App bei ${techNames(A.techIds)}` : `Status: ${statusLabel(d.v)}`); },
+  aedit: () => editModal(curA()),
+  azurueck: () => {
+    const A = curA(), lauf = A.status==='laeuft';
+    openModal(`<h2>Auftrag ${A.nr} zurückziehen?</h2>
+      <p style="margin:0">Der Auftrag verschwindet aus der App von ${h(techNames(A.techIds))} und steht wieder auf „In Planung“. Termin und Zuteilung bleiben gespeichert, du kannst ihn danach neu freigeben.</p>
+      ${lauf ? `<p class="err" style="margin:0">Der Techniker hat schon angefangen. Bereits erfasste Prüfungen bleiben erhalten.</p>` : ''}
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="azurueckok">Zurückziehen</button></div>`);
+  },
+  azurueckok: () => { const A = curA(); A.status = 'planung'; save(); closeModal(); render(); toast(`Auftrag ${A.nr} aus der App zurückgezogen`); },
+  adel: () => {
+    const A = curA(), done = Object.values(A.pr).filter(p => p.done).length;
+    openModal(`<h2>Auftrag ${A.nr} löschen?</h2>
+      <p style="margin:0">Der Auftrag wird endgültig gelöscht und verschwindet auch aus der App. Die Anlage und ihre Komponenten bleiben unverändert.</p>
+      ${done ? `<p class="err" style="margin:0">Achtung: ${done} bereits geprüfte Komponente${done>1?'n':''} gehen dabei verloren.</p>` : ''}
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="adelok" style="background:var(--bad);border-color:var(--bad)">Endgültig löschen</button></div>`);
+  },
+  adelok: () => { const A = curA(); S.auftraege = S.auftraege.filter(x => x.id!==A.id); save(); closeModal(); UI.view = 'auftraege'; UI.auftrag = null; render(); window.scrollTo(0,0); toast(`Auftrag ${A.nr} gelöscht`); },
   inapp: d => { S.mode = 'app'; UI.auftrag = d.id; UI.app.screen = 'auftrag'; save(); render(); window.scrollTo(0,0); },
   apptab: d => { UI.app.tab = d.v; render(); },
   appopen: d => { UI.auftrag = d.id; UI.app.screen = 'auftrag'; render(); window.scrollTo(0,0); },
@@ -1383,7 +1423,7 @@ const ACT = {
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
-  if(t.closest('#modal') && t.dataset.act!=='resetok') return;
+  if(t.closest('#modal') && !['resetok','adelok','azurueckok'].includes(t.dataset.act)) return;
   ACT[t.dataset.act](t.dataset, t, e);
 });
 const app = document.getElementById('app');
