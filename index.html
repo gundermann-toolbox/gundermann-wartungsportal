@@ -1,0 +1,1501 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>Wartungsportal Lüftung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Layout: Büro-Ansicht = App-Shell mit Navigation links; Techniker-Ansicht = schmale Handy-App in der Mitte. Bewusst immer hell. */
+:root{
+  --bg:#f3f6f8; --surface:#ffffff; --sunk:#e9eef1; --ink:#14212a; --muted:#566974; --line:#d6dee3;
+  --accent:#0a6a85; --accent-ink:#ffffff; --accent-soft:#dcedf3;
+  --signal:#f2b01e; --signal-ink:#2a1e00;
+  --ok:#23784a; --ok-soft:#dcefe3; --warn:#9a6200; --warn-soft:#f8ead0; --bad:#b4332a; --bad-soft:#f6dcd9;
+  --paper:#ffffff; --paper-ink:#1a1f24; --paper-line:#c9d0d5; --paper-muted:#5d6870; --paper-ok:#1f6e43; --paper-bad:#b02a20; --paper-sunk:#eef1f3;
+  --map-bg:#eaf0ec; --map-grid:#d5dfd8; --map-town:#7d8b84;
+  --shade:rgba(10,20,26,.45);
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --f-body:'Barlow','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+button{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.mark{width:36px;height:36px;border-radius:50%;background:var(--signal);color:var(--signal-ink);display:grid;place-items:center;font:700 15px var(--f-display);letter-spacing:.02em;flex:none;box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--signal)}
+.brand b{font:700 19px/1.1 var(--f-display);letter-spacing:.01em;display:block}
+.brand small{color:var(--muted);font-size:12.5px}
+.demo{font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:4px}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.who select{min-height:34px;padding:5px 8px;width:auto}
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.modes button{border:0;background:var(--surface);padding:6px 12px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;border-left:1px solid var(--line)}
+.modes button:first-child{border-left:0}
+.modes button.on{background:var(--accent);color:var(--accent-ink)}
+.modes button[disabled]{opacity:.4;cursor:not-allowed}
+
+.shell{max-width:1320px;margin:0 auto;display:grid;gap:18px;padding-block:16px 48px}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-inline:-4px;padding:2px 4px}
+.nav button{border:0;background:none;padding:8px 12px;border-radius:8px;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left}
+.nav button:hover{color:var(--ink);background:var(--sunk)}
+.nav button.on{background:var(--accent-soft);color:var(--accent)}
+.nav .cnt{font:600 11.5px var(--f-mono);background:var(--bad);color:var(--surface);border-radius:999px;padding:1px 7px}
+.nav .cnt.live{background:var(--signal);color:var(--signal-ink)}
+@media (min-width:900px){
+  .shell{grid-template-columns:196px minmax(0,1fr);gap:28px}
+  .nav{flex-direction:column;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);align-self:start;overflow:visible;margin:0;padding:0}
+}
+.shell.appmode{grid-template-columns:1fr}
+.shell.appmode .nav{display:none}
+main{min-width:0;display:grid;gap:18px;align-content:start}
+
+h1{font:700 30px/1.1 var(--f-display);margin:0;letter-spacing:.005em;text-wrap:balance}
+h1 .mono{font-size:.8em;color:var(--accent);margin-right:6px}
+h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em}
+.sub{color:var(--muted);margin:4px 0 0}
+.eyebrow{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.85em;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.head{display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0;display:grid;gap:12px;align-content:start}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.grid2{display:grid;gap:18px}
+@media (min-width:1000px){.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2.wide-l{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi .n{font:700 38px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--muted);font-size:13.5px;margin-top:4px}
+.kpi.bad .n{color:var(--bad)} .kpi.warn .n{color:var(--warn)} .kpi.acc .n{color:var(--accent)}
+
+.btn{font-weight:600;font-size:14.5px;padding:8px 14px;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--sunk)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{min-height:32px;padding:4px 10px;font-size:13.5px}
+.btn.ghost{border-color:transparent;background:none}
+.btn.ghost:hover{background:var(--sunk)}
+.btn.danger{color:var(--bad)}
+.btn.block{width:100%;min-height:48px;font-size:16px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.back{border:0;background:none;color:var(--accent);font-weight:600;padding:0;cursor:pointer;justify-self:start}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-weight:600;font-size:12.5px;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.code{font:600 12px var(--f-mono);color:var(--muted)}
+
+.steps{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.steps span{padding:3px 10px;border-radius:4px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--sunk)}
+.steps span.past{color:var(--ink)}
+.steps span.on{background:var(--accent);color:var(--accent-ink)}
+
+.tbl-wrap{overflow-x:auto;margin-inline:-16px;padding-inline:16px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--sunk)}
+td .t2{display:block;color:var(--muted);font-size:13px}
+tr.grp td{background:var(--sunk);font-weight:600;padding:7px 10px}
+.empty{color:var(--muted);padding:18px;text-align:center;border:1px dashed var(--line);border-radius:10px}
+
+input,select,textarea{font:inherit;font-size:15px;padding:8px 10px;min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;min-width:0}
+textarea{min-height:64px;resize:vertical}
+input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--accent)}
+.f{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+.fgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.inset{background:var(--sunk);padding:12px;border-radius:8px;align-items:end}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px}
+.checks label{display:flex;gap:6px;align-items:center;font-weight:500;color:var(--ink);font-size:14px}
+
+.kgroup{display:grid;gap:8px}
+.kname{font:700 17px var(--f-display);letter-spacing:.01em}
+.alist{display:grid;gap:8px}
+.aitem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
+.aitem:hover{border-color:var(--accent)}
+.aitem b{font-weight:600}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 18px}
+.facts>div>span{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.pdf{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;text-align:left;width:100%}
+.pdf:hover{border-color:var(--accent)}
+.pdf i{font:700 11px var(--f-mono);font-style:normal;background:var(--bad);color:var(--surface);border-radius:4px;padding:4px 5px;flex:none}
+.pdf span{min-width:0;overflow-wrap:anywhere}
+
+/* Karte */
+.mapbox{background:var(--map-bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+.mapbox svg{display:block;width:100%;height:auto}
+.mapbox .grid{stroke:var(--map-grid);stroke-width:1}
+.mapbox .town circle{fill:var(--map-town)}
+.mapbox .town text{fill:var(--map-town);font:600 17px var(--f-body)}
+.mapbox .dot{stroke:var(--surface);stroke-width:2.5;cursor:pointer}
+.mapbox .dot.bad{fill:var(--bad)} .mapbox .dot.warn{fill:var(--warn)} .mapbox .dot.ok{fill:var(--ok)} .mapbox .dot.none{fill:var(--muted)}
+.mapbox .dot.sel{stroke:var(--ink);stroke-width:4}
+.mapbox .hq{fill:var(--signal);stroke:var(--signal-ink);stroke-width:2}
+.mapbox .hqt{fill:var(--ink);font:700 18px var(--f-display)}
+.mapbox .ring{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:6 6}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* Prüfung (Checkliste) */
+.prog{height:8px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.gtitle{font:700 14px var(--f-display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.fh{font:700 16px var(--f-display);letter-spacing:.01em;padding:14px 0 4px;border-top:2px solid var(--line);margin-top:6px}
+.clist>.fh:first-child{border-top:0;margin-top:0;padding-top:0}
+.pp{display:grid;grid-template-columns:1fr;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.fh+.pp{border-top:0}
+.pp .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pp .val{display:flex;align-items:center;gap:6px}
+.pp .val input{width:120px;text-align:right;font-family:var(--f-mono);font-size:15px}
+.pp .hint{font-size:12.5px;color:var(--muted)}
+.pp .mng{display:grid;gap:8px;background:var(--bad-soft);padding:10px;border-radius:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.seg button{border:0;border-left:1px solid var(--line);background:var(--surface);padding:8px 12px;min-width:62px;min-height:44px;font-weight:600;font-size:15px;color:var(--muted);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.io,.seg button.ja{background:var(--ok);color:var(--surface)}
+.seg button.nio{background:var(--bad);color:var(--surface)}
+.seg button.nein{background:var(--warn);color:var(--surface)}
+.seg button.nv{background:var(--muted);color:var(--surface)}
+.cbx{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;min-height:44px;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);background:var(--surface)}
+.cbx.on{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:13.5px;cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fotos{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.foto{position:relative}
+.foto img{width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+.foto button{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--bad);color:var(--surface);cursor:pointer;font-weight:700;line-height:1}
+.upl{position:relative;overflow:hidden}
+.upl input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.sigs{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);border-radius:8px;background:var(--paper);touch-action:none;cursor:crosshair}
+.err{color:var(--bad);font-weight:600}
+
+/* Techniker-App */
+.appwrap{width:100%;max-width:440px;margin:0 auto;background:var(--bg);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;min-height:680px;box-shadow:0 12px 40px rgba(10,30,40,.12)}
+@media (max-width:520px){.appwrap{border-radius:0;border-inline:0;box-shadow:none;min-height:calc(100vh - 140px)}}
+.appbar{background:var(--accent);color:var(--accent-ink);padding:14px 16px;display:flex;align-items:center;gap:10px;min-height:58px}
+.appbar b{font:700 19px/1.15 var(--f-display);letter-spacing:.01em;display:block}
+.appbar small{opacity:.85;font-size:12.5px}
+.appbar button{border:0;background:rgba(255,255,255,.16);color:var(--accent-ink);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;flex:none}
+.appbody{flex:1;padding:14px;display:grid;gap:12px;align-content:start}
+.appact{padding:12px 14px;background:var(--surface);border-top:1px solid var(--line);display:grid;gap:8px;position:sticky;bottom:0}
+.jcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:3px;text-align:left;width:100%;cursor:pointer}
+.jcard:hover{border-color:var(--accent)}
+.jcard .top2{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.jcard b{font-weight:600;font-size:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px}
+.krow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;text-align:left;width:100%}
+.krow:hover{border-color:var(--accent)}
+.krow b{font-weight:600}
+.okbig{text-align:center;padding:26px 10px;display:grid;gap:8px;justify-items:center}
+.okbig .tick{width:64px;height:64px;border-radius:50%;background:var(--ok);color:var(--surface);display:grid;place-items:center;font-size:34px;font-weight:700}
+
+/* Wartungsbericht */
+.doc{background:var(--paper);color:var(--paper-ink);max-width:840px;width:100%;padding:40px 44px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.14),0 10px 30px rgba(0,0,0,.08);font-size:13.5px;line-height:1.45;display:grid;gap:22px}
+@media (max-width:620px){.doc{padding:22px 18px}}
+.doc-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--paper-ink);padding-bottom:14px}
+.doc-firm{font:700 24px/1 var(--f-display)}
+.doc-type{font:700 26px/1 var(--f-display);text-transform:uppercase;letter-spacing:.06em;text-align:right}
+.doc .r{text-align:right}
+.doc-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 24px;margin:0}
+.doc-meta dt{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--paper-muted);font-weight:600}
+.doc-meta dd{margin:2px 0 0}
+.doc h3{font:700 16px var(--f-display);margin:0 0 6px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;letter-spacing:.01em}
+.doc h3 span{font-weight:500;font-size:12.5px;font-family:var(--f-body);color:var(--paper-muted)}
+.doc .tbl-wrap{margin:0;padding:0}
+.doc table{font-size:13px}
+.doc th{color:var(--paper-muted);border-bottom:1.5px solid var(--paper-ink);padding:5px 8px;font-size:11px}
+.doc td{border-bottom:1px solid var(--paper-line);padding:5px 8px}
+.doc tr.dh td{background:var(--paper-sunk);font-weight:700}
+.doc td.res{white-space:nowrap;font-weight:600;text-align:right}
+.doc .io{color:var(--paper-ok)} .doc .nio{color:var(--paper-bad)} .doc .nv{color:var(--paper-muted)}
+.doc .summary{padding:10px 14px;border:1.5px solid currentColor;border-radius:4px;font-weight:600}
+.doc .sigbox{border-top:1px solid var(--paper-ink);padding-top:6px;font-size:12px;color:var(--paper-muted)}
+.doc .sigspace{height:74px}
+.doc .foot{font-size:11px;color:var(--paper-muted);border-top:1px solid var(--paper-line);padding-top:10px}
+.doc .fotos img{width:110px;height:82px;object-fit:cover;border:1px solid var(--paper-line)}
+
+.label{background:var(--paper);color:var(--paper-ink);border:2px solid var(--paper-ink);border-radius:6px;padding:12px;display:flex;gap:14px;align-items:center;max-width:100%}
+.label .qr{width:104px;height:104px;flex:none;display:grid;place-items:center;background:#fff}
+.label .qr img,.label .qr canvas{width:104px;height:104px}
+.label b{font:700 20px var(--f-display);display:block}
+.label small{display:block;color:var(--paper-muted);font-size:12px}
+
+#modal{position:fixed;inset:0;background:var(--shade);display:grid;place-items:center;z-index:50;padding:16px}
+.mbox{background:var(--surface);border-radius:12px;max-width:560px;width:100%;padding:20px;max-height:90%;overflow:auto;display:grid;gap:14px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+ul.list{margin:0;padding-left:20px;display:grid;gap:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in gut">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">GM</div>
+      <div><b>Wartungsportal</b><small>Gundermann GmbH · Service Lüftungstechnik</small></div>
+    </div>
+    <span class="demo">Prototyp</span>
+    <div class="modes" id="modes" role="group" aria-label="Ansicht"></div>
+    <label class="who" for="who">Angemeldet als <select id="who"></select></label>
+  </div>
+</header>
+<div class="shell gut" id="shell">
+  <nav class="nav" id="nav" aria-label="Bereiche"></nav>
+  <main id="app"></main>
+</div>
+<div id="modal" hidden></div>
+<div id="toast" hidden></div>
+
+<script>
+const KEY = 'gm-wartung-proto-v2';
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const pad = n => String(n).padStart(2,'0');
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+const daysAgo = n => { const d = new Date(TODAY); d.setDate(d.getDate()-n); return iso(d); };
+const addMonths = (s,m) => { const d = parse(s); d.setMonth(d.getMonth()+m); return iso(d); };
+const fmt = s => s ? s.split('-').reverse().join('.') : '–';
+const diffDays = s => Math.round((parse(s)-TODAY)/864e5);
+const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,9);
+const num = v => parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+const nowTime = () => { const d = new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); };
+
+const GRUPPEN = {1:'Zentrale Lüftungsanlage', 2:'Dezentrale Lüftungsanlage', 3:'Klima', 4:'Brandschutz', 5:'Rauchmelder', 6:'Sonstiges'};
+const CODES = {V:['Vierteljährlich',3], H:['Halbjährlich',6], J:['Jährlich',12], Z:['Alle 2 Jahre',24]};
+const FELDTYPEN = {ueberschrift:'Überschrift', ionv:'i.O. | n.i.O. | n.v.', janein:'Ja | Nein', janeinnv:'Ja | Nein | n.v.', checkbox:'Checkbox', text:'Text', wert:'Messwert'};
+const STATUS = [['planung','In Planung'],['geplant','Geplant'],['laeuft','Auftrag läuft'],['erledigt','Erledigt'],['abgerechnet','Abgerechnet']];
+const statusLabel = s => (STATUS.find(x => x[0]===s)||[])[1] || s;
+const statusPill = s => pill({planung:'',geplant:'acc',laeuft:'warn',erledigt:'ok',abgerechnet:''}[s], statusLabel(s));
+const SCHWERE = ['Hinweis','Mangel','Schwerwiegend'];
+const ROLLEN = {admin:'Administrator', buero:'Büro', techniker:'Techniker'};
+
+/* Ortskoordinaten (ungefähr) für die Karte. In der echten Version kommen die Koordinaten aus der Adresse. */
+const TOWNS = {
+  'hauenstein':[49.191,7.857],'pirmasens':[49.201,7.605],'zweibrücken':[49.247,7.369],'kaiserslautern':[49.444,7.769],'landau':[49.198,8.117],'landau in der pfalz':[49.198,8.117],
+  'annweiler':[49.203,7.966],'annweiler am trifels':[49.203,7.966],'dahn':[49.149,7.778],'rodalben':[49.241,7.642],'landstuhl':[49.413,7.571],'kusel':[49.537,7.398],'homburg':[49.327,7.338],
+  'saarbrücken':[49.234,6.995],'st. ingbert':[49.277,7.116],'neunkirchen':[49.346,7.180],'ludwigshafen':[49.477,8.445],'ludwigshafen am rhein':[49.477,8.445],'mannheim':[49.488,8.466],
+  'frankenthal':[49.534,8.354],'speyer':[49.317,8.431],'neustadt':[49.350,8.138],'neustadt an der weinstraße':[49.350,8.138],'bad dürkheim':[49.461,8.172],'grünstadt':[49.563,8.168],
+  'haßloch':[49.363,8.258],'germersheim':[49.214,8.366],'wörth':[49.050,8.258],'wörth am rhein':[49.050,8.258],'kandel':[49.083,8.196],'bad bergzabern':[49.103,8.000],'herxheim':[49.146,8.219],
+  'edenkoben':[49.284,8.127],'schifferstadt':[49.385,8.375],'limburgerhof':[49.422,8.392],'worms':[49.632,8.359],'alzey':[49.746,8.116],'bad kreuznach':[49.845,7.867],'karlsruhe':[49.007,8.404],
+  'rastatt':[48.858,8.204],'baden-baden':[48.761,8.240],'bühl':[48.695,8.135],'bühlertal':[48.686,8.183],'gaggenau':[48.804,8.320],'ettlingen':[48.941,8.407],'bruchsal':[49.124,8.598],
+  'heidelberg':[49.398,8.672],'hockenheim':[49.322,8.548],'schwetzingen':[49.383,8.572],'weinheim':[49.549,8.672],'kleinfischlingen':[49.286,8.181],'maxdorf':[49.488,8.290],'lambrecht':[49.370,8.073],
+  'ramstein-miesenbach':[49.447,7.555],'waldfischbach-burgalben':[49.284,7.656],'thaleischweiler-fröschen':[49.265,7.583],'münchweiler an der rodalb':[49.219,7.700],'hinterweidenthal':[49.198,7.756],
+  'wilgartswiesen':[49.208,7.876],'busenberg':[49.130,7.829],'schwanheim':[49.163,7.896],'lemberg':[49.172,7.657],'bundenthal':[49.096,7.807],'eppenbrunn':[49.116,7.565],'contwig':[49.249,7.433],
+  'offenbach an der queich':[49.196,8.198],'bellheim':[49.198,8.279],'rülzheim':[49.153,8.294],'jockgrim':[49.093,8.276],'hagenbach':[49.018,8.251],'böhl-iggelheim':[49.379,8.307],
+  'mutterstadt':[49.441,8.358],'otterberg':[49.503,7.770],'enkenbach-alsenborn':[49.484,7.903],'hochspeyer':[49.442,7.896],'trippstadt':[49.360,7.773],'walldorf':[49.306,8.645],'sinsheim':[49.253,8.879],
+  'östringen':[49.219,8.709],'bad schönborn':[49.205,8.648],'leimen':[49.348,8.691]
+};
+const PLZ3 = {'661':[49.24,7.00],'663':[49.28,7.12],'664':[49.32,7.32],'665':[49.34,7.18],'668':[49.45,7.50],'669':[49.17,7.65],'670':[49.48,8.42],'671':[49.40,8.36],'672':[49.55,8.25],
+  '673':[49.32,8.40],'674':[49.33,8.15],'675':[49.64,8.33],'676':[49.44,7.77],'677':[49.48,7.86],'678':[49.62,7.85],'681':[49.49,8.47],'682':[49.48,8.52],'688':[49.32,8.55],'691':[49.40,8.68],
+  '694':[49.55,8.67],'761':[49.01,8.40],'762':[49.00,8.45],'763':[48.85,8.30],'764':[48.86,8.20],'765':[48.76,8.24],'766':[49.12,8.60],'767':[49.13,8.30],'768':[49.17,8.05],'778':[48.69,8.14]};
+const MAP_REF = ['hauenstein','pirmasens','kaiserslautern','landau','zweibrücken','ludwigshafen','neustadt','speyer','karlsruhe','baden-baden','frankenthal','germersheim','bad bergzabern','dahn','worms','homburg','mannheim'];
+
+/* ---------- Beispieldaten ---------- */
+function seed(){
+  const F = (typ, label, einheit, max) => ({id:uid(), typ, label, einheit:einheit||'', max:max ?? null});
+  const checklisten = [
+    {id:'cl-zla', name:'Zentrale Lüftungsanlage', felder:[
+      F('ueberschrift','Allgemeine Anlagenprüfung'), F('janein','Lüftungsanlage in Betrieb'), F('janein','Anlage funktionsbereit'), F('text','Störmeldung'),
+      F('ueberschrift','Lüftungsgehäuse / Gerätekammer'), F('ionv','Sichtprüfung Außenbereich auf Beschädigung, Korrosion und Befestigung'), F('ionv','Sichtprüfung Innenbereich auf Beschädigung, Korrosion und Befestigung'), F('checkbox','Funktionserhaltende Reinigung durchgeführt'),
+      F('ueberschrift','Ventilatoren'), F('ionv','Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen'), F('checkbox','Funktionserhaltendes Reinigen'), F('ionv','Lager auf Geräusch prüfen'), F('ionv','Keilriemen auf Verschleiß und Spannung prüfen'), F('ionv','Schwingungsdämpfer auf Funktion prüfen'),
+      F('ueberschrift','Heiz- / Kühlregister'), F('ionv','Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen'), F('checkbox','Funktionserhaltendes Reinigen (luftseitig)'), F('ionv','Frostschutzwächter'), F('ionv','Mischventil'), F('ionv','Umwälzpumpe'),
+      F('ueberschrift','Kreuzstrom-Wärmeübertrager'), F('janeinnv','Luftseitig auf Verschmutzung, Beschädigung und Korrosion geprüft'), F('checkbox','Funktionserhaltendes Reinigen (luftseitig)'), F('ionv','Wasserablauf und Geruchverschluss auf Funktion prüfen'),
+      F('ueberschrift','Rotations-Wärmeübertrager'), F('ionv','Luftseitig auf Verschmutzung und Korrosion prüfen'), F('checkbox','Funktionserhaltendes Reinigen (luftseitig)'), F('ionv','Auf Verschmutzung, Beschädigung und Korrosion prüfen'), F('ionv','Antriebsmotor'),
+      F('ueberschrift','Luftfilter'), F('checkbox','Filtereinsatz gewechselt'), F('checkbox','Filtereinsatz gereinigt'),
+      F('ueberschrift','Jalousieklappen'), F('ionv','Auf Verschmutzung, Beschädigung und Korrosion prüfen'), F('checkbox','Funktionserhaltendes Reinigen'), F('ionv','Auf mechanische Funktion prüfen'), F('ionv','Stellantriebe'),
+      F('ueberschrift','Wetterschutzgitter / Ansaugturm'), F('ionv','Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen'),
+      F('ueberschrift','Sonstiges'), F('text','Bemerkungen')]},
+    {id:'cl-dla', name:'Dezentrale Lüftungsanlage', felder:[
+      F('ueberschrift','Gerät'), F('ionv','Gehäuse und Befestigung'), F('ionv','Ventilator Laufgeräusch'), F('ionv','Wärmetauscher sauber'), F('ionv','Kondensatablauf frei'),
+      F('checkbox','Filter gewechselt'), F('wert','Volumenstrom','m³/h'), F('text','Bemerkungen')]},
+    {id:'cl-klima', name:'Klima', felder:[
+      F('ueberschrift','Innengerät'), F('ionv','Filter gereinigt / gewechselt'), F('checkbox','Verdampfer gereinigt'), F('ionv','Kondensatablauf frei'),
+      F('ueberschrift','Außengerät'), F('ionv','Verflüssiger sauber'), F('wert','Ausblastemperatur','°C'), F('wert','Stromaufnahme','A'),
+      F('janein','Dichtheitsprüfung Kältemittel fällig'), F('text','Bemerkungen')]},
+    {id:'cl-bsk', name:'Brandschutz', felder:[
+      F('ueberschrift','Brandschutzklappe'), F('janein','Revisionsöffnung zugänglich'), F('ionv','Klappenblatt und Dichtung sauber, unbeschädigt'), F('ionv','Auslöseeinrichtung (Schmelzlot) geprüft'),
+      F('ionv','Funktionsprüfung Schließen / Öffnen'), F('janeinnv','Endschalter-Rückmeldung an GLT / BMZ'), F('text','Bemerkungen')]},
+    {id:'cl-rm', name:'Rauchmelder', felder:[
+      F('ionv','Sichtprüfung'), F('ionv','Funktionsprüfung mit Prüfgas'), F('janein','Anlage schaltet bei Auslösung ab'), F('text','Bemerkungen')]},
+    {id:'cl-sonst', name:'Sonstiges', felder:[F('ionv','Funktion'), F('text','Bemerkungen')]}
+  ];
+  const T = (gruppe, code, cl, extra) => ({id:'t'+gruppe+code, gruppe, code, intervall:CODES[code][1], checklisteId:cl, ...extra});
+  const typen = [
+    T(1,'H','cl-zla'), T(1,'J','cl-zla'), T(1,'Z','cl-zla'),
+    T(2,'V','cl-dla'), T(2,'H','cl-dla'), T(2,'J','cl-dla'),
+    T(3,'H','cl-klima'), T(3,'J','cl-klima'),
+    T(4,'J','cl-bsk'),
+    T(5,'J','cl-rm', {ersatzJahre:8}),
+    T(6,'H','cl-sonst'), T(6,'J','cl-sonst')
+  ];
+  const users = [
+    {id:'u0', name:'Service-Leitung', email:'service@firma.de', rolle:'admin', web:true, app:true},
+    {id:'u8', name:'Büro', email:'buero@firma.de', rolle:'buero', web:true, app:false},
+    ...[['u1','M. Becker'],['u2','J. Wagner'],['u3','T. Schmitt'],['u4','S. Keller'],['u5','D. Hoffmann'],['u6','L. Braun'],['u7','A. Zimmer']]
+      .map(([id,name]) => ({id, name, email:name.toLowerCase().replace(/[^a-z]/g,'.').replace(/\.+/g,'.')+'@firma.de', rolle:'techniker', web:false, app:true}))
+  ];
+  const kunden = [
+    {id:'k1', nr:'MUSTER1', name:'Musterschuh GmbH', adresse:'Beispielstraße 5', ort:'76846 Hauenstein'},
+    {id:'k2', nr:'SONNEN1', name:'Seniorenhaus Sonnenhang', adresse:'Am Hang 12', ort:'76855 Annweiler'},
+    {id:'k3', nr:'AUTOBSP1', name:'Autohaus Beispiel KG', adresse:'Gewerbering 3', ort:'66953 Pirmasens'},
+    {id:'k4', nr:'WEINGUT1', name:'Weingut Rebenhang (Beispiel)', adresse:'Weinstraße 20', ort:'76829 Landau'},
+    {id:'k5', nr:'SCHULE1', name:'Grundschule Am Park (Beispiel)', adresse:'Parkstraße 1', ort:'67655 Kaiserslautern'},
+    {id:'k6', nr:'WEG1', name:'WEG Musterweg 4 (Beispiel)', adresse:'Musterweg 4', ort:'76887 Bad Bergzabern'}
+  ];
+  const objekte = [
+    {id:'o1', kundeId:'k1', nr:'W26-0501', name:'Musterschuh, Produktionshalle', adresse:'Beispielstraße 5', ort:'76846 Hauenstein'},
+    {id:'o2', kundeId:'k1', nr:'W26-0502', name:'Musterschuh, Verwaltung', adresse:'Beispielstraße 7', ort:'76846 Hauenstein'},
+    {id:'o3', kundeId:'k2', nr:'W26-0503', name:'Sonnenhang, Küche', adresse:'Am Hang 12', ort:'76855 Annweiler'},
+    {id:'o4', kundeId:'k2', nr:'W26-0504', name:'Sonnenhang, Wohnbereiche', adresse:'Am Hang 12', ort:'76855 Annweiler'},
+    {id:'o5', kundeId:'k3', nr:'W26-0505', name:'Autohaus Beispiel, Werkstatt', adresse:'Gewerbering 3', ort:'66953 Pirmasens'},
+    {id:'o6', kundeId:'k4', nr:'W26-0506', name:'Weingut Rebenhang, Kelterhaus', adresse:'Weinstraße 20', ort:'76829 Landau'},
+    {id:'o7', kundeId:'k5', nr:'W26-0507', name:'Grundschule Am Park', adresse:'Parkstraße 1', ort:'67655 Kaiserslautern'},
+    {id:'o8', kundeId:'k6', nr:'W26-0508', name:'WEG Musterweg 4, Tiefgarage', adresse:'Musterweg 4', ort:'76887 Bad Bergzabern'}
+  ];
+  const anlagen = objekte.map((o,i) => ({id:'a'+(i+1), objektId:o.id, name:'Wartung', hinweis: i===0 ? 'Schlüssel beim Pförtner, Anlage auf dem Dach' : ''}));
+  let kn = 1;
+  const K = (anlageId, gruppe, nr, code, standort, ago, extra) => ({id:'c'+(kn++), anlageId, gruppe, nr, typId:'t'+gruppe+code, standort, sn:'', baujahr:'', letzte: ago==null ? null : daysAgo(ago), ...extra});
+  const komponenten = [
+    K('a1',1,1,'H','Wolf | KG 63 | ZU/AB | 12.000 m³/h | Dach',200),
+    K('a1',4,1,'J','Schako | BKA-EN | Heizraum',380,{sn:'BSK-1'}), K('a1',4,2,'J','Schako | BKA-EN | Heizraum',380,{sn:'BSK-2'}), K('a1',4,3,'J','Schako | BKA-EN | Halle Nord',380,{sn:'BSK-3'}),
+    K('a1',5,1,'J','Zuluft RLT Dach',380,{baujahr:'2016'}),
+    K('a2',1,1,'J','Helios | KWL EC 1400 | ZU/AB | 1.400 m³/h | Keller',120),
+    K('a2',2,1,'H','Helios | KWL 360 | Büro OG',100), K('a2',2,2,'H','Helios | KWL 360 | Besprechung',100),
+    K('a2',3,1,'J','Split-Gerät | Serverraum',150),
+    K('a3',1,1,'H','Wolf | KG 40 | ZU/AB | 6.000 m³/h | Technikraum',170),
+    K('a3',4,1,'J','Trox | FKA-EU | Küche',330,{sn:'BSK-1'}), K('a3',4,2,'J','Trox | FKA-EU | Spülküche',330,{sn:'BSK-2'}),
+    K('a3',5,1,'J','Zuluftrauchmelder',null),
+    K('a4',1,1,'H','Wolf | KG 63 | ZU/AB | 8.000 m³/h | Dach',50),
+    K('a4',2,1,'H','Helios | DV | Dach',50),
+    K('a4',4,1,'J','Schako | BKA-EN | Flur EG',50,{sn:'BSK-1'}),
+    K('a4',5,1,'J','Oppermann KRM 2 | Zuluft RLT Dach',50,{baujahr:'2017'}),
+    K('a5',1,1,'J','GEA | Campos | ZA | 5.000 m³/h | Werkstatt',355),
+    K('a5',3,1,'J','Split-Gerät | Ausstellung',355),
+    K('a5',6,1,'J','Abgasabsaugung Werkstatt',355),
+    K('a6',3,1,'J','Kaltwassersatz | Kelterhaus',372),
+    K('a6',2,1,'H','Helios | KWL 500 | Probierstube',178),
+    K('a7',2,1,'H','Lunos | e² | Klassenzimmer 1-4',90),
+    K('a7',4,1,'J','Schako | BKA-EN | Treppenhaus',90,{sn:'BSK-1'}),
+    K('a8',1,1,'J','Systemair | Tiefgaragenlüftung',345),
+    K('a8',4,1,'J','Trox | FKA-EU | Garage Zufahrt',345,{sn:'BSK-1'})
+  ];
+  const S0 = {checklisten, typen, users, currentUser:'u0', mode:'web', kunden, objekte, anlagen, komponenten, auftraege:[], stoerungen:[], berichte:[], mails:[],
+    settings:{bueroMail:'buero@firma.de'}, nextAuftrag:2601, nextStoerung:1701};
+  const sample = {'m³/h':'340','°C':'14','A':'3,1'};
+  const fill = (k, override) => {
+    const t = S0.typen.find(x => x.id===k.typId), cl = S0.checklisten.find(c => c.id===t.checklisteId), f = {};
+    cl.felder.forEach((x,i) => {
+      if(x.typ==='ueberschrift' || x.typ==='text') return;
+      f[x.id] = Object.assign({v: x.typ==='ionv' ? 'io' : x.typ==='checkbox' ? true : x.typ==='wert' ? (sample[x.einheit]||'') : 'ja'}, override && override(x,i));
+    });
+    return {f, fotos:[], done:true};
+  };
+  const mkA = (nr, anlageId, ago, zeit, techs, status, override) => {
+    const ks = S0.komponenten.filter(k => k.anlageId===anlageId && k.letzte===daysAgo(ago));
+    const pr = {}; ks.forEach(k => pr[k.id] = fill(k, override && (x => override(k,x))));
+    return {id:uid(), nr:'A-'+nr, anlageId, datum:daysAgo(ago), zeit, techIds:techs, status, umfang:'ganz', kompIds:ks.map(k => k.id), pr, bem:'', kunde:'Fr. Seidel', sigTech:null, sigKunde:null, abgeschlossen:daysAgo(ago)};
+  };
+  const plan = (nr, anlageId, inDays, zeit, techs, status, umfang) => ({id:uid(), nr:'A-'+nr, anlageId, datum:daysAgo(-inDays), zeit, techIds:techs, status, umfang:umfang||'ganz',
+    kompIds:S0.komponenten.filter(k => k.anlageId===anlageId).map(k => k.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null});
+  S0.auftraege.push(
+    plan(2600,'a1',0,'08:00',['u1'],'geplant'),
+    plan(2599,'a5',3,'13:00',['u1','u3'],'geplant'),
+    plan(2597,'a8',0,'10:30',['u2'],'geplant'),
+    plan(2598,'a3',9,'',[],'planung','faellig'),
+    mkA(2595,'a4',50,'08:30',['u2'],'erledigt', (k,x) => k.gruppe===5 && x.label==='Sichtprüfung' ? {v:'nio', m:'Rauchmelder Einsatz älter als 8 Jahre', sw:'Hinweis'} : null),
+    mkA(2590,'a2',100,'13:00',['u4','u5'],'abgerechnet'));
+  S0.auftraege.find(a => a.nr==='A-2598').kompIds = ['c10'];
+  S0.stoerungen.push(
+    {id:uid(), nr:1699, auftragNr:'A-2595', kompId:'c17', titel:'Rauchmelder Einsatz älter als 8 Jahre', schwere:'Hinweis', status:'offen', datum:daysAgo(50)},
+    {id:uid(), nr:1688, auftragNr:'A-2541', kompId:'c18', titel:'Keilriemen rissig, Austausch empfohlen', schwere:'Schwerwiegend', status:'offen', datum:daysAgo(355)},
+    {id:uid(), nr:1650, auftragNr:'A-2502', kompId:'c10', titel:'Filterrahmen undicht, Dichtband erneuert', schwere:'Mangel', status:'behoben', datum:daysAgo(170)});
+  return S0;
+}
+
+let S;
+const UI = {view:'start', anlage:null, auftrag:null, af:'offen', sf:'offen', at:'typen', cl:'cl-zla', q:'', addK:false, err:'', mapF:'alle', mapSel:null,
+  app:{screen:'liste', tab:'heute', komp:null}};
+/* Speicher: IndexedDB (fasst auch alle Foxtag-Daten), localStorage nur als Rückfall */
+const IDB = {
+  db: null,
+  open(){ return this.db || (this.db = new Promise((res, rej) => { const r = indexedDB.open('gm-wartung', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async get(k){ const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+  async set(k, v){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv','readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); }
+};
+async function load(){
+  try{ const v = await IDB.get(KEY); if(v){ const r = JSON.parse(v); if(r && r.kunden) S = r; } }catch(e){}
+  if(!S){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r && r.kunden) S = r; }catch(e){} }
+  if(!S) S = seed();
+  migrate();
+}
+function migrate(){
+  if(!S.users){
+    S.users = [{id:'u0', name:'Service-Leitung', email:'service@firma.de', rolle:'admin', web:true, app:true}, {id:'u8', name:'Büro', email:'buero@firma.de', rolle:'buero', web:true, app:false}]
+      .concat((S.techniker||[]).map(t => ({id:t.id, name:t.name, email:'', rolle:'techniker', web:false, app:true})));
+    S.currentUser = 'u0'; delete S.techniker; delete S.currentTech;
+  }
+  S.mode = S.mode || 'web';
+  S.berichte = S.berichte || []; S.mails = S.mails || []; S.settings = S.settings || {bueroMail:'buero@firma.de'};
+  S.auftraege.filter(A => ['erledigt','abgerechnet'].includes(A.status) && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
+}
+let saveT;
+function save(){ clearTimeout(saveT); saveT = setTimeout(saveNow, 300); return true; }
+async function saveNow(){
+  clearTimeout(saveT);
+  const data = JSON.stringify(S);
+  try{ await IDB.set(KEY, data); try{ localStorage.removeItem(KEY); }catch(e){} return true; }
+  catch(e){ try{ localStorage.setItem(KEY, data); return true; }catch(x){ return false; } }
+}
+addEventListener('pagehide', () => { if(S) saveNow(); });
+
+/* ---------- Abfragen ---------- */
+function by(arr,id){ return arr.find(x => x.id===id); }
+const ctx = aid => { const a = by(S.anlagen,aid); const o = a && by(S.objekte,a.objektId); const k = o && by(S.kunden,o.kundeId); return {a,o,k}; };
+let kIdx = null;
+const kompsOf = aid => {
+  if(!kIdx){ kIdx = {}; S.komponenten.forEach(c => (kIdx[c.anlageId] = kIdx[c.anlageId] || []).push(c)); Object.values(kIdx).forEach(l => l.sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0))); }
+  return kIdx[aid] || [];
+};
+const typOf = c => by(S.typen, c.typId);
+const tname = t => t.name || GRUPPEN[t.gruppe] || 'Komponente';
+const typLabel = t => tname(t) + (t.code ? ` [${t.code}]` : '');
+const tcode = t => t.code ? ` <span class="code">[${t.code}]</span>` : '';
+const gname = n => h((S.gruppen && S.gruppen[n]) || GRUPPEN[n] || 'Gruppe '+n);
+const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
+const nextDue = c => c.letzte ? addMonths(c.letzte, typOf(c).intervall) : null;
+function st(c){
+  if(!c.letzte) return {cls:'', label:'Fälligkeit unbekannt', d:null};
+  const d = diffDays(nextDue(c));
+  if(d < 0) return {cls:'bad', label:'Überfällig', d};
+  if(d <= 30) return {cls:'warn', label:'Fällig', d};
+  return {cls:'ok', label:'Aktuell', d};
+}
+function ersatz(c){
+  const t = typOf(c); if(!t.ersatzJahre || !c.baujahr) return null;
+  return +c.baujahr + t.ersatzJahre <= TODAY.getFullYear() ? `Austausch fällig (${t.ersatzJahre} Jahre ab Bj. ${c.baujahr})` : null;
+}
+function anlSt(aid){
+  const s = kompsOf(aid).map(st);
+  if(!s.length) return {cls:'', label:'Keine Komponenten'};
+  if(s.some(x => x.cls==='bad')) return {cls:'bad', label:'Überfällig'};
+  if(s.some(x => x.cls==='warn')) return {cls:'warn', label:'Fällig'};
+  if(s.some(x => !x.cls)) return {cls:'', label:'Teils unbekannt'};
+  return {cls:'ok', label:'Aktuell'};
+}
+function objSt(oid){
+  const rank = {bad:0, warn:1, '':2, ok:3};
+  return S.anlagen.filter(a => a.objektId===oid).map(a => anlSt(a.id)).sort((x,y) => rank[x.cls]-rank[y.cls])[0] || {cls:'', label:'–'};
+}
+const pill = (cls,label) => `<span class="pill ${cls||''}">${h(label)}</span>`;
+const dueText = s => s.d==null ? '' : s.d < 0 ? `seit ${-s.d} Tagen` : s.d===0 ? 'heute' : `in ${s.d} Tagen`;
+const me = () => by(S.users, S.currentUser) || S.users[0];
+const userName = id => (by(S.users,id)||{}).name || '–';
+const techNames = ids => ids && ids.length ? ids.map(userName).join(', ') : 'Nicht zugeteilt';
+const appUsers = () => S.users.filter(u => u.app);
+const offeneSt = () => S.stoerungen.filter(x => x.status==='offen');
+const clOf = c => by(S.checklisten, typOf(c).checklisteId);
+const schwerePill = s => pill(s==='Schwerwiegend'?'bad':s==='Mangel'?'warn':'acc', s);
+const offenerAuftrag = aid => S.auftraege.find(a => a.anlageId===aid && ['planung','geplant','laeuft'].includes(a.status));
+const aDatum = a => fmt(a.datum) + (a.zeit ? ' · '+a.zeit+' Uhr' : '');
+const curA = () => by(S.auftraege, UI.auftrag);
+const isOpen = a => ['planung','geplant','laeuft'].includes(a.status);
+
+/* ---------- Geo ---------- */
+function hashJ(s){ let x = 7; for(const ch of s) x = (x*31 + ch.charCodeAt(0)) % 100003; return (x % 1000)/1000; }
+function geo(o){
+  if(o.lat!=null) return [o.lat, o.lng];
+  const m = String(o.ort||'').match(/^\s*(\d{5})?\s*(.*)$/) || [];
+  const plz = m[1] || '', town = (m[2]||'').toLowerCase().trim();
+  let c = TOWNS[town];
+  if(!c && town.length > 3){ const hit = Object.keys(TOWNS).find(k => town.startsWith(k+' ') || town.startsWith(k+'-') || k.startsWith(town)); if(hit) c = TOWNS[hit]; }
+  if(!c && plz) c = PLZ3[plz.slice(0,3)];
+  if(!c) return null;
+  return [c[0] + (hashJ(o.id)-.5)*0.014, c[1] + (hashJ(o.id+'x')-.5)*0.02];
+}
+function km(a,b){
+  const R = 6371, r = x => x*Math.PI/180, dLa = r(b[0]-a[0]), dLo = r(b[1]-a[1]);
+  const q = Math.sin(dLa/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(q));
+}
+function mapPoints(filter){
+  return S.objekte.map(o => {
+    const g = geo(o); if(!g) return null;
+    const s = objSt(o.id), auftrag = S.auftraege.some(a => isOpen(a) && by(S.anlagen,a.anlageId)?.objektId===o.id);
+    return {o, lat:g[0], lng:g[1], cls:s.cls || 'none', label:s.label, auftrag};
+  }).filter(Boolean).filter(p => !filter || filter==='alle' || (filter==='auftrag' ? p.auftrag : filter==='faellig' ? ['bad','warn'].includes(p.cls) : p.cls===filter));
+}
+function mapSvg(pts, sel, small){
+  const HQ = TOWNS['hauenstein'];
+  const all = pts.map(p => [p.lat,p.lng]).concat([HQ]);
+  let la0 = Math.min(...all.map(x => x[0])), la1 = Math.max(...all.map(x => x[0])), lo0 = Math.min(...all.map(x => x[1])), lo1 = Math.max(...all.map(x => x[1]));
+  const padLa = Math.max(.06, (.35-(la1-la0))/2), padLo = Math.max(.08, (.5-(lo1-lo0))/2);
+  la0 -= padLa; la1 += padLa; lo0 -= padLo; lo1 += padLo;
+  const k = Math.cos(49.2*Math.PI/180), W = 1000, s = W/((lo1-lo0)*k), H = Math.round((la1-la0)*s);
+  const X = lng => ((lng-lo0)*k*s).toFixed(1), Y = lat => ((la1-lat)*s).toFixed(1);
+  let grid = '';
+  for(let la = Math.ceil(la0*10)/10; la < la1; la += .1) grid += `<line class="grid" x1="0" x2="${W}" y1="${Y(la)}" y2="${Y(la)}"/>`;
+  for(let lo = Math.ceil(lo0*10)/10; lo < lo1; lo += .1) grid += `<line class="grid" y1="0" y2="${H}" x1="${X(lo)}" x2="${X(lo)}"/>`;
+  const towns = MAP_REF.filter(t => t!=='hauenstein').map(t => TOWNS[t] && [t, TOWNS[t]]).filter(x => x && x[1][0]>la0 && x[1][0]<la1 && x[1][1]>lo0 && x[1][1]<lo1)
+    .map(([n,c]) => `<g class="town"><circle cx="${X(c[1])}" cy="${Y(c[0])}" r="4"/><text x="${+X(c[1])+8}" y="${+Y(c[0])-6}">${n.replace(/(^|[ -])\S/g, x => x.toUpperCase())}</text></g>`).join('');
+  const selP = sel && pts.find(p => p.o.id===sel);
+  const ring = selP && !small ? (() => { const r20 = 20/((la1-la0)*111)*H; return `<circle class="ring" cx="${X(selP.lng)}" cy="${Y(selP.lat)}" r="${r20.toFixed(1)}"/>`; })() : '';
+  const order = {none:0, ok:1, warn:2, bad:3};
+  const dots = pts.slice().sort((a,b) => order[a.cls]-order[b.cls]).map(p => `<circle class="dot ${p.cls} ${p.o.id===sel?'sel':''}" cx="${X(p.lng)}" cy="${Y(p.lat)}" r="${small?9:10}" data-act="mapsel" data-id="${p.o.id}"><title>${h(p.o.nr+' '+p.o.name)} · ${h(p.label)}</title></circle>`).join('');
+  const hq = `<rect class="hq" x="${+X(HQ[1])-9}" y="${+Y(HQ[0])-9}" width="18" height="18" rx="3"/><text class="hqt" x="${+X(HQ[1])+14}" y="${+Y(HQ[0])+6}">Gundermann</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Karte der Objekte">${grid}${towns}${ring}${dots}${hq}</svg>`;
+}
+const legend = () => `<div class="legend"><span><i style="background:var(--bad)"></i>Überfällig</span><span><i style="background:var(--warn)"></i>Fällig in 30 Tagen</span><span><i style="background:var(--ok)"></i>Aktuell</span><span><i style="background:var(--muted)"></i>Unbekannt</span><span><i style="background:var(--signal);border-radius:2px"></i>Firmensitz</span></div>`;
+
+/* ---------- Kopfzeile & Navigation ---------- */
+const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','Kosten & Aufbau']];
+function renderChrome(){
+  const u = me();
+  if(S.mode==='app' && !u.app) S.mode = 'web';
+  if(S.mode==='web' && !u.web) S.mode = 'app';
+  document.getElementById('modes').innerHTML = [['web','Büro (Web)'],['app','Techniker (App)']].map(([m,l]) =>
+    `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='web'?u.web:u.app)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
+  document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
+  document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
+  const cur = {anlage:'kunden', auftrag:'auftraege'}[UI.view] || UI.view;
+  document.getElementById('nav').innerHTML = NAV.filter(([v]) => v!=='admin' || u.rolle==='admin').map(([v,l]) => {
+    let extra = '';
+    if(v==='stoerungen'){ const c = offeneSt().length; if(c) extra = `<span class="cnt">${c}</span>`; }
+    if(v==='auftraege'){ const c = S.auftraege.filter(a => a.status==='laeuft').length; if(c) extra = `<span class="cnt live" title="laufende Aufträge">${c}</span>`; }
+    return `<button data-act="go" data-v="${v}" class="${cur===v?'on':''}" ${cur===v?'aria-current="page"':''}>${l}${extra}</button>`;
+  }).join('');
+}
+
+/* ---------- Büro: Start ---------- */
+function auftragTable(list, compact){
+  if(!list.length) return `<div class="empty">Keine Aufträge in dieser Ansicht.</div>`;
+  return `<div class="tbl-wrap"><table><thead><tr><th>Auftrag</th><th>Termin</th><th>Objekt</th>${compact?'':'<th>Techniker</th>'}<th>Status</th></tr></thead>
+    <tbody>${list.map(a => { const {o} = ctx(a.anlageId); const n = S.stoerungen.filter(x => x.auftragNr===a.nr).length; return `<tr class="click" data-act="auftrag" data-id="${a.id}">
+      <td class="mono">${a.nr}</td><td class="mono">${aDatum(a)}</td>
+      <td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.adresse)}, ${h(o.ort)}</span></td>
+      ${compact ? '' : `<td>${h(techNames(a.techIds))}</td>`}
+      <td>${statusPill(a.status)}${n ? ` <span class="pill bad">${n} Störung${n>1?'en':''}</span>` : ''}${compact ? `<span class="t2">${h(techNames(a.techIds))}</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function vStart(){
+  const all = S.komponenten.map(st);
+  const offen = S.auftraege.filter(isOpen).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
+  const ohneAuftrag = S.anlagen.filter(a => ['bad','warn'].includes(anlSt(a.id).cls) && !offenerAuftrag(a.id));
+  const pts = mapPoints('alle');
+  const neu = S.berichte.slice().sort((a,b) => a.erstellt < b.erstellt ? 1 : -1).slice(0,4);
+  return `
+  <div class="head"><div><h1>Start</h1><p class="sub">Heute ${fmt(iso(TODAY))} · ${h(me().name)}</p></div>
+    <button class="btn pri" data-act="planen">Auftrag planen</button></div>
+  <div class="kpis">
+    <div class="kpi acc"><div class="n">${offen.length}</div><div class="l">Aufträge offen</div></div>
+    <div class="kpi bad"><div class="n">${all.filter(x => x.cls==='bad').length}</div><div class="l">Komponenten überfällig</div></div>
+    <div class="kpi warn"><div class="n">${all.filter(x => x.cls==='warn').length}</div><div class="l">fällig in 30 Tagen</div></div>
+    <div class="kpi"><div class="n">${offeneSt().length}</div><div class="l">offene Störungen</div></div>
+  </div>
+  <div class="grid2 wide-l">
+    <section class="panel"><div class="panel-h"><h2>Offene Aufträge</h2><button class="btn ghost sm" data-act="go" data-v="auftraege">Alle Aufträge</button></div>${auftragTable(offen, true)}</section>
+    <section class="panel"><div class="panel-h"><h2>Karte</h2><button class="btn ghost sm" data-act="go" data-v="karte">Große Karte</button></div>
+      ${pts.length ? `<div class="mapbox">${mapSvg(pts, null, true)}</div>${legend()}` : `<div class="empty">Keine Objekte mit Kartenposition.</div>`}</section>
+  </div>
+  <div class="grid2">
+    <section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2></div>
+      ${ohneAuftrag.length ? `<div class="tbl-wrap"><table><tbody>${ohneAuftrag.map(a => { const {o,k} = ctx(a.id); const s = anlSt(a.id); return `
+        <tr class="click" data-act="anlage" data-id="${a.id}"><td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(k.name)} · ${h(o.ort)}</span></td>
+        <td>${pill(s.cls,s.label)}</td><td><button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button></td></tr>`; }).join('')}</tbody></table></div>`
+        : `<div class="empty">Für alle fälligen Anlagen gibt es einen Auftrag.</div>`}</section>
+    <section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
+      ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
+  </div>`;
+}
+
+/* ---------- Büro: Karte ---------- */
+function vKarte(){
+  const pts = mapPoints(UI.mapF);
+  const total = S.objekte.length, ohne = S.objekte.filter(o => !geo(o)).length;
+  const sel = UI.mapSel && by(S.objekte, UI.mapSel);
+  let side;
+  if(sel){
+    const g = geo(sel), k = by(S.kunden, sel.kundeId), s = objSt(sel.id);
+    const anl = S.anlagen.filter(a => a.objektId===sel.id);
+    const near = mapPoints('alle').filter(p => p.o.id!==sel.id).map(p => ({...p, d:km(g,[p.lat,p.lng])})).filter(p => p.d <= 20).sort((a,b) => a.d-b.d);
+    side = `<section class="panel">
+      <div class="panel-h"><div><div class="eyebrow">${h(k ? k.name : '')}</div><h2><span class="code">${h(sel.nr)}</span> ${h(sel.name)}</h2><div class="muted small">${h(sel.adresse)}, ${h(sel.ort)}</div></div>${pill(s.cls,s.label)}</div>
+      <div class="row">${anl.map(a => { const oa = offenerAuftrag(a.id); return `<button class="btn sm" data-act="anlage" data-id="${a.id}">Anlage öffnen</button>` +
+        (oa ? `<button class="btn sm" data-act="auftrag" data-id="${oa.id}">Auftrag ${oa.nr}</button>` : `<button class="btn sm pri" data-act="planen" data-a="${a.id}">Auftrag planen</button>`); }).join('')}</div>
+      <h2 style="font-size:17px">In der Nähe (20 km)</h2>
+      ${near.length ? `<div class="tbl-wrap"><table><tbody>${near.map(p => `<tr class="click" data-act="mapsel" data-id="${p.o.id}"><td><span class="code">${h(p.o.nr)}</span> ${h(p.o.name)}<span class="t2">${h(p.o.ort)}</span></td><td class="mono">${p.d.toFixed(1).replace('.',',')} km</td><td>${pill(p.cls==='none'?'':p.cls, p.label)}</td></tr>`).join('')}</tbody></table></div>`
+        : `<div class="empty">Keine weiteren Objekte im Umkreis von 20 km.</div>`}
+      <button class="btn ghost sm" data-act="mapsel" data-id="" style="justify-self:start">Auswahl aufheben</button>
+    </section>`;
+  } else {
+    const due = mapPoints('faellig').sort((a,b) => (a.cls==='bad'?0:1)-(b.cls==='bad'?0:1));
+    side = `<section class="panel"><h2>Fällige und überfällige Objekte</h2><p class="muted small" style="margin:0">Punkt anklicken, um Umgebung und Auftragsplanung zu sehen.</p>
+      ${due.length ? `<div class="tbl-wrap"><table><tbody>${due.map(p => `<tr class="click" data-act="mapsel" data-id="${p.o.id}"><td><span class="code">${h(p.o.nr)}</span> ${h(p.o.name)}<span class="t2">${h(p.o.ort)}</span></td><td>${pill(p.cls,p.label)}</td></tr>`).join('')}</tbody></table></div>` : `<div class="empty">Nichts fällig.</div>`}</section>`;
+  }
+  return `<div class="head"><div><h1>Karte</h1><p class="sub">${pts.length} von ${total} Objekten angezeigt${ohne ? ` · ${ohne} ohne Kartenposition` : ''}</p></div>
+    <div class="chips">${[['alle','Alle'],['faellig','Fällig & überfällig'],['bad','Überfällig'],['auftrag','Mit offenem Auftrag']].map(([v,l]) => `<button class="chip ${UI.mapF===v?'on':''}" data-act="mapf" data-v="${v}">${l}</button>`).join('')}</div></div>
+  <div class="grid2 wide-l" style="align-items:start">
+    <div style="display:grid;gap:8px">${pts.length ? `<div class="mapbox">${mapSvg(pts, UI.mapSel, false)}</div>` : `<div class="empty">Keine Objekte für diesen Filter.</div>`}${legend()}
+      <p class="muted small" style="margin:0">Prototyp: Position nach Ort bzw. Postleitzahl, ohne Kartenhintergrund. In der echten Version mit Straßenkarte und genauer Adresse.</p></div>
+    ${side}
+  </div>`;
+}
+
+/* ---------- Büro: Kunden & Anlagen ---------- */
+function vKunden(){
+  return `
+  <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.length} Komponenten</p></div>
+    <div class="row"><button class="btn" data-act="importieren">Foxtag-Export importieren</button><button class="btn pri" data-act="neuobjekt">Kunde / Objekt anlegen</button></div></div>
+  <input id="q" type="search" placeholder="Kundennummer, Name, Objektnummer (z. B. W26-0503) oder Ort" value="${h(UI.q)}" data-in="q">
+  <div id="alist" class="grid2" style="align-items:start">${kundenList()}</div>`;
+}
+function kundenList(){
+  const q = UI.q.trim().toLowerCase();
+  const out = S.kunden.map(k => {
+    const items = S.objekte.filter(o => o.kundeId===k.id).filter(o => !q || [k.nr,k.name,k.ort,o.nr,o.name,o.adresse,o.ort].join(' ').toLowerCase().includes(q));
+    if(!items.length) return '';
+    return `<section class="kgroup"><div><div class="kname"><span class="code">${h(k.nr)}</span> ${h(k.name)}</div><div class="muted small">${h([k.adresse,k.ort].filter(Boolean).join(', '))}</div></div>
+      <div class="alist">${items.map(o => { const as = S.anlagen.filter(x => x.objektId===o.id); return as.map(a => { const s = anlSt(a.id); return `
+        <button class="aitem" data-act="anlage" data-id="${a.id}">
+          <span><b><span class="code">${h(o.nr)}</span> ${h(o.name)}</b><span class="muted small" style="display:block">${as.length > 1 ? h(a.name)+' · ' : ''}${h(o.adresse)} · ${kompsOf(a.id).length} Komponenten</span></span>
+          ${pill(s.cls,s.label)}
+        </button>`; }).join(''); }).join('')}</div></section>`;
+  }).join('');
+  return out || `<div class="empty">Keine Treffer für „${h(UI.q)}“.</div>`;
+}
+function pdfItem(b){
+  const A = by(S.auftraege, b.auftragId); if(!A) return '';
+  const {o} = ctx(A.anlageId);
+  return `<button class="pdf" data-act="auftrag" data-id="${A.id}"><i>PDF</i><span><b>${h(b.datei)}</b><span class="muted small" style="display:block">${fmt(b.erstellt)} · ${h(o.name)} · ${h(techNames(A.techIds))}</span></span></button>`;
+}
+function vAnlage(){
+  const aid = UI.anlage, {a,o,k} = ctx(aid);
+  const ks = kompsOf(aid);
+  const auftr = S.auftraege.filter(x => x.anlageId===aid).sort((x,y) => x.datum < y.datum ? 1 : -1);
+  const ber = S.berichte.filter(b => auftr.some(x => x.id===b.auftragId)).sort((x,y) => x.erstellt < y.erstellt ? 1 : -1);
+  const next = ks.map(nextDue).filter(Boolean).sort()[0];
+  const offen = offenerAuftrag(aid);
+  let lastG = 0;
+  return `
+  <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
+  <div class="head"><div><div class="eyebrow">Anlage · ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
+    <div class="row"><button class="btn" data-act="labels" data-a="${aid}">QR-Etiketten</button>
+      ${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}</div></div>
+  <section class="panel"><div class="facts">
+    <div><span>Kunde</span><span class="code">${h(k.nr)}</span><br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</div>
+    <div><span>Objekt</span>${h(o.adresse)}<br>${h(o.ort)}</div>
+    <div><span>Nächste Fälligkeit</span>${fmt(next)}</div>
+    <div><span>Hinweise für den Techniker</span>${h(a.hinweis || '–')}</div>
+    ${a.techName ? `<div><span>Techniker laut Foxtag</span>${h(a.techName)}</div>` : ''}
+  </div></section>
+  <section class="panel">
+    <div class="panel-h"><h2>Komponenten</h2><div class="row">
+      <label class="btn sm upl" title="In Foxtag: Anlage → Komponenten → Import/Export → Komponenten exportieren">Aus Foxtag importieren<input type="file" accept=".xlsx,.csv" data-kimport="${aid}"></label>
+      <button class="btn sm" data-act="togglek">${UI.addK ? 'Schließen' : 'Komponente hinzufügen'}</button></div></div>
+    ${UI.addK ? `<form class="fgrid inset" data-form="addk">
+      <label class="f" for="nkt">Typ<select id="nkt" name="typ">${S.typen.map(t => `<option value="${t.id}">${h(typLabel(t))}</option>`).join('')}</select></label>
+      <label class="f" for="nks">Standort / Details<input id="nks" name="standort" required placeholder="Hersteller | Typ | Raum"></label>
+      <label class="f" for="nksn">S/N<input id="nksn" name="sn"></label>
+      <label class="f" for="nkbj">Baujahr<input id="nkbj" name="baujahr" inputmode="numeric"></label>
+      <label class="f" for="nkl">Letzte Prüfung<input id="nkl" name="letzte" type="date"></label>
+      <button class="btn pri" type="submit">Hinzufügen</button></form>` : ''}
+    ${ks.length ? `<div class="tbl-wrap"><table>
+      <thead><tr><th>Nummer</th><th>Typ</th><th>Details</th><th>Fälligkeit</th><th></th></tr></thead>
+      <tbody>${ks.map(c => { const s = st(c), t = typOf(c), e = ersatz(c);
+        const grp = c.gruppe!==lastG ? `<tr class="grp"><td colspan="5">Gruppe ${c.gruppe} · ${gname(c.gruppe)}</td></tr>` : ''; lastG = c.gruppe;
+        return grp + `<tr>
+        <td class="mono">${kNr(c)}</td>
+        <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
+        <td>${h(c.standort)}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
+        <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}</td>
+        <td><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></td>
+      </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
+  </section>
+  <div class="grid2">
+    <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte zu dieser Anlage.</div>`}</section>
+    <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
+  </div>`;
+}
+
+/* ---------- Büro: Aufträge ---------- */
+function vAuftraege(){
+  const F = {offen:isOpen, erledigt:a => a.status==='erledigt', abgerechnet:a => a.status==='abgerechnet', alle:() => true};
+  const list = S.auftraege.filter(F[UI.af]).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
+  if(UI.af!=='offen') list.reverse();
+  return `<div class="head"><div><h1>Aufträge</h1><p class="sub">Geplante Aufträge erscheinen sofort in der App der zugeteilten Techniker.</p></div>
+    <button class="btn pri" data-act="planen">Auftrag planen</button></div>
+  <div class="chips">${[['offen','Offen'],['erledigt','Erledigt, nicht abgerechnet'],['abgerechnet','Abgerechnet'],['alle','Alle']].map(([v,l]) => `<button class="chip ${UI.af===v?'on':''}" data-act="af" data-v="${v}">${l}</button>`).join('')}</div>
+  <section class="panel">${auftragTable(list)}</section>`;
+}
+function auftragKomps(A){ return A.kompIds.map(id => by(S.komponenten,id)).filter(Boolean).sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0)); }
+function vAuftrag(){
+  const A = curA(); if(!A) return vAuftraege();
+  const {a,o,k} = ctx(A.anlageId);
+  const idx = STATUS.findIndex(s => s[0]===A.status);
+  const ks = auftragKomps(A);
+  const done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done).length;
+  const ber = S.berichte.find(b => b.auftragId===A.id);
+  const mail = ber && S.mails.find(m => m.berichtId===ber.id);
+  let actions = '';
+  if(A.status==='planung') actions = `<button class="btn pri" data-act="setstatus" data-v="geplant">Freigeben an Techniker</button>`;
+  if(A.status==='erledigt') actions = `<button class="btn pri" data-act="setstatus" data-v="abgerechnet">Als abgerechnet markieren</button>`;
+  const canApp = me().app && (A.techIds.includes(me().id) || me().rolle==='admin');
+  if(['geplant','laeuft'].includes(A.status) && canApp) actions += `<button class="btn" data-act="inapp" data-id="${A.id}">In der App öffnen</button>`;
+  return `
+  <button class="back" data-act="go" data-v="auftraege">← Alle Aufträge</button>
+  <div class="head"><div><div class="eyebrow">Wartung · <span class="code">${h(o.nr)}</span> ${h(o.name)}</div><h1><span class="mono">${A.nr}</span>Wartung ${fmt(A.datum)}</h1></div>
+    <div class="row">${actions}</div></div>
+  <div class="steps" aria-label="Status">${STATUS.map(([v,l],i) => `<span class="${i===idx?'on':i<idx?'past':''}">${l}</span>`).join('')}</div>
+  <section class="panel"><div class="facts">
+    <div><span>Termin</span>${aDatum(A)}</div>
+    <div><span>Techniker</span>${h(techNames(A.techIds))}</div>
+    <div><span>Umfang</span>${A.umfang==='ganz' ? 'Ganze Anlage' : 'Nur fällige Komponenten'} (${ks.length})</div>
+    <div><span>Kunde</span><span class="code">${h(k.nr)}</span> ${h(k.name)}</div>
+    <div><span>Objekt</span>${h(o.adresse)}, ${h(o.ort)}</div>
+    ${a.hinweis ? `<div><span>Hinweise</span>${h(a.hinweis)}</div>` : ''}
+  </div></section>
+  ${A.status==='planung' ? `<section class="panel"><p style="margin:0">Noch nicht freigegeben. Erst nach der Freigabe sehen ${A.techIds.length ? h(techNames(A.techIds)) : 'die Techniker'} den Auftrag in der App.</p>
+    ${A.techIds.length ? '' : `<p class="err" style="margin:0">Noch kein Techniker zugeteilt. Beim Freigeben wird der Auftrag dir zugeteilt.</p>`}</section>` : ''}
+  ${A.status==='geplant' ? `<section class="panel"><p style="margin:0">Liegt in der App bei <b>${h(techNames(A.techIds))}</b> unter „Meine Aufträge“. Noch nicht begonnen.</p></section>` : ''}
+  ${A.status==='laeuft' ? `<section class="panel"><div class="panel-h"><b>Wird gerade in der App bearbeitet: ${done} von ${ks.length} Komponenten geprüft</b></div><div class="prog"><i style="width:${ks.length ? done/ks.length*100 : 0}%"></i></div></section>` : ''}
+  ${ber ? `<section class="panel"><div class="panel-h"><h2>Bericht eingegangen</h2>${pill('ok','im Kundenordner gespeichert')}</div>
+    <div class="facts"><div><span>Datei</span>${h(ber.datei)}</div><div><span>Eingegangen</span>${fmt(ber.erstellt)}${ber.zeit ? ' · '+ber.zeit+' Uhr' : ''}</div>
+    <div><span>E-Mail ans Büro</span>${mail ? h(mail.an)+' · '+fmt(mail.am) : '–'}</div></div>
+    <p class="muted small" style="margin:0">Prototyp: PDF-Datei und E-Mail sind nachgestellt. In der echten Version erzeugt der Server das PDF und verschickt die Mail über euren Mailserver.</p></section>${vBericht(A)}` : ''}
+  ${['planung','geplant'].includes(A.status) ? `<section class="panel"><h2>Geplante Prüfungen</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>Nummer</th><th>Typ</th><th>Details</th><th>Fälligkeit</th></tr></thead><tbody>
+    ${ks.map(c => { const s = st(c), t = typOf(c); return `<tr><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(c.standort)}</td><td>${pill(s.cls,s.label)}</td></tr>`; }).join('')}
+    </tbody></table></div></section>` : ''}`;
+}
+
+/* ---------- Büro: Berichte ---------- */
+function vBerichte(){
+  const list = S.berichte.slice().sort((a,b) => (a.erstellt+(a.zeit||'')) < (b.erstellt+(b.zeit||'')) ? 1 : -1);
+  const mails = S.mails.slice().sort((a,b) => (a.am+(a.zeit||'')) < (b.am+(b.zeit||'')) ? 1 : -1);
+  return `<div><h1>Berichte</h1><p class="sub">Alle aus der App zurückgeschickten Wartungsberichte. Jeder liegt auch im Kundenordner der Anlage.</p></div>
+  <div class="grid2 wide-l" style="align-items:start">
+    <section class="panel">${list.length ? `<div class="alist">${list.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
+    <section class="panel"><h2>E-Mails ans Büro</h2><p class="muted small" style="margin:0">Empfänger einstellbar unter Administration → E-Mail. Im Prototyp nur nachgestellt, es wird nichts verschickt.</p>
+      ${mails.length ? `<div class="tbl-wrap"><table><tbody>${mails.map(m => `<tr><td>${h(m.betreff)}<span class="t2">an ${h(m.an)} · ${fmt(m.am)}${m.zeit ? ' '+m.zeit : ''} · Anhang ${h(m.datei)}</span></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty">Noch keine E-Mails.</div>`}</section>
+  </div>`;
+}
+function berichtAblegen(A, mitMail){
+  const {o,k} = ctx(A.anlageId);
+  const b = {id:uid(), auftragId:A.id, datei:`Wartungsbericht_${A.nr}_${(o.nr||'Objekt').replace(/[^\w-]/g,'')}.pdf`, erstellt:A.abgeschlossen || A.datum, zeit: mitMail ? nowTime() : ''};
+  S.berichte.push(b);
+  S.mails.push({id:uid(), berichtId:b.id, an:S.settings.bueroMail, betreff:`Wartungsbericht ${A.nr} · ${o.nr} ${o.name} · ${k.name}`, am:b.erstellt, zeit:b.zeit, datei:b.datei});
+  return b;
+}
+
+/* ---------- Störungen ---------- */
+function vStoerungen(){
+  const list = S.stoerungen.filter(x => UI.sf==='alle' || x.status===UI.sf);
+  return `<div class="head"><div><h1>Störungen</h1><p class="sub">Entstehen automatisch aus „n.i.O.“ in der App und bleiben offen, bis sie behoben sind.</p></div>
+    <div class="chips">${[['offen','Offen'],['behoben','Behoben'],['alle','Alle']].map(([v,l]) => `<button class="chip ${UI.sf===v?'on':''}" data-act="sf" data-v="${v}">${l}</button>`).join('')}</div></div>
+  <section class="panel">${list.length ? `<div class="tbl-wrap"><table>
+    <thead><tr><th>Nr.</th><th>Störung</th><th>Objekt</th><th>Einstufung</th><th>Auftrag</th><th></th></tr></thead>
+    <tbody>${list.map(x => { const c = by(S.komponenten,x.kompId); if(!c) return ''; const {o} = ctx(c.anlageId); return `<tr>
+      <td class="mono">#${x.nr}</td>
+      <td>${h(x.titel)}<span class="t2">${kNr(c)} ${gname(c.gruppe)} · ${fmt(x.datum)}</span></td>
+      <td><span class="code">${h(o.nr)}</span> ${h(o.name)}</td>
+      <td>${schwerePill(x.schwere)}</td>
+      <td class="mono">${x.auftragNr}</td>
+      <td>${x.status==='offen' ? `<button class="btn sm" data-act="sfix" data-id="${x.id}">Als behoben markieren</button>` : `<button class="btn ghost sm" data-act="sfix" data-id="${x.id}">${pill('ok','Behoben')}</button>`}</td>
+    </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Keine Störungen in dieser Ansicht.</div>`}</section>`;
+}
+
+/* ---------- Administration ---------- */
+function vAdmin(){
+  if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
+  const tabs = [['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail']];
+  let body = '';
+  if(UI.at==='typen') body = `<section class="panel"><p class="muted" style="margin:0">Der Typ bestimmt Prüfintervall und Checkliste. Kürzel wie in Foxtag: [V] vierteljährlich, [H] halbjährlich, [J] jährlich, [Z] alle 2 Jahre.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Typ</th><th>Intervall</th><th>Checkliste</th><th>Austausch</th><th>Anzahl</th></tr></thead><tbody>
+    ${S.typen.map(t => `<tr><td>${h(typLabel(t))}</td><td>${t.intervall} Monate</td><td><button class="btn ghost sm" data-act="clopen" data-id="${t.checklisteId}">${h((by(S.checklisten,t.checklisteId)||{}).name)}</button></td>
+      <td>${t.ersatzJahre ? t.ersatzJahre+' Jahre ab Baujahr' : '–'}</td><td class="mono">${S.komponenten.filter(c => c.typId===t.id).length}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+  if(UI.at==='checklisten'){
+    const cl = by(S.checklisten, UI.cl) || S.checklisten[0];
+    body = `<div class="chips">${S.checklisten.map(c => `<button class="chip ${cl.id===c.id?'on':''}" data-act="clopen" data-id="${c.id}">${h(c.name)}</button>`).join('')}</div>
+    <section class="panel">
+      <div class="panel-h"><h2>${h(cl.name)}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Feldname</th><th>Feldtyp</th><th>Einheit / Grenzwert</th><th></th></tr></thead><tbody>
+      ${cl.felder.map((x,i) => `<tr class="${x.typ==='ueberschrift'?'grp':''}"><td>${h(x.label)}</td><td>${FELDTYPEN[x.typ]}</td><td class="mono">${x.typ==='wert' ? h(x.einheit)+(x.max!=null ? ' · ≤ '+x.max : '') : ''}</td>
+        <td><div class="row" style="flex-wrap:nowrap"><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="-1" aria-label="Nach oben" ${i?'':'disabled'}>↑</button><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="1" aria-label="Nach unten" ${i<cl.felder.length-1?'':'disabled'}>↓</button><button class="btn ghost sm danger" data-act="fdel" data-id="${x.id}">Löschen</button></div></td></tr>`).join('')}
+      </tbody></table></div>
+      <form class="fgrid inset" data-form="fadd">
+        <label class="f" for="fl" style="grid-column:1/-1">Neues Feld<input id="fl" name="label" required placeholder="z. B. Revisionsöffnungen dicht verschlossen"></label>
+        <label class="f" for="ft">Feldtyp<select id="ft" name="typ">${Object.entries(FELDTYPEN).map(([v,l]) => `<option value="${v}" ${v==='ionv'?'selected':''}>${l}</option>`).join('')}</select></label>
+        <label class="f" for="fe">Einheit (Messwert)<input id="fe" name="einheit" placeholder="z. B. Pa"></label>
+        <label class="f" for="fm">Grenzwert max. (optional)<input id="fm" name="max" inputmode="decimal"></label>
+        <button class="btn pri" type="submit">Feld hinzufügen</button>
+      </form>
+    </section>`;
+  }
+  if(UI.at==='benutzer') body = `
+    <section class="panel"><h2>Was darf welche Rolle?</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>Rolle</th><th>Büro (Web)</th><th>Techniker (App)</th><th>Darf</th></tr></thead><tbody>
+        <tr><td><b>Administrator</b></td><td>ja</td><td>ja</td><td>Alles, auch Benutzer, Rechte, Checklisten und Einstellungen</td></tr>
+        <tr><td><b>Büro</b></td><td>ja</td><td>nein</td><td>Kunden anlegen, Aufträge planen, Berichte und Störungen bearbeiten</td></tr>
+        <tr><td><b>Techniker</b></td><td>nein</td><td>ja</td><td>Nur eigene zugeteilte Aufträge in der App prüfen und zurückschicken</td></tr>
+      </tbody></table></div>
+      <p class="muted small" style="margin:0">Pro Person lässt sich Web- und App-Zugang zusätzlich einzeln ein- oder ausschalten. Anmeldung später mit der Firmen-E-Mail über euren eigenen Server.</p></section>
+    <section class="panel"><h2>Benutzer</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>E-Mail (Login)</th><th>Rolle</th><th>Web</th><th>App</th></tr></thead><tbody>
+      ${S.users.map(u => `<tr><td>${h(u.name)}</td><td class="mono">${h(u.email||'–')}</td>
+        <td><select data-uin="rolle" data-id="${u.id}" aria-label="Rolle ${h(u.name)}" style="width:auto">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${u.rolle===v?'selected':''}>${l}</option>`).join('')}</select></td>
+        <td><input type="checkbox" data-uin="web" data-id="${u.id}" ${u.web?'checked':''} aria-label="Web-Zugang ${h(u.name)}"></td>
+        <td><input type="checkbox" data-uin="app" data-id="${u.id}" ${u.app?'checked':''} aria-label="App-Zugang ${h(u.name)}"></td></tr>`).join('')}
+      </tbody></table></div>
+      <form class="fgrid inset" data-form="uadd">
+        <label class="f" for="un">Name<input id="un" name="name" required></label>
+        <label class="f" for="ue">Firmen-E-Mail<input id="ue" name="email" type="email" required placeholder="vorname.nachname@firma.de"></label>
+        <label class="f" for="ur">Rolle<select id="ur" name="rolle">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${v==='techniker'?'selected':''}>${l}</option>`).join('')}</select></label>
+        <button class="btn pri" type="submit">Benutzer anlegen</button>
+      </form></section>`;
+  if(UI.at==='mail') body = `<section class="panel"><h2>Berichte per E-Mail</h2>
+    <p class="muted" style="margin:0">Jeder zurückgeschickte Bericht wird als PDF im Kundenordner gespeichert und zusätzlich an diese Adresse geschickt, damit das Büro ihn weiterleiten kann.</p>
+    <form class="fgrid inset" data-form="mail"><label class="f" for="bm">Empfänger im Büro<input id="bm" name="an" type="email" value="${h(S.settings.bueroMail)}" required></label><button class="btn pri" type="submit">Speichern</button></form></section>`;
+  return `<div><h1>Administration</h1><p class="sub">Einstellungen, Checklisten und Zugänge.</p></div>
+  <div class="chips">${tabs.map(([v,l]) => `<button class="chip ${UI.at===v?'on':''}" data-act="at" data-v="${v}">${l}</button>`).join('')}</div>${body}`;
+}
+
+/* ---------- Kosten & Aufbau ---------- */
+function vInfo(){
+  return `<div><h1>Kosten & Aufbau</h1><p class="sub">Wie die echte Lösung aufgebaut wäre und was sie kostet.</p></div>
+  <section class="panel"><h2>So hängt alles zusammen</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>Teil</th><th>Wer nutzt es</th><th>Was passiert dort</th></tr></thead><tbody>
+      <tr><td><b>Server bei euch</b></td><td>niemand direkt</td><td>Datenbank, Anmeldung mit Firmen-E-Mail, PDF-Erzeugung, E-Mail-Versand, Datensicherung</td></tr>
+      <tr><td><b>Büro (Web)</b></td><td>Büro, Administratoren</td><td>Kunden und Anlagen pflegen, Aufträge planen und zuteilen, Karte, Berichte, Störungen, Rechte</td></tr>
+      <tr><td><b>Techniker (App)</b></td><td>Techniker, Administratoren</td><td>Zugeteilte Aufträge sehen, Checklisten abarbeiten, Fotos, Unterschrift, Bericht zurückschicken. Funktioniert auch offline.</td></tr>
+    </tbody></table></div>
+    <p class="muted small" style="margin:0">Ablauf: Büro plant → Auftrag erscheint in der App → Techniker prüft und schickt zurück → Server erzeugt PDF → PDF liegt im Kundenordner und geht per E-Mail ans Büro.</p></section>
+  <div class="grid2">
+    <section class="panel"><h2>Im Prototyp schon zu sehen</h2><ul class="list">
+      <li>Getrennte Ansichten „Büro (Web)“ und „Techniker (App)“ oben umschaltbar</li>
+      <li>Rollen Administrator, Büro und Techniker mit Web- und App-Zugang je Person</li>
+      <li>Startseite mit offenen Aufträgen, Karte, fälligen Anlagen und neuen Berichten</li>
+      <li>Karte mit Umkreissuche (20 km) für Touren</li>
+      <li>Foxtag-Struktur, Checklisten, Störungen, Import der Foxtag-Exporte</li>
+    </ul></section>
+    <section class="panel"><h2>Kommt in der echten Version dazu</h2><ul class="list">
+      <li>Echte Anmeldung über euren Server mit Firmen-E-Mail</li>
+      <li>Gemeinsame Datenbank für alle Geräte</li>
+      <li>Offline-Modus in der App, Abgleich danach</li>
+      <li>Echtes PDF mit Logo, E-Mail über euren Mailserver</li>
+      <li>Straßenkarte mit genauer Adresse, QR-Scan mit der Kamera</li>
+      <li>Komponenten aller Anlagen in einem Rutsch übernehmen</li>
+    </ul></section>
+  </div>
+  <section class="panel">
+    <h2>Kostenvergleich</h2>
+    <p class="muted" style="margin:0">Trage euren Foxtag-Preis ein. Hosting entfällt weitgehend, wenn es auf eurem eigenen Server läuft. Die einmalige Entwicklung ist nicht enthalten.</p>
+    <div class="fgrid">
+      <label class="f" for="cKonten">Foxtag-Konten heute<input id="cKonten" type="number" min="1" value="3" data-calc></label>
+      <label class="f" for="cTech">Benutzer insgesamt<input id="cTech" type="number" min="1" value="${S.users.length}" data-calc></label>
+      <label class="f" for="cPreis">Preis je Konto / Monat (€)<input id="cPreis" type="number" min="0" step="1" placeholder="euer Preis" data-calc></label>
+      <label class="f" for="cHost">Betrieb eigene Lösung / Monat (€)<input id="cHost" type="number" min="0" value="0" data-calc></label>
+    </div>
+    <div class="kpis" id="calc"></div>
+  </section>
+  <section class="panel"><h2>Demo</h2><p class="muted" style="margin:0">Alle Eingaben werden nur in diesem Browser gespeichert.</p>
+    <div><button class="btn danger" data-act="reset">Beispieldaten zurücksetzen</button></div></section>`;
+}
+function calc(){
+  const el = document.getElementById('calc'); if(!el) return;
+  const v = id => parseFloat(document.getElementById(id).value);
+  const konten = v('cKonten'), tech = v('cTech'), preis = v('cPreis'), host = v('cHost') || 0;
+  const eur = x => isFinite(x) ? Math.round(x).toLocaleString('de-DE')+' €' : '–';
+  el.innerHTML = `
+    <div class="kpi"><div class="n">${eur(konten*preis*12)}</div><div class="l">Foxtag pro Jahr, ${konten||'–'} geteilte Konten</div></div>
+    <div class="kpi warn"><div class="n">${eur(tech*preis*12)}</div><div class="l">Foxtag pro Jahr, ein Konto je Person</div></div>
+    <div class="kpi acc"><div class="n">${eur(host*12)}</div><div class="l">Eigene Lösung pro Jahr, laufend</div></div>`;
+}
+
+/* ---------- Wartungsbericht (Dokument) ---------- */
+function prOf(A, cid){ if(!A.pr[cid]) A.pr[cid] = {f:{}, fotos:[], done:false}; return A.pr[cid]; }
+function kompErgebnis(A, c){
+  const p = A.pr[c.id]; if(!p) return null;
+  return clOf(c).felder.some(x => p.f[x.id] && (p.f[x.id].v==='nio' || p.f[x.id].over)) ? 'mangel' : 'ok';
+}
+function vBericht(A){
+  const {o,k} = ctx(A.anlageId);
+  const ks = auftragKomps(A);
+  const done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done);
+  const st_ = S.stoerungen.filter(x => x.auftragNr===A.nr);
+  const sum = {};
+  done.forEach(c => { const key = typLabel(typOf(c)); sum[key] = sum[key] || {ok:0, m:0}; sum[key][kompErgebnis(A,c)==='mangel' ? 'm' : 'ok']++; });
+  const res = (x,d) => {
+    if(!d || d.v==null || d.v==='') return '<span class="nv">–</span>';
+    if(x.typ==='checkbox') return d.v ? '<span class="io">✓ erledigt</span>' : '<span class="nv">–</span>';
+    if(x.typ==='wert') return h(d.v)+' '+h(x.einheit);
+    return {io:'<span class="io">i.O.</span>', nio:'<span class="nio">n.i.O.</span>', nv:'<span class="nv">n.v.</span>', ja:'Ja', nein:'Nein'}[d.v] || h(d.v);
+  };
+  return `
+  <article class="doc">
+    <div class="doc-head">
+      <div><div class="doc-firm">Gundermann GmbH</div><div>Service · Lüftungs- und Klimatechnik</div><div style="color:var(--paper-muted)">76846 Hauenstein</div></div>
+      <div class="r"><div class="doc-type">Wartungsbericht</div><div class="mono" style="margin-top:6px">Auftrag ${A.nr}</div><div>${aDatum(A)}</div></div>
+    </div>
+    <dl class="doc-meta">
+      <div><dt>Kunde</dt><dd>${h(k.nr)}<br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</dd></div>
+      <div><dt>Objekt</dt><dd>${h(o.nr)}<br>${h(o.name)}<br>${h(o.adresse)}, ${h(o.ort)}</dd></div>
+      <div><dt>Techniker</dt><dd>${h(techNames(A.techIds))}</dd></div>
+      <div><dt>Geprüfte Komponenten</dt><dd>${done.length} von ${ks.length} (${ks.length ? Math.round(done.length/ks.length*100) : 0} %)</dd></div>
+    </dl>
+    <div class="summary ${st_.length?'nio':'io'}">${st_.length ? `${st_.length} ${st_.length===1?'Störung':'Störungen'} festgestellt, siehe Störungsliste.` : 'Alle geprüften Komponenten ohne Mängel.'}</div>
+    <section><h3>Prüfungen</h3><div class="tbl-wrap"><table><thead><tr><th>Typ</th><th class="r">OK</th><th class="r">Mangel</th><th class="r">Gesamt</th></tr></thead><tbody>
+      ${Object.entries(sum).map(([t,v]) => `<tr><td>${h(t)}</td><td class="r io">${v.ok}</td><td class="r nio">${v.m}</td><td class="r">${v.ok+v.m}</td></tr>`).join('')}
+    </tbody></table></div></section>
+    ${done.map(c => { const t = typOf(c), p = A.pr[c.id]; return `<section>
+      <h3><span class="mono">${kNr(c)}</span> ${h(typLabel(t))} <span>${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></h3>
+      <div class="tbl-wrap"><table><tbody>${clOf(c).felder.map(x => x.typ==='ueberschrift'
+        ? `<tr class="dh"><td colspan="2">${h(x.label)}</td></tr>`
+        : x.typ==='text' ? (p.f[x.id] && p.f[x.id].v ? `<tr><td>${h(x.label)}</td><td>${h(p.f[x.id].v)}</td></tr>` : '')
+        : `<tr><td>${h(x.label)}</td><td class="res">${res(x,p.f[x.id])}</td></tr>`).join('')}</tbody></table></div>
+      ${p.fotos && p.fotos.length ? `<div class="fotos" style="margin-top:8px">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
+    </section>`; }).join('')}
+    ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
+      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">#${x.nr}</td><td>${c ? kNr(c)+' '+gname(c.gruppe) : ''}</td><td>${h(x.titel)}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
+    ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
+    <div class="sigs">
+      <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox">${fmt(A.abgeschlossen||A.datum)} · ${h(techNames(A.techIds))}, Gundermann GmbH</div></div>
+      <div>${A.sigKunde ? `<img src="${A.sigKunde}" alt="Unterschrift Kunde" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox">${fmt(A.abgeschlossen||A.datum)} · ${h(A.kunde || 'Kunde')}, ${h(k.name)}</div></div>
+    </div>
+    <div class="foot">Prüfgrundlagen: Herstellerangaben, VDI 6022 Blatt 1, DIN EN 15650 und DIN 31051 (Brandschutzklappen). Dieser Bericht wurde digital erstellt.</div>
+  </article>`;
+}
+
+/* ---------- Techniker-App ---------- */
+function myJobs(){
+  const u = me();
+  return S.auftraege.filter(a => a.status!=='planung' && a.techIds.includes(u.id));
+}
+function appShell(bar, body, foot){
+  return `<div class="appwrap">${bar}<div class="appbody">${body}</div>${foot ? `<div class="appact">${foot}</div>` : ''}</div>`;
+}
+const appBar = (title, sub, back) => `<div class="appbar">${back ? `<button data-act="appback" data-v="${back}" aria-label="Zurück">‹</button>` : ''}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+function vApp(){
+  const u = me(), sc = UI.app.screen, A = curA();
+  if(sc==='liste' || !A){
+    const jobs = myJobs();
+    const T = {heute:a => ['geplant','laeuft'].includes(a.status) && a.datum <= iso(TODAY), bald:a => a.status==='geplant' && a.datum > iso(TODAY), erledigt:a => ['erledigt','abgerechnet'].includes(a.status)};
+    const list = jobs.filter(T[UI.app.tab]).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
+    if(UI.app.tab==='erledigt') list.reverse();
+    const cnt = k => jobs.filter(T[k]).length;
+    return appShell(appBar('Meine Aufträge', h(u.name)+' · '+fmt(iso(TODAY))),
+      `<div class="chips">${[['heute','Heute'],['bald','Demnächst'],['erledigt','Erledigt']].map(([v,l]) => `<button class="chip ${UI.app.tab===v?'on':''}" data-act="apptab" data-v="${v}">${l} ${cnt(v)}</button>`).join('')}</div>
+      ${list.length ? list.map(a => { const {o} = ctx(a.anlageId); const ks = auftragKomps(a); const done = ks.filter(c => a.pr[c.id] && a.pr[c.id].done).length; return `
+        <button class="jcard" data-act="appopen" data-id="${a.id}">
+          <span class="top2"><span class="mono">${a.nr} · ${aDatum(a)}</span>${statusPill(a.status)}</span>
+          <b>${h(o.name)}</b>
+          <span class="muted small">${h(o.adresse)}, ${h(o.ort)}</span>
+          <span class="muted small">${ks.length} Komponenten${a.status==='laeuft' ? ` · ${done} geprüft` : ''}${a.techIds.length > 1 ? ' · mit '+h(a.techIds.filter(x => x!==u.id).map(userName).join(', ')) : ''}</span>
+        </button>`; }).join('') : `<div class="empty">${UI.app.tab==='heute' ? 'Heute keine Aufträge. Neue Aufträge vom Büro erscheinen hier automatisch.' : 'Keine Aufträge.'}</div>`}`);
+  }
+  const {a,o,k} = ctx(A.anlageId);
+  const ks = auftragKomps(A), done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done).length;
+  if(sc==='auftrag'){
+    let lastG = 0;
+    const info = `<div class="card"><div><b style="font-size:17px">${h(o.name)}</b><div class="muted small">${h(o.adresse)}, ${h(o.ort)}</div></div>
+      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`;
+    if(A.status==='geplant') return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
+      info + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small">${kNr(c)} ${h(tname(typOf(c)))} · ${h(c.standort)}</div>`).join('')}</div>`,
+      `<button class="btn pri block" data-act="appstart">Auftrag starten</button>`);
+    if(['erledigt','abgerechnet'].includes(A.status)) return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
+      info + `<div class="card">${pill('ok','Bericht übermittelt')}<div class="small">Am ${fmt(A.abgeschlossen)} zurückgeschickt. Das Büro hat den Bericht als PDF.</div></div>`);
+    return appShell(appBar(A.nr, `${done} von ${ks.length} geprüft · ${h(o.nr)}`, 'liste'),
+      info + `<div class="prog"><i style="width:${ks.length ? done/ks.length*100 : 0}%"></i></div>` +
+      ks.map(c => { const g = c.gruppe!==lastG ? `<div class="gtitle">${c.gruppe} · ${gname(c.gruppe)}</div>` : ''; lastG = c.gruppe; const t = typOf(c); return g + `
+        <button class="krow" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></span>${kompState(A,c)}</button>`; }).join(''),
+      `<button class="btn pri block" data-act="appabschluss" ${done?'':'disabled'}>Abschließen (${done}/${ks.length})</button>`);
+  }
+  if(sc==='komp'){
+    const c = by(S.komponenten, UI.app.komp), t = typOf(c), p = prOf(A, c.id);
+    return appShell(appBar(`${kNr(c)} ${h(tname(t))}`, h(c.standort), 'auftrag'),
+      `<div class="card clist">${clOf(c).felder.map(x => feldRow(A,c,x)).join('')}</div>
+      <div class="card"><b>Fotos</b><div class="fotos">${p.fotos.map((f,i) => `<div class="foto"><img src="${f}" alt="Foto ${i+1}"><button data-act="fotodel" data-c="${c.id}" data-i="${i}" aria-label="Foto entfernen">×</button></div>`).join('')}
+        <label class="btn sm upl">Foto aufnehmen<input type="file" accept="image/*" capture="environment" data-foto="${c.id}"></label></div></div>`,
+      `<button class="btn pri block" data-act="appkdone" data-c="${c.id}">Prüfung speichern</button><button class="btn ghost" data-act="allio" data-c="${c.id}">Offene Punkte i.O. setzen</button>`);
+  }
+  if(sc==='abschluss') return appShell(appBar('Abschluss', A.nr+' · '+h(o.nr), 'auftrag'),
+    `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>
+    <div class="card"><label class="f" for="pbem">Bemerkung zum Bericht<textarea id="pbem" data-in="bem" placeholder="z. B. Kunde über Störungen informiert">${h(A.bem)}</textarea></label>
+    <label class="f" for="pkunde">Name Kunde / Ansprechpartner<input id="pkunde" data-in="kunde" value="${h(A.kunde)}"></label></div>
+    <div class="card"><div class="f">Unterschrift Techniker (${h(me().name)})<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigTech" style="justify-self:start">Löschen</button></div>
+    <div class="f">Unterschrift Kunde<canvas class="sig" data-sig="sigKunde" aria-label="Unterschriftenfeld Kunde"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigKunde" style="justify-self:start">Löschen</button></div></div>`,
+    `<button class="btn pri block" data-act="appsend">Bericht ans Büro schicken</button>`);
+  if(sc==='gesendet'){
+    const b = S.berichte.find(x => x.auftragId===A.id);
+    const n = S.stoerungen.filter(x => x.auftragNr===A.nr).length;
+    return appShell(appBar('Bericht verschickt', A.nr),
+      `<div class="okbig"><div class="tick">✓</div><b style="font-size:18px">Danke, der Bericht ist beim Büro.</b>
+       <div class="small muted">${h(b ? b.datei : '')}<br>im Kundenordner gespeichert und per E-Mail an ${h(S.settings.bueroMail)}${n ? `<br>${n} Störung${n>1?'en':''} erfasst` : ''}</div></div>`,
+      `<button class="btn pri block" data-act="appback" data-v="liste">Zurück zu meinen Aufträgen</button>`);
+  }
+  return '';
+}
+function kompState(A,c){
+  const p = A.pr[c.id];
+  if(p && p.done) return kompErgebnis(A,c)==='mangel' ? pill('bad','Mangel') : pill('ok','OK');
+  const n = p ? Object.values(p.f).filter(x => x.v!=null && x.v!=='' && x.v!==false).length : 0;
+  return n ? pill('acc','in Arbeit') : pill('','offen');
+}
+function feldRow(A,c,x){
+  if(x.typ==='ueberschrift') return `<div class="fh">${h(x.label)}</div>`;
+  const d = prOf(A,c.id).f[x.id] || {};
+  const attrs = `data-c="${c.id}" data-f="${x.id}"`;
+  let ctl = '';
+  const seg = opts => `<div class="seg">${opts.map(([v,l]) => `<button data-act="setf" ${attrs} data-v="${v}" class="${d.v===v?v:''}" aria-pressed="${d.v===v}">${l}</button>`).join('')}</div>`;
+  if(x.typ==='ionv') ctl = seg([['io','i.O.'],['nio','n.i.O.'],['nv','n.v.']]);
+  if(x.typ==='janein') ctl = seg([['ja','Ja'],['nein','Nein']]);
+  if(x.typ==='janeinnv') ctl = seg([['ja','Ja'],['nein','Nein'],['nv','n.v.']]);
+  if(x.typ==='checkbox') ctl = `<button class="cbx ${d.v?'on':''}" data-act="setf" ${attrs} data-v="toggle" aria-pressed="${!!d.v}">${d.v ? '✓ Erledigt' : 'Erledigt?'}</button>`;
+  if(x.typ==='wert') ctl = `<span class="val"><input inputmode="decimal" data-in="fv" ${attrs} value="${h(d.v||'')}" aria-label="${h(x.label)}"><span>${h(x.einheit)}</span></span>`;
+  if(x.typ==='text') return `<div class="pp"><label class="f" for="t-${c.id}-${x.id}">${h(x.label)}<textarea id="t-${c.id}-${x.id}" data-in="fv" ${attrs} style="min-height:44px">${h(d.v||'')}</textarea></label></div>`;
+  return `<div class="pp">
+    <div>${h(x.label)}${x.max!=null ? `<div class="hint" ${d.over ? 'style="color:var(--bad);font-weight:600"' : ''}>Grenzwert ≤ ${x.max} ${h(x.einheit)}${d.over ? ' überschritten, wird als Störung erfasst' : ''}</div>` : ''}</div>
+    <div class="ctl">${ctl}</div>
+    ${d.v==='nio' ? `<div class="mng">
+      <textarea data-in="fm" ${attrs} placeholder="Störung beschreiben, z. B. was zu tun ist" aria-label="Störungsbeschreibung" style="min-height:44px">${h(d.m||'')}</textarea>
+      <select data-in="fsw" ${attrs} aria-label="Schwere">${SCHWERE.map(s => `<option ${(d.sw||'Mangel')===s?'selected':''}>${s}</option>`).join('')}</select>
+    </div>` : ''}
+  </div>`;
+}
+function berichtSenden(A){
+  const ks = auftragKomps(A).filter(c => A.pr[c.id] && A.pr[c.id].done);
+  if(!ks.length) return;
+  ks.forEach(c => {
+    clOf(c).felder.forEach(x => { const d = A.pr[c.id].f[x.id];
+      if(d && d.v==='nio') S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id, titel:d.m || x.label+' nicht in Ordnung', schwere:d.sw||'Mangel', status:'offen', datum:iso(TODAY)});
+      if(d && d.over) S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id, titel:`${x.label}: ${d.v} ${x.einheit} (Grenzwert ${x.max} ${x.einheit} überschritten)`, schwere:'Mangel', status:'offen', datum:iso(TODAY)});
+    });
+    c.letzte = iso(TODAY);
+  });
+  A.status = 'erledigt'; A.abgeschlossen = iso(TODAY);
+  berichtAblegen(A, true);
+  save();
+}
+
+/* ---------- Dialoge ---------- */
+const modal = document.getElementById('modal');
+function openModal(html, after){ modal.innerHTML = `<div class="mbox" role="dialog" aria-modal="true">${html}</div>`; modal.hidden = false; after && after(); }
+function closeModal(){ modal.hidden = true; modal.innerHTML = ''; }
+modal.addEventListener('click', e => { if(e.target===modal || e.target.closest('[data-close]')) closeModal(); });
+function labelHtml(c){
+  const {o} = ctx(c.anlageId), t = typOf(c);
+  return `<div class="label"><div class="qr" data-qr="${h(o.nr)}/${kNr(c)}"></div><div><small>Gundermann GmbH · Service</small><b class="mono" style="font-family:var(--f-mono)">${h(o.nr)} · ${kNr(c)}</b><div>${h(typLabel(t))}</div><small>${h(c.standort)}</small><small>${h(o.name)}</small></div></div>`;
+}
+function drawQr(root){
+  root.querySelectorAll('[data-qr]').forEach(el => {
+    try{ new QRCode(el, {text:'GM-WARTUNG:'+el.dataset.qr, width:104, height:104, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M}); }
+    catch(e){ el.textContent = 'QR'; }
+  });
+}
+function planenModal(aid){
+  const opts = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id); if(!os.length) return '';
+    return `<optgroup label="${h(k.nr+' '+k.name)}">${os.map(o => S.anlagen.filter(x => x.objektId===o.id).map(a => `<option value="${a.id}" ${a.id===aid?'selected':''}>${h(o.nr+' '+o.name)}</option>`).join('')).join('')}</optgroup>`; }).join('');
+  openModal(`<h2>Auftrag planen</h2>
+    <form data-form="planen" style="display:grid;gap:12px">
+      <label class="f" for="pa">Objekt / Anlage<select id="pa" name="anlage">${opts}</select></label>
+      <div class="fgrid"><label class="f" for="pd">Datum<input id="pd" name="datum" type="date" value="${iso(TODAY)}" required></label><label class="f" for="pz">Uhrzeit<input id="pz" name="zeit" type="time"></label></div>
+      <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}">${h(t.name)}</label>`).join('')}</div></div>
+      <label class="f" for="pu">Umfang<select id="pu" name="umfang"><option value="ganz">Ganze Anlage</option><option value="faellig">Nur fällige Komponenten</option></select></label>
+      <div class="checks"><label><input type="checkbox" name="frei" checked>Direkt an die Techniker freigeben</label></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Auftrag anlegen</button></div>
+    </form>`);
+}
+function neuObjektModal(neuKunde){
+  openModal(`<h2>Kunde / Objekt anlegen</h2>
+    <form data-form="neuobjekt" style="display:grid;gap:12px">
+      <label class="f" for="mk">Kunde<select id="mk" name="k" data-m="k">${S.kunden.map(k => `<option value="${k.id}">${h(k.nr+' '+k.name)}</option>`).join('')}<option value="neu" ${neuKunde?'selected':''}>+ Neuer Kunde</option></select></label>
+      ${neuKunde ? `<div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required placeholder="z. B. MUSTER2"></label><label class="f" for="mkname">Name<input id="mkname" name="kname" required></label>
+        <label class="f" for="mka">Adresse<input id="mka" name="kadr"></label><label class="f" for="mko">PLZ / Ort<input id="mko" name="kort"></label></div>` : ''}
+      <div class="fgrid"><label class="f" for="mon">Objektnummer<input id="mon" name="onr" required value="W${String(TODAY.getFullYear()).slice(2)}-${String(500+S.objekte.length+1).padStart(4,'0')}"></label>
+        <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="z. B. Musterschuh, Lager"></label>
+        <label class="f" for="moa">Adresse<input id="moa" name="oadr"></label><label class="f" for="moo">PLZ / Ort<input id="moo" name="oort" placeholder="z. B. 76846 Hauenstein"></label></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Anlegen</button></div>
+    </form>`);
+}
+
+/* ---------- Import aus Foxtag (Excel/CSV, nur im Browser) ---------- */
+async function readTable(file){
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if(buf[0]===0x50 && buf[1]===0x4b) return readXlsx(buf);
+  return readCsv(new TextDecoder('utf-8').decode(buf));
+}
+async function readXlsx(buf){
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let e = buf.length-22; while(e > 0 && dv.getUint32(e,true)!==0x06054b50) e--;
+  const n = dv.getUint16(e+10,true); let p = dv.getUint32(e+16,true); const files = {};
+  for(let i=0; i<n; i++){
+    const comp = dv.getUint16(p+10,true), csize = dv.getUint32(p+20,true), nl = dv.getUint16(p+28,true), el = dv.getUint16(p+30,true), cl = dv.getUint16(p+32,true), off = dv.getUint32(p+42,true);
+    files[new TextDecoder().decode(buf.subarray(p+46,p+46+nl))] = {comp, csize, off}; p += 46+nl+el+cl;
+  }
+  const read = async name => {
+    const f = files[name]; if(!f) return null;
+    const start = f.off+30+dv.getUint16(f.off+26,true)+dv.getUint16(f.off+28,true), data = buf.slice(start, start+f.csize);
+    if(f.comp===0) return new TextDecoder().decode(data);
+    return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  };
+  const xml = s => new DOMParser().parseFromString(s,'application/xml');
+  const ss = await read('xl/sharedStrings.xml');
+  const strings = ss ? [...xml(ss).getElementsByTagName('si')].map(si => si.textContent) : [];
+  const sheet = Object.keys(files).filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort()[0];
+  if(!sheet) throw new Error('In der Excel-Datei wurde keine Tabelle gefunden.');
+  const col = ref => { let c = 0; for(const ch of ref.replace(/\d+/g,'')) c = c*26 + ch.charCodeAt(0)-64; return c-1; };
+  const grid = [...xml(await read(sheet)).getElementsByTagName('row')].map(r => {
+    const out = [];
+    [...r.getElementsByTagName('c')].forEach(c => { const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0];
+      out[col(c.getAttribute('r'))] = t==='s' ? strings[+v.textContent] : t==='inlineStr' ? c.textContent : v ? v.textContent : ''; });
+    return out;
+  });
+  return toObjects(grid);
+}
+function readCsv(text){
+  text = text.replace(/^﻿/,'');
+  const first = text.split(/\r?\n/)[0], d = (first.match(/;/g)||[]).length >= (first.match(/,/g)||[]).length ? ';' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for(let i=0; i<text.length; i++){ const ch = text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if(ch==='"') q = true;
+    else if(ch===d){ row.push(cur); cur = ''; }
+    else if(ch==='\n'){ row.push(cur.replace(/\r$/,'')); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if(cur || row.length){ row.push(cur); rows.push(row); }
+  return toObjects(rows);
+}
+function toObjects(grid){
+  const head = (grid[0]||[]).map(x => String(x||'').trim().toUpperCase());
+  return grid.slice(1).map(r => { const o = {}; head.forEach((k,i) => o[k] = String(r[i] ?? '').trim()); return o; }).filter(o => Object.values(o).some(Boolean));
+}
+function toIso(v){
+  if(!v) return null;
+  let m = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/); if(m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  m = v.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return m[0];
+  if(/^\d{5}(\.\d+)?$/.test(v)) return new Date(Date.UTC(1899,11,30) + Math.floor(+v)*864e5).toISOString().slice(0,10);
+  return null;
+}
+function importAnlagen(rows, kundenRows, replace){
+  if(!rows.length || !('OBJEKT.NUMMER' in rows[0])) throw new Error('Das ist kein Anlagen- oder Objekte-Export aus Foxtag. Es fehlt die Spalte OBJEKT.NUMMER.');
+  if(kundenRows && kundenRows.length && !('KUNDE.NUMMER' in kundenRows[0])) throw new Error('Die zweite Datei ist kein Kunden-Export aus Foxtag. Es fehlt die Spalte KUNDE.NUMMER.');
+  if(replace){ S.kunden = []; S.objekte = []; S.anlagen = []; S.komponenten = []; S.auftraege = []; S.stoerungen = []; S.berichte = []; S.mails = []; }
+  const kByNr = {}, oByNr = {};
+  S.kunden.forEach(k => kByNr[k.nr] = k); S.objekte.forEach(o => oByNr[o.nr] = o);
+  const kunde = (nr, name) => {
+    nr = nr || 'OHNE-KUNDE';
+    if(!kByNr[nr]){ kByNr[nr] = {id:'k'+uid(), nr, name: name || (nr==='OHNE-KUNDE' ? 'Ohne Kunde' : nr), adresse:'', ort:''}; S.kunden.push(kByNr[nr]); }
+    else if(name && kByNr[nr].name===nr) kByNr[nr].name = name;
+    return kByNr[nr];
+  };
+  (kundenRows||[]).forEach(r => {
+    const k = kunde(r['KUNDE.NUMMER'], r['KUNDE.NAME']);
+    k.adresse = [r['ADRESSZEILE1'], r['ADRESSZEILE2']].filter(Boolean).join(', ');
+    k.ort = [r['PLZ'], r['STADT']].filter(Boolean).join(' ');
+  });
+  const get = (r, ...keys) => { for(const k of keys) if(r[k]) return r[k]; return ''; };
+  rows.forEach(r => {
+    const k = kunde(r['KUNDE.NUMMER'], r['KUNDE.NAME']);
+    const key = r['OBJEKT.NUMMER'] || r['OBJEKT.NAME'];
+    let o = oByNr[key];
+    if(!o){
+      o = oByNr[key] = {id:'o'+uid(), kundeId:k.id, nr:r['OBJEKT.NUMMER']||'', name:r['OBJEKT.NAME']||key,
+        adresse:[get(r,'OBJEKT.ADRESSE.ZEILE1','OBJEKT.ADRESSZEILE1'), get(r,'OBJEKT.ADRESSE.ZEILE2','OBJEKT.ADRESSZEILE2')].filter(Boolean).join(', '),
+        ort:[get(r,'OBJEKT.ADRESSE.PLZ','OBJEKT.PLZ'), get(r,'OBJEKT.ADRESSE.STADT','OBJEKT.STADT')].filter(Boolean).join(' ')};
+      S.objekte.push(o);
+    }
+    if('ANLAGE.NAME' in r || 'ANLAGE.WARTUNGSANWENDUNG' in r)
+      S.anlagen.push({id:'a'+uid(), objektId:o.id, name:r['ANLAGE.NAME'] || r['ANLAGE.WARTUNGSANWENDUNG'] || 'Wartung', hinweis:r['ANLAGE.HINWEISE']||'', techName:r['ANLAGE.TECHNIKER.NAME']||''});
+  });
+  S.objekte.forEach(o => { if(!S.anlagen.some(a => a.objektId===o.id)) S.anlagen.push({id:'a'+uid(), objektId:o.id, name:'Wartung', hinweis:''}); });
+  return {kunden:S.kunden.length, objekte:S.objekte.length, anlagen:S.anlagen.length};
+}
+function importKomponenten(aid, rows){
+  if(!rows.length || !('GRUPPE.NUMMER' in rows[0])) throw new Error('Das ist kein Komponenten-Export aus Foxtag. Es fehlt die Spalte GRUPPE.NUMMER.');
+  S.komponenten = S.komponenten.filter(c => c.anlageId!==aid);
+  S.gruppen = S.gruppen || {};
+  rows.forEach(r => {
+    const g = parseInt(r['GRUPPE.NUMMER'],10) || 6;
+    if(r['GRUPPE.NAME'] && r['GRUPPE.NAME']!==GRUPPEN[g]) S.gruppen[g] = r['GRUPPE.NAME'];
+    const name = r['TYP.NAME'] || r['GRUPPE.NAME'] || 'Komponente';
+    const code = ((r['TYP.HERSTELLER']+' '+r['TYP.MODELL']).match(/\[([VHJZ])\]/)||[])[1] || '';
+    let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
+    if(!t){
+      const cl = S.checklisten.find(c => name.toLowerCase().startsWith(c.name.toLowerCase())) || by(S.checklisten,'cl-sonst') || S.checklisten[0];
+      t = {id:'t'+uid(), gruppe:g, name, code, intervall: code ? CODES[code][1] : 12, checklisteId:cl.id};
+      if(/rauchmelder/i.test(name)) t.ersatzJahre = 8;
+      S.typen.push(t);
+    }
+    const hm = [r['TYP.HERSTELLER'], r['TYP.MODELL']].filter(x => x && !/^\[.\]$/.test(x)).join(' | ');
+    S.komponenten.push({id:'c'+uid(), anlageId:aid, gruppe:g, nr:parseInt(r['NUMMER'],10)||1, sub:parseInt(r['SUB-NUMMER'],10)||0, typId:t.id,
+      standort:r['STANDORT'] || hm, sn:r['SERIENNUMMER']||'', baujahr:r['BAUJAHR']||'', letzte:toIso(r['LETZTE_PRÜFUNG'])});
+  });
+  return rows.length;
+}
+function importBundle(B, replace){
+  if(!B || B.format!=='gm-foxtag-bundle') throw new Error('Das ist keine Foxtag-Gesamtdatei.');
+  if(replace){ S.kunden = []; S.objekte = []; S.anlagen = []; S.komponenten = []; S.auftraege = []; S.stoerungen = []; S.berichte = []; S.mails = []; }
+  const kByNr = {}; S.kunden.forEach(k => kByNr[k.nr] = k);
+  const kunde = (nr, name) => {
+    nr = nr || 'OHNE-KUNDE';
+    if(!kByNr[nr]){ kByNr[nr] = {id:'k'+uid(), nr, name: name || (nr==='OHNE-KUNDE' ? 'Ohne Kunde' : nr), adresse:'', ort:''}; S.kunden.push(kByNr[nr]); }
+    return kByNr[nr];
+  };
+  B.kunden.forEach(r => Object.assign(kunde(r.nr, r.name), {name:r.name || r.nr, adresse:r.adresse||'', ort:r.ort||''}));
+  const oByKey = {}, aByKey = {};
+  B.objekte.forEach(r => { const k = kunde(r.kundeNr, r.kundeName); const o = {id:'o'+uid(), kundeId:k.id, nr:r.nr||'', name:r.name||'', adresse:r.adresse||'', ort:r.ort||'', lat:r.lat ?? null, lng:r.lng ?? null}; if(o.lat==null) delete o.lat, delete o.lng; S.objekte.push(o); oByKey[r.key] = o; });
+  B.anlagen.forEach(r => { const o = oByKey[r.objektKey]; if(!o) return; const a = {id:'a'+uid(), objektId:o.id, name:r.name||'Wartung', hinweis:r.hinweis||'', techName:r.techName||''}; S.anlagen.push(a); aByKey[r.key] = a; });
+  S.objekte.forEach(o => { if(!S.anlagen.some(a => a.objektId===o.id)) S.anlagen.push({id:'a'+uid(), objektId:o.id, name:'Wartung', hinweis:''}); });
+  S.gruppen = S.gruppen || {};
+  B.komponenten.forEach(r => {
+    const a = aByKey[r.anlageKey]; if(!a) return;
+    const g = +r.gruppe || 6;
+    if(r.gruppeName && r.gruppeName!==GRUPPEN[g]) S.gruppen[g] = r.gruppeName;
+    const name = r.typName || r.gruppeName || 'Komponente', code = r.code || '';
+    let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
+    if(!t){
+      const cl = S.checklisten.find(c => name.toLowerCase().startsWith(c.name.toLowerCase())) || by(S.checklisten,'cl-sonst') || S.checklisten[0];
+      t = {id:'t'+uid(), gruppe:g, name, code, intervall: code ? CODES[code][1] : 12, checklisteId:cl.id};
+      if(/rauchmelder/i.test(name)) t.ersatzJahre = 8;
+      S.typen.push(t);
+    }
+    S.komponenten.push({id:'c'+uid(), anlageId:a.id, gruppe:g, nr:+r.nr||1, sub:+r.sub||0, typId:t.id,
+      standort:r.standort || [r.hersteller, r.modell].filter(Boolean).join(' | '), sn:r.sn||'', baujahr:r.baujahr ? String(r.baujahr) : '',
+      letzte: r.naechste ? addMonths(r.naechste, -t.intervall) : null});
+  });
+  return {kunden:S.kunden.length, objekte:S.objekte.length, anlagen:S.anlagen.length, komponenten:S.komponenten.length};
+}
+function importModal(){
+  openModal(`<h2>Foxtag-Daten importieren</h2>
+    <p style="margin:0">Entweder die <b>Foxtag-Gesamtdatei (.json)</b> mit Kunden, Objekten, Anlagen und allen Komponenten, oder die Excel-Exporte aus Foxtag: <b>Anlagen → Import/Export → Anlagen exportieren</b> und <b>Kunden → Import/Export → Kunden exportieren</b>.</p>
+    <form data-form="import" style="display:grid;gap:12px">
+      <label class="f" for="imA">Gesamtdatei (.json) oder Anlagen-Export (.xlsx)<input id="imA" name="anl" type="file" accept=".json,.xlsx,.csv" required></label>
+      <label class="f" for="imK">Kunden-Export (optional, ergänzt die Kundenadressen)<input id="imK" name="kun" type="file" accept=".xlsx,.csv"></label>
+      <div class="checks"><label><input type="checkbox" name="replace" checked>Beispieldaten vorher löschen</label></div>
+      <p class="muted small" style="margin:0">Die Dateien werden nur in diesem Browser gelesen und gespeichert, nicht hochgeladen. Komponenten importierst du danach je Anlage über „Aus Foxtag importieren“.</p>
+      <div class="err" id="imErr" aria-live="polite"></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Importieren</button></div>
+    </form>`);
+}
+modal.addEventListener('change', e => { if(e.target.dataset.m==='k') neuObjektModal(e.target.value==='neu'); });
+modal.addEventListener('submit', e => {
+  e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
+  if(kind==='import'){
+    const err = document.getElementById('imErr'); err.textContent = 'Wird eingelesen …';
+    (async () => {
+      try{
+        const file = f.get('anl'); let r;
+        if(/\.json$/i.test(file.name)){
+          let B; try{ B = JSON.parse(await file.text()); }catch(x){ throw new Error('Die JSON-Datei ist beschädigt.'); }
+          r = importBundle(B, !!f.get('replace'));
+        } else {
+          const rows = await readTable(file);
+          const kf = f.get('kun'), krows = kf && kf.size ? await readTable(kf) : null;
+          r = importAnlagen(rows, krows, !!f.get('replace'));
+        }
+        const ok = await saveNow();
+        closeModal(); UI.view = 'kunden'; UI.q = ''; render();
+        toast(`${r.kunden} Kunden, ${r.objekte} Objekte, ${r.anlagen} Anlagen${r.komponenten!=null ? ', '+r.komponenten+' Komponenten' : ''} importiert` + (ok ? '' : '. Achtung: zu groß für den Browserspeicher, nach dem Neuladen weg'));
+      }catch(ex){ err.textContent = ex.message || 'Die Datei konnte nicht gelesen werden.'; }
+    })();
+  }
+  if(kind==='planen'){
+    const aid = f.get('anlage'), umfang = f.get('umfang');
+    const ks = kompsOf(aid).filter(c => umfang==='ganz' || ['bad','warn'].includes(st(c).cls) || !c.letzte);
+    const techs = f.getAll('tech');
+    const A = {id:uid(), nr:'A-'+(S.nextAuftrag++), anlageId:aid, datum:f.get('datum'), zeit:f.get('zeit')||'', techIds:techs, status: techs.length && f.get('frei') ? 'geplant' : 'planung', umfang, kompIds:ks.map(c => c.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null};
+    S.auftraege.push(A); save(); closeModal(); UI.view = 'auftrag'; UI.auftrag = A.id; render(); window.scrollTo(0,0);
+    toast(A.status==='geplant' ? `Auftrag ${A.nr} liegt jetzt in der App bei ${techNames(techs)}` : `Auftrag ${A.nr} angelegt, noch nicht freigegeben`);
+  }
+  if(kind==='neuobjekt'){
+    let kid = f.get('k');
+    if(kid==='neu'){ kid = 'k'+uid(); S.kunden.push({id:kid, nr:f.get('knr'), name:f.get('kname'), adresse:f.get('kadr')||'', ort:f.get('kort')||''}); }
+    const k = by(S.kunden,kid);
+    const oid = 'o'+uid(); S.objekte.push({id:oid, kundeId:kid, nr:f.get('onr'), name:f.get('oname'), adresse:f.get('oadr')||k.adresse, ort:f.get('oort')||k.ort});
+    const aid = 'a'+uid(); S.anlagen.push({id:aid, objektId:oid, name:'Wartung', hinweis:''});
+    save(); closeModal(); UI.view = 'anlage'; UI.anlage = aid; UI.addK = true; render(); toast('Objekt angelegt. Jetzt Komponenten hinzufügen.');
+  }
+});
+
+/* ---------- Ereignisse ---------- */
+const ACT = {
+  mode: d => { S.mode = d.v; save(); render(); window.scrollTo(0,0); },
+  go: d => { UI.view = d.v; UI.err = ''; UI.addK = false; render(); window.scrollTo(0,0); },
+  anlage: (d,t,e) => { e.stopPropagation(); UI.view = 'anlage'; UI.anlage = d.id; UI.addK = false; render(); window.scrollTo(0,0); },
+  auftrag: (d,t,e) => { e.stopPropagation(); UI.view = 'auftrag'; UI.auftrag = d.id; UI.err = ''; render(); window.scrollTo(0,0); },
+  planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
+  neuobjekt: () => neuObjektModal(false),
+  importieren: () => importModal(),
+  togglek: () => { UI.addK = !UI.addK; render(); },
+  af: d => { UI.af = d.v; render(); },
+  sf: d => { UI.sf = d.v; render(); },
+  at: d => { UI.at = d.v; render(); },
+  mapf: d => { UI.mapF = d.v; render(); },
+  mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
+  clopen: d => { UI.at = 'checklisten'; UI.cl = d.id; render(); },
+  setstatus: d => { const A = curA(); A.status = d.v; if(d.v==='geplant' && !A.techIds.length) A.techIds = [me().id]; save(); render(); toast(d.v==='geplant' ? `Freigegeben: liegt jetzt in der App bei ${techNames(A.techIds)}` : `Status: ${statusLabel(d.v)}`); },
+  inapp: d => { S.mode = 'app'; UI.auftrag = d.id; UI.app.screen = 'auftrag'; save(); render(); window.scrollTo(0,0); },
+  apptab: d => { UI.app.tab = d.v; render(); },
+  appopen: d => { UI.auftrag = d.id; UI.app.screen = 'auftrag'; render(); window.scrollTo(0,0); },
+  appback: d => { UI.app.screen = d.v; render(); window.scrollTo(0,0); },
+  appstart: () => { const A = curA(); A.status = 'laeuft'; save(); render(); },
+  appkomp: d => { UI.app.komp = d.c; UI.app.screen = 'komp'; render(); window.scrollTo(0,0); },
+  appkdone: d => { prOf(curA(), d.c).done = true; save(); UI.app.screen = 'auftrag'; render(); window.scrollTo(0,0); toast('Prüfung gespeichert'); },
+  appabschluss: () => { UI.app.screen = 'abschluss'; render(); window.scrollTo(0,0); },
+  appsend: () => { berichtSenden(curA()); UI.app.screen = 'gesendet'; render(); window.scrollTo(0,0); },
+  setf: d => {
+    const A = curA(), p = prOf(A,d.c), cur = (p.f[d.f]||{}).v;
+    p.f[d.f] = Object.assign({}, p.f[d.f], {v: d.v==='toggle' ? !cur : (cur===d.v ? null : d.v)});
+    p.done = false; save(); render();
+  },
+  allio: d => {
+    const A = curA(), p = prOf(A,d.c), c = by(S.komponenten,d.c);
+    clOf(c).felder.forEach(x => { const cur = p.f[x.id]; if(cur && cur.v!=null && cur.v!=='') return;
+      if(x.typ==='ionv') p.f[x.id] = {v:'io'}; if(x.typ==='checkbox') p.f[x.id] = {v:true}; });
+    save(); render();
+  },
+  fotodel: d => { prOf(curA(),d.c).fotos.splice(+d.i,1); save(); render(); },
+  sigclear: d => { curA()[d.k] = null; save(); render(); },
+  sfix: d => { const x = by(S.stoerungen,d.id); x.status = x.status==='offen' ? 'behoben' : 'offen'; save(); render(); toast(x.status==='behoben' ? `Störung #${x.nr} behoben` : `Störung #${x.nr} wieder offen`); },
+  fdel: d => { const cl = by(S.checklisten,UI.cl); cl.felder = cl.felder.filter(x => x.id!==d.id); save(); render(); },
+  fmove: d => { const cl = by(S.checklisten,UI.cl), i = +d.i, j = i + +d.d; [cl.felder[i], cl.felder[j]] = [cl.felder[j], cl.felder[i]]; save(); render(); },
+  qr: d => { const c = by(S.komponenten,d.c); openModal(`<h2>QR-Etikett</h2>${labelHtml(c)}<p class="muted" style="margin:0">Am Gerät anbringen. In der App öffnet der Scan direkt die Checkliste dieser Komponente.</p><div class="row" style="justify-content:flex-end"><button class="btn" data-close>Schließen</button></div>`, () => drawQr(modal)); },
+  labels: d => { openModal(`<h2>QR-Etiketten ${h(ctx(d.a).o.nr)}</h2><div style="display:grid;gap:10px">${kompsOf(d.a).map(labelHtml).join('')}</div><div class="row" style="justify-content:flex-end"><button class="btn" data-close>Schließen</button></div>`, () => drawQr(modal)); },
+  reset: () => openModal(`<h2>Beispieldaten zurücksetzen?</h2><p style="margin:0">Alle Änderungen, importierten Daten, Aufträge und Berichte in diesem Browser werden gelöscht.</p>
+    <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="resetok">Zurücksetzen</button></div>`),
+  resetok: () => { S = seed(); migrate(); save(); closeModal(); UI.view = 'start'; UI.app.screen = 'liste'; render(); toast('Beispieldaten wiederhergestellt'); }
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
+  if(t.closest('#modal') && t.dataset.act!=='resetok') return;
+  ACT[t.dataset.act](t.dataset, t, e);
+});
+const app = document.getElementById('app');
+app.addEventListener('input', e => {
+  const t = e.target, k = t.dataset.in;
+  if(t.hasAttribute('data-calc')) return calc();
+  if(!k) return;
+  if(k==='q'){ UI.q = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
+  const A = curA(); if(!A) return;
+  if(k==='bem' || k==='kunde'){ A[k] = t.value; return save(); }
+  const p = prOf(A, t.dataset.c);
+  const key = {fv:'v', fm:'m', fsw:'sw'}[k];
+  p.f[t.dataset.f] = Object.assign({}, p.f[t.dataset.f], {[key]: t.value});
+  save();
+});
+app.addEventListener('change', e => {
+  const t = e.target;
+  if(t.dataset.uin){
+    const u = by(S.users, t.dataset.id), f = t.dataset.uin;
+    if(f==='rolle'){ u.rolle = t.value; u.web = t.value!=='techniker'; u.app = t.value!=='buero'; }
+    else u[f] = t.checked;
+    if(!S.users.some(x => x.rolle==='admin' && x.web)){ toast('Mindestens ein Administrator mit Web-Zugang muss bleiben'); u.rolle = 'admin'; u.web = true; }
+    if(!u.web && !u.app){ u[f==='web' ? 'app' : 'web'] = true; toast('Jeder Benutzer braucht mindestens einen Zugang'); }
+    save(); render(); return;
+  }
+  if(t.dataset.foto && t.files[0]) return addFoto(t.files[0], t.dataset.foto);
+  if(t.dataset.kimport && t.files[0]){
+    const aid = t.dataset.kimport;
+    readTable(t.files[0]).then(async rows => { const n = importKomponenten(aid, rows); const ok = await saveNow(); render(); toast(`${n} Komponenten importiert` + (ok ? '' : '. Achtung: konnte nicht dauerhaft gespeichert werden')); })
+      .catch(ex => toast(ex.message || 'Die Datei konnte nicht gelesen werden.'));
+    return;
+  }
+  if(t.dataset.in==='fv' && t.tagName==='INPUT'){
+    const c = by(S.komponenten,t.dataset.c), x = clOf(c).felder.find(y => y.id===t.dataset.f);
+    if(x.max==null) return;
+    const over = !!t.value.trim() && num(t.value) > x.max;
+    const p = prOf(curA(), c.id); p.f[x.id] = Object.assign({}, p.f[x.id], {v:t.value, over});
+    save(); render();
+    if(over) toast(`Grenzwert ${x.max} ${x.einheit} überschritten`);
+  }
+});
+app.addEventListener('submit', e => {
+  e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
+  if(kind==='addk'){
+    const typId = f.get('typ'), t = by(S.typen,typId);
+    const nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===UI.anlage && c.gruppe===t.gruppe).map(c => c.nr)) + 1;
+    const c = {id:'c'+uid(), anlageId:UI.anlage, gruppe:t.gruppe, nr, typId, standort:f.get('standort'), sn:f.get('sn')||'', baujahr:f.get('baujahr')||'', letzte:f.get('letzte')||null};
+    S.komponenten.push(c); save(); render(); toast(`Komponente ${kNr(c)} angelegt`);
+  }
+  if(kind==='fadd'){
+    const typ = f.get('typ'), max = String(f.get('max')||'').trim();
+    by(S.checklisten,UI.cl).felder.push({id:uid(), typ, label:f.get('label'), einheit: typ==='wert' ? (f.get('einheit')||'') : '', max: typ==='wert' && max ? num(max) : null});
+    save(); render(); toast('Feld hinzugefügt');
+  }
+  if(kind==='uadd'){
+    const rolle = f.get('rolle');
+    S.users.push({id:'u'+uid(), name:f.get('name'), email:f.get('email'), rolle, web:rolle!=='techniker', app:rolle!=='buero'});
+    save(); render(); toast('Benutzer angelegt');
+  }
+  if(kind==='mail'){ S.settings.bueroMail = f.get('an'); save(); render(); toast('E-Mail-Empfänger gespeichert'); }
+});
+document.getElementById('who').addEventListener('change', e => {
+  S.currentUser = e.target.value; UI.app.screen = 'liste';
+  if(me().rolle!=='admin' && UI.view==='admin') UI.view = 'start';
+  save(); render(); toast('Angemeldet als '+me().name);
+});
+
+function addFoto(file, cid){
+  const fr = new FileReader();
+  fr.onload = () => { const img = new Image(); img.onload = () => {
+    const sc = Math.min(1, 900/Math.max(img.width,img.height)); const cv = document.createElement('canvas');
+    cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc); cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+    prOf(curA(),cid).fotos.push(cv.toDataURL('image/jpeg',.72)); save(); render();
+  }; img.src = fr.result; };
+  fr.readAsDataURL(file);
+}
+function initSig(cv){
+  const A = curA(); if(!A) return;
+  const key = cv.dataset.sig, r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if(!r.width) return;
+  cv.width = r.width*dpr; cv.height = r.height*dpr;
+  const c = cv.getContext('2d'); c.scale(dpr,dpr);
+  c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.strokeStyle = c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--paper-ink').trim() || '#1a1f24';
+  if(A[key]){ const img = new Image(); img.onload = () => c.drawImage(img,0,0,r.width,r.height); img.src = A[key]; }
+  let down = false, last = null;
+  const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX-b.left, e.clientY-b.top]; };
+  cv.onpointerdown = e => { down = true; last = pt(e); cv.setPointerCapture(e.pointerId); c.beginPath(); c.arc(last[0],last[1],1.1,0,7); c.fill(); };
+  cv.onpointermove = e => { if(!down) return; const p = pt(e); c.beginPath(); c.moveTo(last[0],last[1]); c.lineTo(p[0],p[1]); c.stroke(); last = p; };
+  cv.onpointerup = cv.onpointercancel = () => { if(!down) return; down = false; A[key] = cv.toDataURL('image/png'); save(); };
+}
+let toastT;
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
+
+const VIEWS = {start:vStart, karte:vKarte, kunden:vKunden, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
+function render(){
+  kIdx = null;
+  renderChrome();
+  app.innerHTML = S.mode==='app' ? vApp() : (VIEWS[UI.view] || vStart)();
+  app.querySelectorAll('canvas[data-sig]').forEach(initSig);
+  calc();
+}
+app.innerHTML = '<div class="empty">Daten werden geladen …</div>';
+load().then(render);
+</script>
+</body>
+</html>

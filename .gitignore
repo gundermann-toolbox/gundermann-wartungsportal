@@ -1,0 +1,7 @@
+# Kundendaten und Exporte niemals einchecken
+*.json
+*.xlsx
+*.csv
+Foxtag*
+.DS_Store
+Thumbs.db
