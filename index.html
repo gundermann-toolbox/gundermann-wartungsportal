@@ -416,9 +416,14 @@ const UI = {view:'start', anlage:null, auftrag:null, af:'offen', sf:'offen', at:
 /* Speicher: IndexedDB (fasst auch alle Foxtag-Daten), localStorage nur als Rückfall */
 const IDB = {
   db: null,
-  open(){ return this.db || (this.db = new Promise((res, rej) => { const r = indexedDB.open('gm-wartung', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
-  async get(k){ const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
-  async set(k, v){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv','readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); }
+  open(){ return this.db || (this.db = new Promise((res, rej) => {
+    const r = indexedDB.open('gm-wartung', 2);
+    r.onupgradeneeded = () => { ['kv','files'].forEach(n => { if(!r.result.objectStoreNames.contains(n)) r.result.createObjectStore(n); }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  })); },
+  async get(k, store='kv'){ const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction(store).objectStore(store).get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+  async set(k, v, store='kv'){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction(store,'readwrite'); t.objectStore(store).put(v, k); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); },
+  async del(k, store='kv'){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction(store,'readwrite'); t.objectStore(store).delete(k); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); }); }
 };
 async function load(){
   try{ const v = await IDB.get(KEY); if(v){ const r = JSON.parse(v); if(r && r.kunden) S = r; } }catch(e){}
@@ -726,10 +731,67 @@ function vAnlage(){
         <td><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></td>
       </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
   </section>
+  <div class="grid2">${notizPanel(a)}${dateiPanel(a)}</div>
   <div class="grid2">
     <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte zu dieser Anlage.</div>`}</section>
     <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
   </div>`;
+}
+
+/* ---------- Notizen & Dateien je Anlage ---------- */
+const fmtSize = b => b < 1024*1024 ? Math.max(1, Math.round(b/1024))+' KB' : (b/1024/1024).toFixed(1).replace('.',',')+' MB';
+const dokArt = d => /pdf/i.test(d.type) || /\.pdf$/i.test(d.name) ? 'PDF' : /^image\//.test(d.type) ? 'BILD' : /\.(dwg|dxf)$/i.test(d.name) ? 'PLAN' : /\.(docx?|odt)$/i.test(d.name) ? 'DOC' : /\.(xlsx?|csv|ods)$/i.test(d.name) ? 'XLS' : 'DATEI';
+function notizList(a, kurz){
+  const list = (a.notizen||[]).slice().sort((x,y) => x.am < y.am ? 1 : -1).slice(0, kurz ? 3 : 999);
+  return list.length ? list.map(n => `<div class="card" style="gap:4px;padding:10px 12px">
+      <div style="white-space:pre-wrap">${h(n.text)}</div>
+      <div class="row small muted" style="justify-content:space-between">${fmt(n.am.slice(0,10))} · ${h(n.von)}${kurz ? '' : `<button class="btn ghost sm danger" data-act="notizdel" data-a="${a.id}" data-id="${n.id}">Löschen</button>`}</div></div>`).join('')
+    : `<div class="empty">Noch keine Notizen.</div>`;
+}
+function notizPanel(a){
+  return `<section class="panel"><div class="panel-h"><h2>Notizen</h2><span class="muted small">auch in der Techniker-App sichtbar</span></div>
+    <form data-form="notiz" data-a="${a.id}" style="display:grid;gap:8px">
+      <label class="f" for="nz-${a.id}">Neue Notiz<textarea id="nz-${a.id}" name="text" required placeholder="z. B. Zugang nur mit Hausmeister, Herr Müller, Tel. im Büro hinterlegt"></textarea></label>
+      <button class="btn pri sm" type="submit" style="justify-self:start">Notiz speichern</button></form>
+    <div style="display:grid;gap:8px">${notizList(a)}</div></section>`;
+}
+function dokList(a, inApp){
+  const list = (a.dateien||[]).slice().sort((x,y) => x.am < y.am ? 1 : -1);
+  return list.length ? `<div class="alist">${list.map(d => `<div class="pdf" style="cursor:default">
+      <i style="${dokArt(d)==='PDF' ? '' : 'background:var(--accent)'}">${dokArt(d)}</i>
+      <span style="flex:1"><b>${h(d.name)}</b><span class="muted small" style="display:block">${fmtSize(d.size)} · ${fmt(d.am.slice(0,10))} · ${h(d.von)}</span></span>
+      <button class="btn sm" data-act="dokopen" data-a="${a.id}" data-id="${d.id}">Öffnen</button>
+      ${inApp ? '' : `<button class="btn ghost sm danger" data-act="dokdel" data-a="${a.id}" data-id="${d.id}" aria-label="${h(d.name)} löschen">✕</button>`}
+    </div>`).join('')}</div>` : `<div class="empty">${inApp ? 'Keine Dokumente hinterlegt.' : 'Noch keine Dateien. Zum Beispiel Handbücher, Schaltpläne oder Grundrisse hochladen.'}</div>`;
+}
+function dateiPanel(a){
+  return `<section class="panel"><div class="panel-h"><h2>Dateien</h2>
+      <label class="btn sm pri upl">Datei hochladen<input type="file" multiple data-dupload="${a.id}"></label></div>
+    <p class="muted small" style="margin:0">Handbücher, Pläne, Fotos. Im Prototyp nur in diesem Browser gespeichert, später auf eurem Server. Max. 25 MB je Datei.</p>
+    ${dokList(a)}</section>`;
+}
+async function dateienHochladen(aid, files){
+  const a = by(S.anlagen, aid); a.dateien = a.dateien || [];
+  let n = 0;
+  for(const file of files){
+    if(file.size > 25*1024*1024){ toast(`${file.name} ist größer als 25 MB`); continue; }
+    const id = 'f'+uid();
+    try{ await IDB.set(id, file, 'files'); }catch(e){ toast(`${file.name} konnte nicht gespeichert werden`); continue; }
+    a.dateien.push({id, name:file.name, type:file.type||'', size:file.size, am:new Date().toISOString(), von:me().name}); n++;
+  }
+  await saveNow(); render();
+  if(n) toast(n===1 ? 'Datei hochgeladen' : `${n} Dateien hochgeladen`);
+}
+async function dokOeffnen(aid, id){
+  const d = (by(S.anlagen, aid).dateien||[]).find(x => x.id===id); if(!d) return;
+  let blob; try{ blob = await IDB.get(id, 'files'); }catch(e){}
+  if(!blob){ toast('Datei ist in diesem Browser nicht vorhanden'); return; }
+  const url = URL.createObjectURL(blob), art = dokArt(d);
+  openModal(`<div class="panel-h"><h2 style="overflow-wrap:anywhere">${h(d.name)}</h2><button class="btn ghost sm" data-close>Schließen</button></div>
+    ${art==='BILD' ? `<img src="${url}" alt="${h(d.name)}" style="width:100%;border-radius:8px">` : ''}
+    ${art==='PDF' ? `<iframe src="${url}" title="${h(d.name)}" style="width:100%;height:65vh;border:1px solid var(--line);border-radius:8px"></iframe>` : ''}
+    <div class="row"><a class="btn pri" href="${url}" target="_blank" rel="noopener" download="${h(d.name)}">In neuem Fenster öffnen</a><span class="muted small">${fmtSize(d.size)}</span></div>`);
+  modal.querySelector('.mbox').style.maxWidth = art==='DATEI' ? '' : '900px';
 }
 
 /* ---------- Büro: Aufträge ---------- */
@@ -1018,7 +1080,9 @@ function vApp(){
   if(sc==='auftrag'){
     let lastG = 0;
     const info = `<div class="card"><div><b style="font-size:17px">${h(o.name)}</b><div class="muted small">${h(o.adresse)}, ${h(o.ort)}</div></div>
-      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`;
+      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`
+      + ((a.notizen||[]).length ? `<div class="card"><b>Notizen</b>${notizList(a, true)}</div>` : '')
+      + ((a.dateien||[]).length ? `<div class="card"><b>Dokumente zur Anlage</b>${dokList(a, true)}</div>` : '');
     if(A.status==='geplant') return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
       info + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small">${kNr(c)} ${h(tname(typOf(c)))} · ${h(c.standort)}</div>`).join('')}</div>`,
       `<button class="btn pri block" data-act="appstart">Auftrag starten</button>`);
@@ -1373,6 +1437,20 @@ const ACT = {
   mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
   clopen: d => { UI.at = 'checklisten'; UI.cl = d.id; render(); },
   setstatus: d => { const A = curA(); A.status = d.v; if(d.v==='geplant' && !A.techIds.length) A.techIds = [me().id]; save(); render(); toast(d.v==='geplant' ? `Freigegeben: liegt jetzt in der App bei ${techNames(A.techIds)}` : `Status: ${statusLabel(d.v)}`); },
+  notizdel: d => { const a = by(S.anlagen, d.a); a.notizen = (a.notizen||[]).filter(n => n.id!==d.id); save(); render(); toast('Notiz gelöscht'); },
+  dokopen: (d,t,e) => { e.stopPropagation(); dokOeffnen(d.a, d.id); },
+  dokdel: d => {
+    const doc = (by(S.anlagen, d.a).dateien||[]).find(x => x.id===d.id); if(!doc) return;
+    UI.dokDel = {a:d.a, id:d.id};
+    openModal(`<h2>Datei löschen?</h2><p style="margin:0">„${h(doc.name)}“ wird endgültig gelöscht.</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="dokdelok" style="background:var(--bad);border-color:var(--bad)">Löschen</button></div>`);
+  },
+  dokdelok: async () => {
+    const {a:aid, id} = UI.dokDel || {}; const a = by(S.anlagen, aid); if(!a) return closeModal();
+    a.dateien = (a.dateien||[]).filter(x => x.id!==id);
+    try{ await IDB.del(id, 'files'); }catch(e){}
+    save(); closeModal(); render(); toast('Datei gelöscht');
+  },
   aedit: () => editModal(curA()),
   azurueck: () => {
     const A = curA(), lauf = A.status==='laeuft';
@@ -1423,7 +1501,7 @@ const ACT = {
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
-  if(t.closest('#modal') && !['resetok','adelok','azurueckok'].includes(t.dataset.act)) return;
+  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok'].includes(t.dataset.act)) return;
   ACT[t.dataset.act](t.dataset, t, e);
 });
 const app = document.getElementById('app');
@@ -1450,6 +1528,7 @@ app.addEventListener('change', e => {
     save(); render(); return;
   }
   if(t.dataset.foto && t.files[0]) return addFoto(t.files[0], t.dataset.foto);
+  if(t.dataset.dupload && t.files.length) return dateienHochladen(t.dataset.dupload, [...t.files]);
   if(t.dataset.kimport && t.files[0]){
     const aid = t.dataset.kimport;
     readTable(t.files[0]).then(async rows => { const n = importKomponenten(aid, rows); const ok = await saveNow(); render(); toast(`${n} Komponenten importiert` + (ok ? '' : '. Achtung: konnte nicht dauerhaft gespeichert werden')); })
@@ -1467,6 +1546,11 @@ app.addEventListener('change', e => {
 });
 app.addEventListener('submit', e => {
   e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
+  if(kind==='notiz'){
+    const a = by(S.anlagen, e.target.dataset.a), text = String(f.get('text')||'').trim(); if(!text) return;
+    (a.notizen = a.notizen || []).push({id:uid(), text, am:new Date().toISOString(), von:me().name});
+    save(); render(); toast('Notiz gespeichert');
+  }
   if(kind==='addk'){
     const typId = f.get('typ'), t = by(S.typen,typId);
     const nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===UI.anlage && c.gruppe===t.gruppe).map(c => c.nr)) + 1;
