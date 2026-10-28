@@ -426,14 +426,24 @@ const IDB = {
   open(){ return this.db || (this.db = new Promise((res, rej) => {
     const r = indexedDB.open('gm-wartung', 2);
     r.onupgradeneeded = () => { ['kv','files'].forEach(n => { if(!r.result.objectStoreNames.contains(n)) r.result.createObjectStore(n); }); };
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); IDB.db = null; }; res(db); };
+    r.onerror = () => rej(r.error);
   })); },
   async get(k, store='kv'){ const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction(store).objectStore(store).get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
   async set(k, v, store='kv'){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction(store,'readwrite'); t.objectStore(store).put(v, k); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); },
   async del(k, store='kv'){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction(store,'readwrite'); t.objectStore(store).delete(k); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); }); }
 };
 async function load(){
-  try{ const v = await IDB.get(KEY); if(v){ const r = JSON.parse(v); if(r && r.kunden) S = r; } }catch(e){}
+  // Hängt der Speicher (z. B. weil eine ältere Version in einem anderen Tab offen ist), Hinweis zeigen und weiter warten
+  const p = IDB.get(KEY).then(v => ({v}), e => ({e}));
+  let res = await Promise.race([p, new Promise(r => setTimeout(() => r(null), 3000))]);
+  if(!res){
+    app.innerHTML = `<section class="panel" style="max-width:640px"><h2>Das Wartungsportal ist noch in einem anderen Tab geöffnet</h2>
+      <p style="margin:0">Eine ältere Version der Seite blockiert gerade den Speicher in diesem Browser. Bitte alle anderen Tabs oder Fenster mit dem Wartungsportal schließen. Danach geht es hier automatisch weiter.</p>
+      <div><button class="btn pri" onclick="location.reload()">Seite neu laden</button></div></section>`;
+    res = await p;
+  }
+  try{ if(res.v){ const r = JSON.parse(res.v); if(r && r.kunden) S = r; } }catch(e){}
   if(!S){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r && r.kunden) S = r; }catch(e){} }
   if(!S) S = seed();
   const v = S.v;
@@ -1619,7 +1629,11 @@ function render(){
   calc();
 }
 app.innerHTML = '<div class="empty">Daten werden geladen …</div>';
-load().then(render);
+load().then(render).catch(e => {
+  app.innerHTML = `<section class="panel" style="max-width:640px"><h2>Die Seite konnte nicht geladen werden</h2>
+    <p style="margin:0">Fehler: <span class="mono">${h(e && e.message || e)}</span></p><p class="muted small" style="margin:0">Bitte diese Meldung an Marcel weitergeben.</p>
+    <div><button class="btn pri" onclick="location.reload()">Seite neu laden</button></div></section>`;
+});
 </script>
 </body>
 </html>
