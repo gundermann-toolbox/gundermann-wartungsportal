@@ -315,6 +315,13 @@ const PLZ3 = {'661':[49.24,7.00],'663':[49.28,7.12],'664':[49.32,7.32],'665':[49
   '694':[49.55,8.67],'761':[49.01,8.40],'762':[49.00,8.45],'763':[48.85,8.30],'764':[48.86,8.20],'765':[48.76,8.24],'766':[49.12,8.60],'767':[49.13,8.30],'768':[49.17,8.05],'778':[48.69,8.14]};
 const MAP_REF = ['hauenstein','pirmasens','kaiserslautern','landau','zweibrücken','ludwigshafen','neustadt','speyer','karlsruhe','baden-baden','frankenthal','germersheim','bad bergzabern','dahn','worms','homburg','mannheim'];
 
+/* Team: Marcel Schulz darf Büro und App, Kevin Jacky prüft in der App */
+const TEAM = [
+  {id:'u-ms', name:'Marcel Schulz', email:'', rolle:'admin', web:true, app:true},
+  {id:'u-kj', name:'Kevin Jacky', email:'', rolle:'techniker', web:false, app:true},
+  {id:'u8', name:'Büro', email:'buero@firma.de', rolle:'buero', web:true, app:false}
+];
+
 /* ---------- Beispieldaten ---------- */
 function seed(){
   const F = (typ, label, einheit, max) => ({id:uid(), typ, label, einheit:einheit||'', max:max ?? null});
@@ -353,12 +360,7 @@ function seed(){
     T(5,'J','cl-rm', {ersatzJahre:8}),
     T(6,'H','cl-sonst'), T(6,'J','cl-sonst')
   ];
-  const users = [
-    {id:'u0', name:'Service-Leitung', email:'service@firma.de', rolle:'admin', web:true, app:true},
-    {id:'u8', name:'Büro', email:'buero@firma.de', rolle:'buero', web:true, app:false},
-    ...[['u1','M. Becker'],['u2','J. Wagner'],['u3','T. Schmitt'],['u4','S. Keller'],['u5','D. Hoffmann'],['u6','L. Braun'],['u7','A. Zimmer']]
-      .map(([id,name]) => ({id, name, email:name.toLowerCase().replace(/[^a-z]/g,'.').replace(/\.+/g,'.')+'@firma.de', rolle:'techniker', web:false, app:true}))
-  ];
+  const users = TEAM.map(u => ({...u}));
   const kunden = [
     {id:'k1', nr:'MUSTER1', name:'Musterschuh GmbH', adresse:'Beispielstraße 5', ort:'76846 Hauenstein'},
     {id:'k2', nr:'SONNEN1', name:'Seniorenhaus Sonnenhang', adresse:'Am Hang 12', ort:'76855 Annweiler'},
@@ -404,37 +406,8 @@ function seed(){
     K('a8',1,1,'J','Systemair | Tiefgaragenlüftung',345),
     K('a8',4,1,'J','Trox | FKA-EU | Garage Zufahrt',345,{sn:'BSK-1'})
   ];
-  const S0 = {checklisten, typen, users, currentUser:'u0', mode:'web', kunden, objekte, anlagen, komponenten, auftraege:[], stoerungen:[], berichte:[], mails:[],
+  return {v:3, checklisten, typen, users, currentUser:'u-ms', mode:'web', kunden, objekte, anlagen, komponenten, auftraege:[], stoerungen:[], berichte:[], mails:[],
     settings:{bueroMail:'buero@firma.de'}, nextAuftrag:2601, nextStoerung:1701};
-  const sample = {'m³/h':'340','°C':'14','A':'3,1'};
-  const fill = (k, override) => {
-    const t = S0.typen.find(x => x.id===k.typId), cl = S0.checklisten.find(c => c.id===t.checklisteId), f = {};
-    cl.felder.forEach((x,i) => {
-      if(x.typ==='ueberschrift' || x.typ==='text') return;
-      f[x.id] = Object.assign({v: x.typ==='ionv' ? 'io' : x.typ==='checkbox' ? true : x.typ==='wert' ? (sample[x.einheit]||'') : 'ja'}, override && override(x,i));
-    });
-    return {f, fotos:[], done:true};
-  };
-  const mkA = (nr, anlageId, ago, zeit, techs, status, override) => {
-    const ks = S0.komponenten.filter(k => k.anlageId===anlageId && k.letzte===daysAgo(ago));
-    const pr = {}; ks.forEach(k => pr[k.id] = fill(k, override && (x => override(k,x))));
-    return {id:uid(), nr:'A-'+nr, anlageId, datum:daysAgo(ago), zeit, techIds:techs, status, umfang:'ganz', kompIds:ks.map(k => k.id), pr, bem:'', kunde:'Fr. Seidel', sigTech:null, sigKunde:null, abgeschlossen:daysAgo(ago)};
-  };
-  const plan = (nr, anlageId, inDays, zeit, techs, status, umfang) => ({id:uid(), nr:'A-'+nr, anlageId, datum:daysAgo(-inDays), zeit, techIds:techs, status, umfang:umfang||'ganz',
-    kompIds:S0.komponenten.filter(k => k.anlageId===anlageId).map(k => k.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null});
-  S0.auftraege.push(
-    plan(2600,'a1',0,'08:00',['u1'],'geplant'),
-    plan(2599,'a5',3,'13:00',['u1','u3'],'geplant'),
-    plan(2597,'a8',0,'10:30',['u2'],'geplant'),
-    plan(2598,'a3',9,'',[],'planung','faellig'),
-    mkA(2595,'a4',50,'08:30',['u2'],'erledigt', (k,x) => k.gruppe===5 && x.label==='Sichtprüfung' ? {v:'nio', m:'Rauchmelder Einsatz älter als 8 Jahre', sw:'Hinweis'} : null),
-    mkA(2590,'a2',100,'13:00',['u4','u5'],'abgerechnet'));
-  S0.auftraege.find(a => a.nr==='A-2598').kompIds = ['c10'];
-  S0.stoerungen.push(
-    {id:uid(), nr:1699, auftragNr:'A-2595', kompId:'c17', titel:'Rauchmelder Einsatz älter als 8 Jahre', schwere:'Hinweis', status:'offen', datum:daysAgo(50)},
-    {id:uid(), nr:1688, auftragNr:'A-2541', kompId:'c18', titel:'Keilriemen rissig, Austausch empfohlen', schwere:'Schwerwiegend', status:'offen', datum:daysAgo(355)},
-    {id:uid(), nr:1650, auftragNr:'A-2502', kompId:'c10', titel:'Filterrahmen undicht, Dichtband erneuert', schwere:'Mangel', status:'behoben', datum:daysAgo(170)});
-  return S0;
 }
 
 let S;
@@ -451,7 +424,9 @@ async function load(){
   try{ const v = await IDB.get(KEY); if(v){ const r = JSON.parse(v); if(r && r.kunden) S = r; } }catch(e){}
   if(!S){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r && r.kunden) S = r; }catch(e){} }
   if(!S) S = seed();
+  const v = S.v;
   migrate();
+  if(v !== S.v) save();
 }
 function migrate(){
   if(!S.users){
@@ -461,6 +436,23 @@ function migrate(){
   }
   S.mode = S.mode || 'web';
   S.berichte = S.berichte || []; S.mails = S.mails || []; S.settings = S.settings || {bueroMail:'buero@firma.de'};
+  if(!S.v || S.v < 3){
+    // Beispielaufträge, Beispielstörungen und Beispieltechniker aus älteren Versionen entfernen
+    const demoNames = ['Service-Leitung','M. Becker','J. Wagner','T. Schmitt','S. Keller','D. Hoffmann','L. Braun','A. Zimmer'];
+    const demoIds = S.users.filter(u => demoNames.includes(u.name)).map(u => u.id);
+    const demoNr = ['A-2590','A-2595','A-2597','A-2598','A-2599','A-2600'];
+    const weg = S.auftraege.filter(a => demoNr.includes(a.nr)).map(a => a.id);
+    S.auftraege = S.auftraege.filter(a => !weg.includes(a.id));
+    S.auftraege.forEach(a => a.techIds = a.techIds.filter(id => !demoIds.includes(id)));
+    S.stoerungen = S.stoerungen.filter(x => !demoNr.concat(['A-2541','A-2502']).includes(x.auftragNr));
+    const bWeg = S.berichte.filter(b => weg.includes(b.auftragId)).map(b => b.id);
+    S.berichte = S.berichte.filter(b => !bWeg.includes(b.id));
+    S.mails = S.mails.filter(m => !bWeg.includes(m.berichtId));
+    S.users = S.users.filter(u => !demoIds.includes(u.id));
+    TEAM.forEach(t => { if(!S.users.some(u => u.id===t.id || u.name===t.name)) S.users.push({...t}); });
+    S.currentUser = 'u-ms';
+    S.v = 3;
+  }
   S.auftraege.filter(A => ['erledigt','abgerechnet'].includes(A.status) && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
 }
 let saveT;
