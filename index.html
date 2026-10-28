@@ -596,10 +596,11 @@ let LMAPS = [];
 function initMaps(){
   LMAPS.forEach(m => { try{ m.remove(); }catch(e){} }); LMAPS = [];
   document.querySelectorAll('[data-lmap]').forEach(el => {
-    const kind = el.dataset.lmap, mini = kind==='mini', pts = mapPoints(mini ? 'alle' : UI.mapF), sel = mini ? null : UI.mapSel;
+    const kind = el.dataset.lmap, mini = kind==='mini', pts = mapPoints(mini ? (UI.miniF || 'alle') : UI.mapF), sel = mini ? null : UI.mapSel;
     const fallback = () => { el.classList.remove('lmap','mini'); el.innerHTML = mapSvg(pts, sel, mini); };
     if(!window.L){ fallback(); return; }
-    const map = L.map(el, {scrollWheelZoom:!mini, zoomControl:true});
+    const map = L.map(el, {scrollWheelZoom:!mini, zoomControl:true, attributionControl:false});
+    L.control.attribution({prefix:false}).addTo(map);
     let ok = false;
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende'})
       .on('tileload', () => ok = true).addTo(map);
@@ -658,8 +659,8 @@ function vStart(){
   const all = S.komponenten.filter(c => !c.entfernt).map(st);
   const offen = S.auftraege.filter(isOpen).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
   const ohneAuftrag = S.anlagen.filter(a => ['bad','warn'].includes(anlSt(a.id).cls) && !offenerAuftrag(a.id));
-  const pts = mapPoints('alle');
-  const neu = S.berichte.slice().sort((a,b) => a.erstellt < b.erstellt ? 1 : -1).slice(0,4);
+  const pts = mapPoints(UI.miniF || 'alle');
+  const neu =S.berichte.slice().sort((a,b) => a.erstellt < b.erstellt ? 1 : -1).slice(0,4);
   return `
   <div class="head"><div><h1>Start</h1><p class="sub">Heute ${fmt(iso(TODAY))} · ${h(me().name)}</p></div>
     <button class="btn pri" data-act="planen">Auftrag planen</button></div>
@@ -671,8 +672,10 @@ function vStart(){
   </div>
   <div class="grid2 wide-l">
     <section class="panel"><div class="panel-h"><h2>Offene Aufträge</h2><button class="btn ghost sm" data-act="go" data-v="auftraege">Alle Aufträge</button></div>${auftragTable(offen, true)}</section>
-    <section class="panel"><div class="panel-h"><h2>Karte</h2><button class="btn ghost sm" data-act="go" data-v="karte">Große Karte</button></div>
-      ${pts.length ? `<div class="mapbox lmap mini" data-lmap="mini"></div>${legend()}` : `<div class="empty">Keine Objekte mit Kartenposition.</div>`}</section>
+    <section class="panel"><div class="panel-h"><h2>Karte</h2><div class="row">
+        <div class="chips">${[['alle','Alle'],['faellig','Fällig & überfällig']].map(([v,l]) => `<button class="chip ${(UI.miniF||'alle')===v?'on':''}" data-act="minif" data-v="${v}">${l}</button>`).join('')}</div>
+        <button class="btn ghost sm" data-act="go" data-v="karte">Große Karte</button></div></div>
+      ${pts.length ? `<div class="mapbox lmap mini" data-lmap="mini"></div>${legend()}` : `<div class="empty">${(UI.miniF||'alle')==='alle' ? 'Keine Objekte mit Kartenposition.' : 'Nichts fällig.'}</div>`}</section>
   </div>
   <div class="grid2">
     <section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2></div>
@@ -1586,6 +1589,7 @@ const ACT = {
   sf: d => { UI.sf = d.v; render(); },
   at: d => { UI.at = d.v; render(); },
   mapf: d => { UI.mapF = d.v; render(); },
+  minif: d => { UI.miniF = d.v; render(); },
   ksort: d => { UI.ks = d.v; render(); },
   kbuch: d => { UI.kb = d.v; render(); },
   mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; UI.mapFocus = !!d.id; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
