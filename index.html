@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700;800&family=Fira+Sans+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 /* Layout im Stil der Gundermann-Webseite: weißer Kopf mit Logo, schräges dunkelblaues Navigationsband, Inhalt darunter.
    Techniker-Ansicht = schmale Handy-App in der Mitte. Farben aus dem Logo: Dunkelblau und Magenta. Bewusst immer hell. */
@@ -146,7 +148,11 @@ input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--acce
 .pdf span{min-width:0;overflow-wrap:anywhere}
 
 /* Karte */
-.mapbox{background:var(--map-bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+.mapbox{background:var(--map-bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;isolation:isolate}
+.lmap{height:560px;max-height:70vh}
+.lmap.mini{height:320px}
+.hqpin{width:18px;height:18px;background:var(--mag);border:3px solid var(--brand);border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.leaflet-container{font-family:var(--f-body)}
 .mapbox svg{display:block;width:100%;height:auto}
 .mapbox .grid{stroke:var(--map-grid);stroke-width:1}
 .mapbox .town circle{fill:var(--map-town)}
@@ -583,6 +589,37 @@ function mapSvg(pts, sel, small){
   const hq = `<rect class="hq" x="${+X(HQ[1])-9}" y="${+Y(HQ[0])-9}" width="18" height="18" rx="3"/><text class="hqt" x="${+X(HQ[1])+14}" y="${+Y(HQ[0])+6}">Gundermann</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Karte der Objekte">${grid}${towns}${ring}${dots}${hq}</svg>`;
 }
+/* Straßenkarte (OpenStreetMap über Leaflet). Wo Kartenkacheln nicht laden dürfen, bleibt die einfache Rasterkarte. */
+let LMAPS = [];
+function initMaps(){
+  LMAPS.forEach(m => { try{ m.remove(); }catch(e){} }); LMAPS = [];
+  document.querySelectorAll('[data-lmap]').forEach(el => {
+    const kind = el.dataset.lmap, mini = kind==='mini', pts = mapPoints(mini ? 'alle' : UI.mapF), sel = mini ? null : UI.mapSel;
+    const fallback = () => { el.classList.remove('lmap','mini'); el.innerHTML = mapSvg(pts, sel, mini); };
+    if(!window.L){ fallback(); return; }
+    const map = L.map(el, {scrollWheelZoom:!mini, zoomControl:true});
+    let ok = false;
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende'})
+      .on('tileload', () => ok = true).addTo(map);
+    setTimeout(() => { if(!ok && LMAPS.includes(map)){ map.remove(); LMAPS = LMAPS.filter(x => x!==map); fallback(); } }, 4000);
+    const farbe = {bad:'#b4332a', warn:'#c98a00', ok:'#23784a', none:'#7f8ea0'}, order = {none:0, ok:1, warn:2, bad:3};
+    pts.slice().sort((a,b) => order[a.cls]-order[b.cls]).forEach(p => {
+      const isSel = p.o.id===sel;
+      L.circleMarker([p.lat, p.lng], {radius:isSel ? 11 : 7, color:isSel ? '#0f2a47' : '#ffffff', weight:isSel ? 3 : 2, fillColor:farbe[p.cls], fillOpacity:1})
+        .addTo(map).bindTooltip(`${h(p.o.nr)} ${h(p.o.name)}<br>${h(p.o.ort)} · ${h(p.label)}`)
+        .on('click', () => { UI.mapSel = p.o.id; UI.mapFocus = false; if(UI.view!=='karte'){ UI.view = 'karte'; UI.mapView = {c:[p.lat,p.lng], z:11}; window.scrollTo(0,0); } render(); });
+    });
+    L.marker(TOWNS['hauenstein'], {icon:L.divIcon({className:'', html:'<div class="hqpin"></div>', iconSize:[18,18], iconAnchor:[9,9]}), zIndexOffset:1000})
+      .addTo(map).bindTooltip('Gundermann GmbH, Hauenstein');
+    const sp = sel && pts.find(p => p.o.id===sel);
+    if(sp) L.circle([sp.lat, sp.lng], {radius:20000, color:'#12355b', weight:2, dashArray:'6 6', fill:false, interactive:false}).addTo(map);
+    if(sp && UI.mapFocus){ map.setView([sp.lat, sp.lng], 11); UI.mapFocus = false; }
+    else if(!mini && UI.mapView) map.setView(UI.mapView.c, UI.mapView.z);
+    else map.fitBounds(L.latLngBounds(pts.map(p => [p.lat,p.lng]).concat([TOWNS['hauenstein']])), {padding:[24,24], maxZoom:12});
+    if(!mini) map.on('moveend', () => { const c = map.getCenter(); UI.mapView = {c:[c.lat,c.lng], z:map.getZoom()}; });
+    LMAPS.push(map);
+  });
+}
 const legend = () => `<div class="legend"><span><i style="background:var(--bad)"></i>Überfällig</span><span><i style="background:var(--warn)"></i>Fällig in 30 Tagen</span><span><i style="background:var(--ok)"></i>Aktuell</span><span><i style="background:var(--muted)"></i>Unbekannt</span><span><i style="background:var(--signal);border-radius:2px"></i>Firmensitz</span></div>`;
 
 /* ---------- Kopfzeile & Navigation ---------- */
@@ -633,7 +670,7 @@ function vStart(){
   <div class="grid2 wide-l">
     <section class="panel"><div class="panel-h"><h2>Offene Aufträge</h2><button class="btn ghost sm" data-act="go" data-v="auftraege">Alle Aufträge</button></div>${auftragTable(offen, true)}</section>
     <section class="panel"><div class="panel-h"><h2>Karte</h2><button class="btn ghost sm" data-act="go" data-v="karte">Große Karte</button></div>
-      ${pts.length ? `<div class="mapbox">${mapSvg(pts, null, true)}</div>${legend()}` : `<div class="empty">Keine Objekte mit Kartenposition.</div>`}</section>
+      ${pts.length ? `<div class="mapbox lmap mini" data-lmap="mini"></div>${legend()}` : `<div class="empty">Keine Objekte mit Kartenposition.</div>`}</section>
   </div>
   <div class="grid2">
     <section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2></div>
@@ -673,8 +710,8 @@ function vKarte(){
   return `<div class="head"><div><h1>Karte</h1><p class="sub">${pts.length} von ${total} Objekten angezeigt${ohne ? ` · ${ohne} ohne Kartenposition` : ''}</p></div>
     <div class="chips">${[['alle','Alle'],['faellig','Fällig & überfällig'],['bad','Überfällig'],['auftrag','Mit offenem Auftrag']].map(([v,l]) => `<button class="chip ${UI.mapF===v?'on':''}" data-act="mapf" data-v="${v}">${l}</button>`).join('')}</div></div>
   <div class="grid2 wide-l" style="align-items:start">
-    <div style="display:grid;gap:8px">${pts.length ? `<div class="mapbox">${mapSvg(pts, UI.mapSel, false)}</div>` : `<div class="empty">Keine Objekte für diesen Filter.</div>`}${legend()}
-      <p class="muted small" style="margin:0">Prototyp: Position nach Ort bzw. Postleitzahl, ohne Kartenhintergrund. In der echten Version mit Straßenkarte und genauer Adresse.</p></div>
+    <div style="display:grid;gap:8px">${pts.length ? `<div class="mapbox lmap" data-lmap="full"></div>` : `<div class="empty">Keine Objekte für diesen Filter.</div>`}${legend()}
+      <p class="muted small" style="margin:0">Mit Mausrad zoomen, Punkt anklicken für Umgebung und Planung. Bei importierten Foxtag-Daten genaue Adresse, sonst ungefähr nach Ort.</p></div>
     ${side}
   </div>`;
 }
@@ -684,22 +721,49 @@ function vKunden(){
   return `
   <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.length} Komponenten</p></div>
     <div class="row"><button class="btn" data-act="importieren">Foxtag-Export importieren</button><button class="btn pri" data-act="neuobjekt">Kunde / Objekt anlegen</button></div></div>
-  <input id="q" type="search" placeholder="Kundennummer, Name, Objektnummer (z. B. W26-0503) oder Ort" value="${h(UI.q)}" data-in="q">
-  <div id="alist" class="grid2" style="align-items:start">${kundenList()}</div>`;
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <input id="q" type="search" placeholder="Suchen: Kundennummer, Name, Objektnummer (z. B. W26-0503) oder Ort" value="${h(UI.q)}" data-in="q" style="flex:1 1 320px">
+      <div class="chips">${[['kunde','Nach Kunde'],['objekt','Nach Objektnummer'],['faellig','Nach Fälligkeit']].map(([v,l]) => `<button class="chip ${(UI.ks||'kunde')===v?'on':''}" data-act="ksort" data-v="${v}">${l}</button>`).join('')}</div>
+    </div>
+    <div class="chips" aria-label="Anfangsbuchstabe">${['', ...buchstaben()].map(b => `<button class="chip ${(UI.kb||'')===b?'on':''}" data-act="kbuch" data-v="${b}" style="min-width:36px;padding-inline:9px">${b || 'Alle'}</button>`).join('')}</div>
+    <div id="alist">${kundenList()}</div>
+  </section>`;
 }
+const kName = k => (k.name || k.nr || '').trim();
+const ersterBuchstabe = k => { const c = kName(k).charAt(0).toUpperCase().replace(/[ÄÖÜ]/, x => ({Ä:'A',Ö:'O',Ü:'U'}[x])); return /[A-Z]/.test(c) ? c : '#'; };
+function buchstaben(){ return [...new Set(S.kunden.filter(k => S.objekte.some(o => o.kundeId===k.id)).map(ersterBuchstabe))].sort(); }
 function kundenList(){
-  const q = UI.q.trim().toLowerCase();
-  const out = S.kunden.map(k => {
-    const items = S.objekte.filter(o => o.kundeId===k.id).filter(o => !q || [k.nr,k.name,k.ort,o.nr,o.name,o.adresse,o.ort].join(' ').toLowerCase().includes(q));
-    if(!items.length) return '';
-    return `<section class="kgroup"><div><div class="kname"><span class="code">${h(k.nr)}</span> ${h(k.name)}</div><div class="muted small">${h([k.adresse,k.ort].filter(Boolean).join(', '))}</div></div>
-      <div class="alist">${items.map(o => { const as = S.anlagen.filter(x => x.objektId===o.id); return as.map(a => { const s = anlSt(a.id); return `
-        <button class="aitem" data-act="anlage" data-id="${a.id}">
-          <span><b><span class="code">${h(o.nr)}</span> ${h(o.name)}</b><span class="muted small" style="display:block">${as.length > 1 ? h(a.name)+' · ' : ''}${h(o.adresse)} · ${kompsOf(a.id).length} Komponenten</span></span>
-          ${pill(s.cls,s.label)}
-        </button>`; }).join(''); }).join('')}</div></section>`;
+  const q = UI.q.trim().toLowerCase(), sort = UI.ks || 'kunde', buch = UI.kb || '';
+  const rank = {bad:0, warn:1, '':2, ok:3};
+  const rows = [];
+  S.kunden.forEach(k => {
+    if(buch && ersterBuchstabe(k)!==buch) return;
+    S.objekte.filter(o => o.kundeId===k.id).forEach(o => {
+      if(q && ![k.nr,k.name,k.ort,o.nr,o.name,o.adresse,o.ort].join(' ').toLowerCase().includes(q)) return;
+      const as = S.anlagen.filter(x => x.objektId===o.id);
+      as.forEach(a => rows.push({k, o, a, mehr:as.length > 1, s:anlSt(a.id), n:kompsOf(a.id).length, next:kompsOf(a.id).map(nextDue).filter(Boolean).sort()[0] || '9999'}));
+    });
+  });
+  if(!rows.length) return `<div class="empty">Keine Treffer${UI.q ? ` für „${h(UI.q)}“` : ''}.</div>`;
+  const cmp = (x,y) => x.localeCompare(y, 'de', {numeric:true, sensitivity:'base'});
+  if(sort==='kunde') rows.sort((x,y) => cmp(kName(x.k), kName(y.k)) || cmp(x.o.nr||'', y.o.nr||''));
+  if(sort==='objekt') rows.sort((x,y) => cmp(x.o.nr||'~', y.o.nr||'~'));
+  if(sort==='faellig') rows.sort((x,y) => rank[x.s.cls]-rank[y.s.cls] || (x.next < y.next ? -1 : x.next > y.next ? 1 : 0));
+  let lastK = null;
+  const zeile = r => `<tr class="click" data-act="anlage" data-id="${r.a.id}">
+      <td class="mono" style="white-space:nowrap">${h(r.o.nr || '–')}</td>
+      <td><b style="font-weight:600">${h(r.o.name)}</b>${r.mehr ? ` <span class="muted small">· ${h(r.a.name)}</span>` : ''}${sort!=='kunde' ? `<span class="t2">${h(kName(r.k))}</span>` : ''}</td>
+      <td>${h(r.o.adresse)}<span class="t2">${h(r.o.ort)}</span></td>
+      <td class="mono" style="text-align:right">${r.n}</td>
+      <td>${pill(r.s.cls, r.s.label)}${r.next!=='9999' ? `<span class="t2">${fmt(r.next)}</span>` : ''}</td></tr>`;
+  const body = rows.map(r => {
+    let g = '';
+    if(sort==='kunde' && r.k!==lastK){ lastK = r.k; g = `<tr class="grp"><td colspan="5"><span class="code">${h(r.k.nr)}</span> <span style="color:var(--brand)">${h(kName(r.k))}</span>${r.k.ort ? ` <span class="muted small" style="font-weight:400">· ${h([r.k.adresse, r.k.ort].filter(Boolean).join(', '))}</span>` : ''}</td></tr>`; }
+    return g + zeile(r);
   }).join('');
-  return out || `<div class="empty">Keine Treffer für „${h(UI.q)}“.</div>`;
+  return `<div class="muted small">${rows.length} ${rows.length===1 ? 'Anlage' : 'Anlagen'}</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Objekt-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function pdfItem(b){
   const A = by(S.auftraege, b.auftragId); if(!A) return '';
@@ -1452,7 +1516,9 @@ const ACT = {
   sf: d => { UI.sf = d.v; render(); },
   at: d => { UI.at = d.v; render(); },
   mapf: d => { UI.mapF = d.v; render(); },
-  mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
+  ksort: d => { UI.ks = d.v; render(); },
+  kbuch: d => { UI.kb = d.v; render(); },
+  mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; UI.mapFocus = !!d.id; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
   clopen: d => { UI.at = 'checklisten'; UI.cl = d.id; render(); },
   setstatus: d => { const A = curA(); A.status = d.v; if(d.v==='geplant' && !A.techIds.length) A.techIds = [me().id]; save(); render(); toast(d.v==='geplant' ? `Freigegeben: liegt jetzt in der App bei ${techNames(A.techIds)}` : `Status: ${statusLabel(d.v)}`); },
   notizdel: d => { const a = by(S.anlagen, d.a); a.notizen = (a.notizen||[]).filter(n => n.id!==d.id); save(); render(); toast('Notiz gelöscht'); },
@@ -1626,6 +1692,7 @@ function render(){
   renderChrome();
   app.innerHTML = S.mode==='app' ? vApp() : (VIEWS[UI.view] || vStart)();
   app.querySelectorAll('canvas[data-sig]').forEach(initSig);
+  initMaps();
   calc();
 }
 app.innerHTML = '<div class="empty">Daten werden geladen …</div>';
