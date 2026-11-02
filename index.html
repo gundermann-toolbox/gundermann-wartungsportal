@@ -16,7 +16,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700;800&family=Fira+Sans+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -238,6 +237,11 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px}
 .krow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;text-align:left;width:100%}
 .krow:hover{border-color:var(--accent)}
+details.kdet{display:block}
+details.kdet>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer}
+details.kdet>summary::-webkit-details-marker{display:none}
+details.kdet>summary .kdet-hint::after{content:"aufklappen ▾"}
+details.kdet[open]>summary .kdet-hint::after{content:"zuklappen ▴"}
 .gtoggle{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:11px 12px;font-weight:600;cursor:pointer;text-align:left;margin-top:4px}
 .gtoggle[aria-expanded="false"]{background:var(--accent-soft);color:var(--brand)}
 .krow b{font-weight:600}
@@ -662,12 +666,12 @@ function renderChrome(){
     `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='web'?u.web:u.app)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
   document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
   document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
-  const cur = {anlage:'kunden', auftrag:'auftraege'}[UI.view] || UI.view;
+  const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege'}[UI.view] || UI.view;
   const band = document.querySelector('.band'), mb = document.getElementById('menubtn');
   band.classList.toggle('appmode-band', S.mode==='app');
   band.classList.toggle('open', !!UI.menu && S.mode!=='app');
   if(S.mode==='app'){ document.getElementById('nav').innerHTML = `<span class="bandlabel">Techniker-App · ${h(u.name)}</span>`; return; }
-  const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', auftrag:'auftraege'}[UI.view] || UI.view)) || NAV[0])[1];
+  const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', kunde:'kunden', auftrag:'auftraege'}[UI.view] || UI.view)) || NAV[0])[1];
   mb.innerHTML = `<span>${UI.menu ? 'Menü' : h(aktuell)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
   mb.setAttribute('aria-expanded', !!UI.menu);
   mb.setAttribute('aria-label', UI.menu ? 'Menü schließen' : 'Menü öffnen');
@@ -756,58 +760,111 @@ function vKarte(){
 }
 
 /* ---------- Büro: Kunden & Anlagen ---------- */
+const kName = k => (k.name || k.nr || '').trim();
+const ersterBuchstabe = k => { const c = kName(k).charAt(0).toUpperCase().replace(/[ÄÖÜ]/, x => ({Ä:'A',Ö:'O',Ü:'U'}[x])); return /[A-Z]/.test(c) ? c : '#'; };
+function buchstaben(){ return [...new Set(S.kunden.filter(k => S.objekte.some(o => o.kundeId===k.id)).map(ersterBuchstabe))].sort(); }
+const cmpDe = (x,y) => String(x||'').localeCompare(String(y||''), 'de', {numeric:true, sensitivity:'base'});
+const rankSt = {bad:0, warn:1, '':2, ok:3};
+const anlagenVon = k => S.objekte.filter(o => o.kundeId===k.id).flatMap(o => S.anlagen.filter(a => a.objektId===o.id).map(a => ({o, a})));
+const naechsteVon = aids => aids.flatMap(id => kompsOf(id).map(nextDue)).filter(Boolean).sort()[0] || '';
+function stVon(aids){
+  const s = aids.map(anlSt).sort((a,b) => rankSt[a.cls]-rankSt[b.cls])[0];
+  return s || {cls:'', label:'Keine Anlage'};
+}
 function vKunden(){
+  const modus = UI.km || 'kunden';
+  const sorts = modus==='kunden' ? [['name','Name'],['nummer','Kundennummer'],['faellig','Fälligkeit']] : [['nummer','Objektnummer'],['name','Name'],['faellig','Fälligkeit']];
+  if(!sorts.some(([v]) => v===UI.ks)) UI.ks = sorts[0][0];
   return `
   <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.filter(c => !c.entfernt).length} Komponenten</p></div>
     <div class="row"><button class="btn" data-act="importieren">Foxtag-Export importieren</button><button class="btn pri" data-act="neuobjekt">Kunde / Objekt anlegen</button></div></div>
   <section class="panel">
-    <div class="row" style="justify-content:space-between">
-      <input id="q" type="search" placeholder="Suchen: Kundennummer, Name, Objektnummer (z. B. W26-0503) oder Ort" value="${h(UI.q)}" data-in="q" style="flex:1 1 320px">
-      <div class="chips">${[['kunde','Nach Kunde'],['objekt','Nach Objektnummer'],['faellig','Nach Fälligkeit']].map(([v,l]) => `<button class="chip ${(UI.ks||'kunde')===v?'on':''}" data-act="ksort" data-v="${v}">${l}</button>`).join('')}</div>
+    <div class="row" style="justify-content:space-between;gap:12px">
+      <div class="modes" role="group" aria-label="Ansicht">${[['kunden','Kunden'],['objekte','Objekte']].map(([v,l]) => `<button data-act="kmodus" data-v="${v}" class="${modus===v?'on':''}" aria-pressed="${modus===v}">${l}</button>`).join('')}</div>
+      <input id="q" type="search" placeholder="${modus==='kunden' ? 'Suchen: Kundennummer, Name oder Ort' : 'Suchen: Objektnummer (z. B. W26-0603), Name oder Ort'}" value="${h(UI.q)}" data-in="q" style="flex:1 1 280px">
     </div>
-    <div class="chips" aria-label="Anfangsbuchstabe">${['', ...buchstaben()].map(b => `<button class="chip ${(UI.kb||'')===b?'on':''}" data-act="kbuch" data-v="${b}" style="min-width:36px;padding-inline:9px">${b || 'Alle'}</button>`).join('')}</div>
+    <div class="row" style="justify-content:space-between;gap:8px">
+      <div class="chips" aria-label="Anfangsbuchstabe">${['', ...buchstaben()].map(b => `<button class="chip ${(UI.kb||'')===b?'on':''}" data-act="kbuch" data-v="${b}" style="min-width:34px;padding-inline:8px">${b || 'Alle'}</button>`).join('')}</div>
+      <label class="f" style="display:flex;align-items:center;gap:8px" for="ksort">Sortieren<select id="ksort" data-in="ksort" style="width:auto">${sorts.map(([v,l]) => `<option value="${v}" ${UI.ks===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    </div>
     <div id="alist">${kundenList()}</div>
   </section>`;
 }
-const kName = k => (k.name || k.nr || '').trim();
-const ersterBuchstabe = k => { const c = kName(k).charAt(0).toUpperCase().replace(/[ÄÖÜ]/, x => ({Ä:'A',Ö:'O',Ü:'U'}[x])); return /[A-Z]/.test(c) ? c : '#'; };
-function buchstaben(){ return [...new Set(S.kunden.filter(k => S.objekte.some(o => o.kundeId===k.id)).map(ersterBuchstabe))].sort(); }
 function kundenList(){
-  const q = UI.q.trim().toLowerCase(), sort = UI.ks || 'kunde', buch = UI.kb || '';
-  const rank = {bad:0, warn:1, '':2, ok:3};
-  const rows = [];
+  const q = UI.q.trim().toLowerCase(), buch = UI.kb || '', sort = UI.ks || 'name';
+  const faelligSort = (x,y) => rankSt[x.s.cls]-rankSt[y.s.cls] || cmpDe(x.next||'9999', y.next||'9999');
+  const faelligZelle = r => `<td>${pill(r.s.cls, r.s.label)}${r.next ? `<span class="t2">${fmt(r.next)}</span>` : ''}</td>`;
+  if((UI.km || 'kunden')==='kunden'){
+    let rows = S.kunden.map(k => ({k, an:anlagenVon(k)})).filter(r => r.an.length);
+    if(buch) rows = rows.filter(r => ersterBuchstabe(r.k)===buch);
+    if(q) rows = rows.filter(r => [r.k.nr, r.k.name, r.k.adresse, r.k.ort, ...r.an.flatMap(x => [x.o.nr, x.o.name, x.o.ort])].join(' ').toLowerCase().includes(q));
+    rows = rows.map(r => { const aids = r.an.map(x => x.a.id); return {...r, s:stVon(aids), n:aids.reduce((s,id) => s + kompsOf(id).length, 0), next:naechsteVon(aids)}; });
+    if(!rows.length) return `<div class="empty">Keine Kunden${UI.q ? ` für „${h(UI.q)}“` : ''}.</div>`;
+    rows.sort(sort==='nummer' ? (x,y) => cmpDe(x.k.nr, y.k.nr) : sort==='faellig' ? faelligSort : (x,y) => cmpDe(kName(x.k), kName(y.k)));
+    return `<div class="muted small">${rows.length} ${rows.length===1 ? 'Kunde' : 'Kunden'}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Kunden-Nr.</th><th>Kunde</th><th>Adresse</th><th style="text-align:right">Objekte</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="click" data-act="kunde" data-id="${r.k.id}">
+        <td class="mono" style="white-space:nowrap">${h(r.k.nr)}</td>
+        <td><b style="font-weight:600">${h(kName(r.k))}</b></td>
+        <td>${h(r.k.adresse)}<span class="t2">${h(r.k.ort)}</span></td>
+        <td class="mono" style="text-align:right">${r.an.length}</td>
+        <td class="mono" style="text-align:right">${r.n}</td>
+        ${faelligZelle(r)}</tr>`).join('')}</tbody></table></div>`;
+  }
+  let rows = [];
   S.kunden.forEach(k => {
     if(buch && ersterBuchstabe(k)!==buch) return;
-    S.objekte.filter(o => o.kundeId===k.id).forEach(o => {
-      if(q && ![k.nr,k.name,k.ort,o.nr,o.name,o.adresse,o.ort].join(' ').toLowerCase().includes(q)) return;
-      const as = S.anlagen.filter(x => x.objektId===o.id);
-      as.forEach(a => rows.push({k, o, a, mehr:as.length > 1, s:anlSt(a.id), n:kompsOf(a.id).length, next:kompsOf(a.id).map(nextDue).filter(Boolean).sort()[0] || '9999'}));
+    anlagenVon(k).forEach(({o,a}) => {
+      if(q && ![k.nr, k.name, o.nr, o.name, o.adresse, o.ort].join(' ').toLowerCase().includes(q)) return;
+      rows.push({k, o, a, s:anlSt(a.id), n:kompsOf(a.id).length, next:naechsteVon([a.id])});
     });
   });
-  if(!rows.length) return `<div class="empty">Keine Treffer${UI.q ? ` für „${h(UI.q)}“` : ''}.</div>`;
-  const cmp = (x,y) => x.localeCompare(y, 'de', {numeric:true, sensitivity:'base'});
-  if(sort==='kunde') rows.sort((x,y) => cmp(kName(x.k), kName(y.k)) || cmp(x.o.nr||'', y.o.nr||''));
-  if(sort==='objekt') rows.sort((x,y) => cmp(x.o.nr||'~', y.o.nr||'~'));
-  if(sort==='faellig') rows.sort((x,y) => rank[x.s.cls]-rank[y.s.cls] || (x.next < y.next ? -1 : x.next > y.next ? 1 : 0));
-  let lastK = null;
-  const zeile = r => `<tr class="click" data-act="anlage" data-id="${r.a.id}">
+  if(!rows.length) return `<div class="empty">Keine Objekte${UI.q ? ` für „${h(UI.q)}“` : ''}.</div>`;
+  rows.sort(sort==='name' ? (x,y) => cmpDe(x.o.name, y.o.name) : sort==='faellig' ? faelligSort : (x,y) => cmpDe(x.o.nr||'~', y.o.nr||'~'));
+  return `<div class="muted small">${rows.length} ${rows.length===1 ? 'Objekt' : 'Objekte'}</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Objekt-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>
+    ${rows.map(r => `<tr class="click" data-act="anlage" data-id="${r.a.id}">
       <td class="mono" style="white-space:nowrap">${h(r.o.nr || '–')}</td>
-      <td><b style="font-weight:600">${h(r.o.name)}</b>${r.mehr ? ` <span class="muted small">· ${h(r.a.name)}</span>` : ''}${sort!=='kunde' ? `<span class="t2">${h(kName(r.k))}</span>` : ''}</td>
+      <td><b style="font-weight:600">${h(r.o.name)}</b><span class="t2">${h(kName(r.k))}</span></td>
       <td>${h(r.o.adresse)}<span class="t2">${h(r.o.ort)}</span></td>
       <td class="mono" style="text-align:right">${r.n}</td>
-      <td>${pill(r.s.cls, r.s.label)}${r.next!=='9999' ? `<span class="t2">${fmt(r.next)}</span>` : ''}</td></tr>`;
-  const body = rows.map(r => {
-    let g = '';
-    if(sort==='kunde' && r.k!==lastK){ lastK = r.k; g = `<tr class="grp"><td colspan="5"><span class="code">${h(r.k.nr)}</span> <span style="color:var(--brand)">${h(kName(r.k))}</span>${r.k.ort ? ` <span class="muted small" style="font-weight:400">· ${h([r.k.adresse, r.k.ort].filter(Boolean).join(', '))}</span>` : ''}</td></tr>`; }
-    return g + zeile(r);
-  }).join('');
-  return `<div class="muted small">${rows.length} ${rows.length===1 ? 'Anlage' : 'Anlagen'}</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Objekt-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>${body}</tbody></table></div>`;
+      ${faelligZelle(r)}</tr>`).join('')}</tbody></table></div>`;
 }
 function pdfItem(b){
   const A = by(S.auftraege, b.auftragId); if(!A) return '';
   const {o} = ctx(A.anlageId);
   return `<button class="pdf" data-act="auftrag" data-id="${A.id}"><i>PDF</i><span><b>${h(b.datei)}</b><span class="muted small" style="display:block">${fmt(b.erstellt)} · ${h(o.name)} · ${h(techNames(A.techIds))}</span></span></button>`;
+}
+function vKunde(){
+  const k = by(S.kunden, UI.kunde); if(!k) return vKunden();
+  const an = anlagenVon(k), aids = new Set(an.map(x => x.a.id));
+  const auftr = S.auftraege.filter(x => aids.has(x.anlageId)).sort((x,y) => x.datum < y.datum ? 1 : -1);
+  const ber = S.berichte.filter(b => auftr.some(x => x.id===b.auftragId)).sort((x,y) => x.erstellt < y.erstellt ? 1 : -1);
+  const offeneSt = S.stoerungen.filter(x => x.status==='offen' && aids.has((by(S.komponenten, x.kompId)||{}).anlageId)).length;
+  return `
+  <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
+  <div class="head"><div><div class="eyebrow">Kunde · <span class="code">${h(k.nr)}</span></div><h1>${h(kName(k))}</h1><p class="sub">${h([k.adresse, k.ort].filter(Boolean).join(', '))}</p></div>
+    <button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button></div>
+  <section class="panel"><div class="facts">
+    <div><span>Kundennummer</span><span class="mono">${h(k.nr)}</span></div>
+    <div><span>Objekte</span>${an.length}</div>
+    <div><span>Nächste Fälligkeit</span>${fmt(naechsteVon([...aids]))}</div>
+    <div><span>Offene Störungen</span>${offeneSt ? `<span class="pill bad">${offeneSt}</span>` : '–'}</div>
+  </div></section>
+  <section class="panel"><h2>Objekte</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>Objekt-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th><th></th></tr></thead><tbody>
+    ${an.sort((x,y) => cmpDe(x.o.nr, y.o.nr)).map(({o,a}) => { const s = anlSt(a.id), oa = offenerAuftrag(a.id), nx = naechsteVon([a.id]); return `<tr class="click" data-act="anlage" data-id="${a.id}">
+      <td class="mono" style="white-space:nowrap">${h(o.nr || '–')}</td>
+      <td><b style="font-weight:600">${h(o.name)}</b>${an.filter(x => x.o===o).length > 1 ? `<span class="t2">${h(a.name)}</span>` : ''}</td>
+      <td>${h(o.adresse)}<span class="t2">${h(o.ort)}</span></td>
+      <td class="mono" style="text-align:right">${kompsOf(a.id).length}</td>
+      <td>${pill(s.cls, s.label)}${nx ? `<span class="t2">${fmt(nx)}</span>` : ''}</td>
+      <td>${oa ? statusPill(oa.status) : `<button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button>`}</td></tr>`; }).join('')}
+    </tbody></table></div></section>
+  <div class="grid2">
+    <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
+    <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
+  </div>`;
 }
 function vAnlage(){
   const aid = UI.anlage, {a,o,k} = ctx(aid);
@@ -816,12 +873,13 @@ function vAnlage(){
   const ber = S.berichte.filter(b => auftr.some(x => x.id===b.auftragId)).sort((x,y) => x.erstellt < y.erstellt ? 1 : -1);
   const next = ks.map(nextDue).filter(Boolean).sort()[0];
   const offen = offenerAuftrag(aid);
+  const zaehl = c => ks.filter(x => st(x).cls===c).length;
+  const kOffen = UI.kOpen || UI.addK;
   let lastG = 0;
   return `
-  <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
-  <div class="head"><div><div class="eyebrow">Anlage · ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
-    <div class="row"><button class="btn" data-act="labels" data-a="${aid}">QR-Etiketten</button>
-      ${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}</div></div>
+  <button class="back" data-act="kunde" data-id="${k.id}">← ${h(kName(k))}</button>
+  <div class="head"><div><div class="eyebrow">${h(kName(k))} · Anlage ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
+    <div class="row">${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}</div></div>
   <section class="panel"><div class="facts">
     <div><span>Kunde</span><span class="code">${h(k.nr)}</span><br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</div>
     <div><span>Objekt</span>${h(o.adresse)}<br>${h(o.ort)}</div>
@@ -829,10 +887,19 @@ function vAnlage(){
     <div><span>Hinweise für den Techniker</span>${h(a.hinweis || '–')}</div>
     ${a.techName ? `<div><span>Techniker laut Foxtag</span>${h(a.techName)}</div>` : ''}
   </div></section>
-  <section class="panel">
-    <div class="panel-h"><h2>Komponenten</h2><div class="row">
+  ${stoerPanel(aid)}
+  <div class="grid2">
+    <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
+    <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte zu dieser Anlage.</div>`}</section>
+  </div>
+  <div class="grid2">${dateiPanel(a)}${notizPanel(a)}</div>
+  <details class="panel kdet" id="kdetails" ${kOffen ? 'open' : ''}>
+    <summary><h2>Komponenten <span class="muted" style="font-weight:500">(${ks.length})</span></h2>
+      <span class="row">${zaehl('bad') ? `<span class="pill bad">${zaehl('bad')} überfällig</span>` : ''}${zaehl('warn') ? `<span class="pill warn">${zaehl('warn')} fällig</span>` : ''}<span class="muted small kdet-hint"></span></span></summary>
+    <div style="display:grid;gap:12px;margin-top:12px">
+    <div class="row" style="justify-content:flex-end">
       <label class="btn sm upl" title="In Foxtag: Anlage → Komponenten → Import/Export → Komponenten exportieren">Aus Foxtag importieren<input type="file" accept=".xlsx,.csv" data-kimport="${aid}"></label>
-      <button class="btn sm" data-act="togglek">${UI.addK ? 'Schließen' : 'Komponente hinzufügen'}</button></div></div>
+      <button class="btn sm" data-act="togglek">${UI.addK ? 'Schließen' : 'Komponente hinzufügen'}</button></div>
     ${UI.addK ? `<form class="fgrid inset" data-form="addk">
       <label class="f" for="nkt">Typ<select id="nkt" name="typ">${S.typen.map(t => `<option value="${t.id}">${h(typLabel(t))}</option>`).join('')}</select></label>
       <label class="f" for="nks">Standort / Details<input id="nks" name="standort" required placeholder="Hersteller | Typ | Raum"></label>
@@ -842,22 +909,17 @@ function vAnlage(){
       <button class="btn pri" type="submit">Hinzufügen</button></form>` : ''}
     ${ks.length ? `<div class="tbl-wrap"><table>
       <thead><tr><th>Nummer</th><th>Typ</th><th>Details</th><th>Fälligkeit</th><th></th></tr></thead>
-      <tbody>${ks.map(c => { const s = st(c), t = typOf(c), e = ersatz(c);
+      <tbody>${ks.map(c => { const s = st(c), t = typOf(c), e = ersatz(c), so = stoerOffen(c.id).length;
         const grp = c.gruppe!==lastG ? `<tr class="grp"><td colspan="5">Gruppe ${c.gruppe} · ${gname(c.gruppe)}</td></tr>` : ''; lastG = c.gruppe;
         return grp + `<tr>
         <td class="mono">${kNr(c)}</td>
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
         <td>${h(c.standort)}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
-        <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${stoerOffen(c.id).length ? `<span class="t2"><span class="pill bad">${stoerOffen(c.id).length} Störung${stoerOffen(c.id).length>1?'en':''}</span></span>` : ''}</td>
-        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></div></td>
+        <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${so ? `<span class="t2"><span class="pill bad">${so} Störung${so>1?'en':''}</span></span>` : ''}</td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
       </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
-  </section>
-  ${stoerPanel(aid)}
-  <div class="grid2">${notizPanel(a)}${dateiPanel(a)}</div>
-  <div class="grid2">
-    <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte zu dieser Anlage.</div>`}</section>
-    <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
-  </div>`;
+    </div>
+  </details>`;
 }
 
 /* ---------- Notizen & Dateien je Anlage ---------- */
@@ -1425,10 +1487,11 @@ function planenModal(aid){
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Auftrag anlegen</button></div>
     </form>`);
 }
-function neuObjektModal(neuKunde){
+function neuObjektModal(neuKunde, kid){
+  if(kid) UI.neuK = kid;
   openModal(`<h2>Kunde / Objekt anlegen</h2>
     <form data-form="neuobjekt" style="display:grid;gap:12px">
-      <label class="f" for="mk">Kunde<select id="mk" name="k" data-m="k">${S.kunden.map(k => `<option value="${k.id}">${h(k.nr+' '+k.name)}</option>`).join('')}<option value="neu" ${neuKunde?'selected':''}>+ Neuer Kunde</option></select></label>
+      <label class="f" for="mk">Kunde<select id="mk" name="k" data-m="k">${S.kunden.slice().sort((x,y) => cmpDe(kName(x), kName(y))).map(k => `<option value="${k.id}" ${!neuKunde && UI.neuK===k.id ? 'selected' : ''}>${h(k.nr+' '+k.name)}</option>`).join('')}<option value="neu" ${neuKunde?'selected':''}>+ Neuer Kunde</option></select></label>
       ${neuKunde ? `<div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required placeholder="z. B. MUSTER2"></label><label class="f" for="mkname">Name<input id="mkname" name="kname" required></label>
         <label class="f" for="mka">Adresse<input id="mka" name="kadr"></label><label class="f" for="mko">PLZ / Ort<input id="mko" name="kort"></label></div>` : ''}
       <div class="fgrid"><label class="f" for="mon">Objektnummer<input id="mon" name="onr" required value="W${String(TODAY.getFullYear()).slice(2)}-${String(500+S.objekte.length+1).padStart(4,'0')}"></label>
@@ -1642,7 +1705,7 @@ function importModal(){
     </form>`);
 }
 modal.addEventListener('change', e => {
-  if(e.target.dataset.m==='k') neuObjektModal(e.target.value==='neu');
+  if(e.target.dataset.m==='k'){ if(e.target.value!=='neu') UI.neuK = e.target.value; neuObjektModal(e.target.value==='neu'); }
   if(e.target.id==='pa'){ const kt = (by(S.anlagen, e.target.value)||{}).kontakt || {}; document.getElementById('kpn').value = kt.name || ''; document.getElementById('kpt').value = kt.tel || ''; }
 });
 modal.addEventListener('submit', e => {
@@ -1722,7 +1785,7 @@ const ACT = {
   anlage: (d,t,e) => { e.stopPropagation(); UI.view = 'anlage'; UI.anlage = d.id; UI.addK = false; render(); window.scrollTo(0,0); },
   auftrag: (d,t,e) => { e.stopPropagation(); UI.view = 'auftrag'; UI.auftrag = d.id; UI.err = ''; render(); window.scrollTo(0,0); },
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
-  neuobjekt: () => neuObjektModal(false),
+  neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(false, d.k); },
   importieren: () => importModal(),
   togglek: () => { UI.addK = !UI.addK; render(); },
   af: d => { UI.af = d.v; render(); },
@@ -1731,6 +1794,8 @@ const ACT = {
   mapf: d => { UI.mapF = d.v; render(); },
   minif: d => { UI.miniF = d.v; render(); },
   ksort: d => { UI.ks = d.v; render(); },
+  kmodus: d => { UI.km = d.v; UI.ks = null; render(); },
+  kunde: (d,t,e) => { e.stopPropagation(); UI.view = 'kunde'; UI.kunde = d.id; UI.menu = false; render(); window.scrollTo(0,0); },
   kbuch: d => { UI.kb = d.v; render(); },
   mapsel: (d,t,e) => { e.stopPropagation(); UI.mapSel = d.id || null; UI.mapFocus = !!d.id; if(UI.view!=='karte'){ UI.view = 'karte'; window.scrollTo(0,0); } render(); },
   clopen: d => { UI.at = 'checklisten'; UI.cl = d.id; render(); },
@@ -1834,6 +1899,7 @@ app.addEventListener('input', e => {
   if(t.hasAttribute('data-calc')) return calc();
   if(!k) return;
   if(k==='q'){ UI.q = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
+  if(k==='ksort'){ UI.ks = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
   if(k==='appq'){ UI.app.q = t.value; document.getElementById('klist').innerHTML = appKompList(curA()); return; }
   const A = curA(); if(!A) return;
   if(k==='bem' || k==='kunde'){ A[k] = t.value; return save(); }
@@ -1928,7 +1994,8 @@ function initSig(cv){
 let toastT;
 function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
 
-const VIEWS = {start:vStart, karte:vKarte, kunden:vKunden, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
+app.addEventListener('toggle', e => { if(e.target.id==='kdetails') UI.kOpen = e.target.open; }, true);
+const VIEWS = {start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
 function render(){
   kIdx = null;
   const top = document.querySelector('.top');
