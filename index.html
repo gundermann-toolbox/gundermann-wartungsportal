@@ -15,7 +15,7 @@
 <title>Wartungsportal Lüftung</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700;800&family=Fira+Sans+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700;800&family=Fira+Sans+Condensed:wght@600;700;800&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -23,7 +23,7 @@
    Techniker-Ansicht = schmale Handy-App in der Mitte. Farben aus dem Logo: Dunkelblau und Magenta. Bewusst immer hell. */
 :root{
   --brand:#12355b; --mag:#e5007d;
-  --bg:#f4f6f9; --surface:#ffffff; --sunk:#eaeef3; --ink:#0f2a47; --muted:#5a6b7d; --line:#d7dee6;
+  --bg:#f4f6f9; --surface:#ffffff; --sunk:#eaeef3; --ink:#0f2a47; --muted:#5a6b7d; --line:#d7dee6; --line-strong:#c2cdd8;
   --accent:#12355b; --accent-ink:#ffffff; --accent-soft:#e2e9f1;
   --signal:#e5007d; --signal-ink:#ffffff;
   --ok:#23784a; --ok-soft:#dcefe3; --warn:#9a6200; --warn-soft:#f8ead0; --bad:#b4332a; --bad-soft:#f6dcd9;
@@ -33,7 +33,7 @@
   --shade:rgba(10,25,45,.45);
   --f-display:'Fira Sans Condensed','Arial Narrow',sans-serif;
   --f-body:'Fira Sans','Segoe UI',system-ui,sans-serif;
-  --f-mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  --f-mono:'Fira Sans','Segoe UI',system-ui,sans-serif;
   color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -92,18 +92,18 @@ h1 .mono{font-size:.75em;color:var(--mag);margin-right:8px}
 h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em;color:var(--brand)}
 .sub{color:var(--muted);margin:4px 0 0}
 .eyebrow{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.mono{font-family:var(--f-mono);font-size:.85em;font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .small{font-size:13px}
 .head{display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0;display:grid;gap:12px;align-content:start}
+.panel{background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:16px;min-width:0;display:grid;gap:12px;align-content:start}
 .panel-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .grid2{display:grid;gap:18px}
 @media (min-width:1000px){.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2.wide-l{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi{background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:14px 16px}
 .kpi .n{font:700 38px/1 var(--f-display);font-variant-numeric:tabular-nums}
 .kpi .l{color:var(--muted);font-size:13.5px;margin-top:4px}
 .kpi.bad .n{color:var(--bad)} .kpi.warn .n{color:var(--warn)} .kpi.acc .n{color:var(--accent)}
@@ -126,7 +126,7 @@ h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em;color:var(--
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
 .pill.acc{background:var(--accent-soft);color:var(--accent)}
-.code{font:600 12px var(--f-mono);color:var(--muted)}
+.code{font:600 13px var(--f-body);color:var(--muted);font-variant-numeric:tabular-nums}
 
 .steps{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .steps span{padding:3px 10px;border-radius:4px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--sunk)}
@@ -156,11 +156,11 @@ input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--acce
 .kgroup{display:grid;gap:8px}
 .kname{font:700 17px var(--f-display);letter-spacing:.01em}
 .alist{display:grid;gap:8px}
-.aitem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
+.aitem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
 .aitem:hover{border-color:var(--accent)}
 .aitem b{font-weight:600}
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 18px}
-.facts>div>span{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.facts>div>span{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:2px}
 .pdf{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;text-align:left;width:100%}
 .pdf:hover{border-color:var(--accent)}
 .pdf i{font:700 11px var(--f-mono);font-style:normal;background:var(--bad);color:var(--surface);border-radius:4px;padding:4px 5px;flex:none}
@@ -230,12 +230,12 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 .appbar button{border:0;background:rgba(255,255,255,.16);color:var(--accent-ink);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;flex:none}
 .appbody{flex:1;padding:14px;display:grid;gap:12px;align-content:start}
 .appact{padding:12px 14px;background:var(--surface);border-top:1px solid var(--line);display:grid;gap:8px;position:sticky;bottom:0}
-.jcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:3px;text-align:left;width:100%;cursor:pointer}
+.jcard{background:var(--surface);border:2px solid var(--line-strong);border-radius:12px;padding:12px 14px;display:grid;gap:3px;text-align:left;width:100%;cursor:pointer}
 .jcard:hover{border-color:var(--accent)}
 .jcard .top2{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .jcard b{font-weight:600;font-size:16px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px}
-.krow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;text-align:left;width:100%}
+.card{background:var(--surface);border:2px solid var(--line-strong);border-radius:12px;padding:12px 14px;display:grid;gap:8px}
+.krow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:12px;cursor:pointer;text-align:left;width:100%}
 .krow:hover{border-color:var(--accent)}
 details.kdet{display:block}
 details.kdet>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer}
@@ -553,6 +553,26 @@ function ersatz(c){
   const t = typOf(c); if(!t.ersatzJahre || !c.baujahr) return null;
   return +c.baujahr + t.ersatzJahre <= TODAY.getFullYear() ? `Austausch fällig (${t.ersatzJahre} Jahre ab Bj. ${c.baujahr})` : null;
 }
+/* Rauchmeldertausch: Austausch nach x Jahren ab Baujahr (Typ „ersatzJahre“), damit das Büro rechtzeitig ein Angebot schicken kann */
+function rmTausch(aid){
+  const rm = kompsOf(aid).filter(c => typOf(c).ersatzJahre);
+  if(!rm.length) return null;
+  const mit = rm.filter(c => /^\d{4}$/.test(String(c.baujahr||'').trim())).map(c => ({c, jahr: +String(c.baujahr).trim() + typOf(c).ersatzJahre}));
+  const jahr = mit.length ? Math.min(...mit.map(x => x.jahr)) : null;
+  return {anzahl:rm.length, ohne:rm.length - mit.length, jahr, imJahr:mit.filter(x => x.jahr===jahr).length,
+    faellig:mit.filter(x => x.jahr <= TODAY.getFullYear()).length};
+}
+function rmPill(jahr){
+  const y = TODAY.getFullYear();
+  if(jahr==null) return '';
+  return jahr < y ? pill('bad','überfällig') : jahr===y ? pill('bad','dieses Jahr') : jahr===y+1 ? pill('warn','nächstes Jahr') : pill('ok','in '+(jahr-y)+' Jahren');
+}
+function rmFakt(aid){
+  const r = rmTausch(aid); if(!r) return '';
+  return `<div><span>Nächster Rauchmeldertausch</span>${r.jahr!=null
+    ? `<b style="font-size:17px">${r.jahr}</b> ${rmPill(r.jahr)}<br><span class="small muted">${r.imJahr} von ${r.anzahl} Rauchmeldern${r.faellig && r.jahr < TODAY.getFullYear() ? ' · bereits überfällig' : ''}${r.ohne ? ` · bei ${r.ohne} fehlt das Baujahr` : ''}</span>`
+    : `<span class="muted">Baujahr bei ${r.anzahl} Rauchmeldern nicht erfasst</span>`}</div>`;
+}
 function anlSt(aid){
   const s = kompsOf(aid).map(st);
   if(!s.length) return {cls:'', label:'Keine Komponenten'};
@@ -724,7 +744,18 @@ function vStart(){
         : `<div class="empty">Für alle fälligen Anlagen gibt es einen Auftrag.</div>`}</section>
     <section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
       ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
-  </div>`;
+  </div>
+  ${rmStartPanel()}`;
+}
+function rmStartPanel(){
+  const bis = TODAY.getFullYear() + 1;
+  const rows = S.anlagen.map(a => ({a, r:rmTausch(a.id)})).filter(x => x.r && x.r.jahr!=null && x.r.jahr <= bis).sort((x,y) => x.r.jahr - y.r.jahr);
+  return `<section class="panel"><div class="panel-h"><h2>Rauchmeldertausch bis Ende ${bis}</h2><span class="muted small">für Angebote an die Kunden</span></div>
+    ${rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>Objekt</th><th>Kunde</th><th style="text-align:right">Rauchmelder</th><th>Tausch</th></tr></thead><tbody>
+    ${rows.map(({a,r}) => { const {o,k} = ctx(a.id); return `<tr class="click" data-act="anlage" data-id="${a.id}">
+      <td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.ort)}</span></td><td>${h(kName(k))}</td>
+      <td class="mono" style="text-align:right">${r.imJahr} von ${r.anzahl}</td><td><b>${r.jahr}</b> ${rmPill(r.jahr)}</td></tr>`; }).join('')}
+    </tbody></table></div>` : `<div class="empty">Bis Ende ${bis} ist kein Rauchmeldertausch fällig.</div>`}</section>`;
 }
 
 /* ---------- Büro: Karte ---------- */
@@ -839,8 +870,6 @@ function pdfItem(b){
 function vKunde(){
   const k = by(S.kunden, UI.kunde); if(!k) return vKunden();
   const an = anlagenVon(k), aids = new Set(an.map(x => x.a.id));
-  const auftr = S.auftraege.filter(x => aids.has(x.anlageId)).sort((x,y) => x.datum < y.datum ? 1 : -1);
-  const ber = S.berichte.filter(b => auftr.some(x => x.id===b.auftragId)).sort((x,y) => x.erstellt < y.erstellt ? 1 : -1);
   const offeneSt = S.stoerungen.filter(x => x.status==='offen' && aids.has((by(S.komponenten, x.kompId)||{}).anlageId)).length;
   return `
   <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
@@ -861,11 +890,7 @@ function vKunde(){
       <td class="mono" style="text-align:right">${kompsOf(a.id).length}</td>
       <td>${pill(s.cls, s.label)}${nx ? `<span class="t2">${fmt(nx)}</span>` : ''}</td>
       <td>${oa ? statusPill(oa.status) : `<button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button>`}</td></tr>`; }).join('')}
-    </tbody></table></div></section>
-  <div class="grid2">
-    <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
-    <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
-  </div>`;
+    </tbody></table></div></section>`;
 }
 function vAnlage(){
   const aid = UI.anlage, {a,o,k} = ctx(aid);
@@ -885,6 +910,7 @@ function vAnlage(){
     <div><span>Kunde</span><span class="code">${h(k.nr)}</span><br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</div>
     <div><span>Objekt</span>${h(o.adresse)}<br>${h(o.ort)}</div>
     <div><span>Nächste Fälligkeit</span>${fmt(next)}</div>
+    ${rmFakt(aid)}
     <div><span>Hinweise für den Techniker</span>${h(a.hinweis || '–')}</div>
     ${a.techName ? `<div><span>Techniker laut Foxtag</span>${h(a.techName)}</div>` : ''}
   </div></section>
