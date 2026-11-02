@@ -848,10 +848,11 @@ function vAnlage(){
         <td class="mono">${kNr(c)}</td>
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
         <td>${h(c.standort)}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
-        <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}</td>
-        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></div></td>
+        <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${stoerOffen(c.id).length ? `<span class="t2"><span class="pill bad">${stoerOffen(c.id).length} Störung${stoerOffen(c.id).length>1?'en':''}</span></span>` : ''}</td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button><button class="btn ghost sm" data-act="qr" data-c="${c.id}">QR</button></div></td>
       </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
   </section>
+  ${stoerPanel(aid)}
   <div class="grid2">${notizPanel(a)}${dateiPanel(a)}</div>
   <div class="grid2">
     <section class="panel"><h2>Berichte (Kundenordner)</h2>${ber.length ? `<div class="alist">${ber.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte zu dieser Anlage.</div>`}</section>
@@ -1000,7 +1001,8 @@ function vStoerungen(){
     <thead><tr><th>Nr.</th><th>Störung</th><th>Objekt</th><th>Einstufung</th><th>Auftrag</th><th></th></tr></thead>
     <tbody>${list.map(x => { const c = by(S.komponenten,x.kompId); if(!c) return ''; const {o} = ctx(c.anlageId); return `<tr>
       <td class="mono">#${x.nr}</td>
-      <td>${h(x.titel)}<span class="t2">${kNr(c)} ${gname(c.gruppe)} · ${fmt(x.datum)}</span></td>
+      <td><b style="font-weight:600">${h(x.titel)}</b>${x.text ? `<span class="t2" style="color:var(--ink);white-space:pre-wrap">${h(x.text)}</span>` : ''}<span class="t2">${kNr(c)} ${h(tname(typOf(c)))} · ${fmt(x.datum)}${x.von ? ' · '+h(x.von) : ''}</span>
+        <button class="btn ghost sm" data-act="stoeredit" data-id="${x.id}" style="margin-top:4px;padding-inline:0">Bearbeiten</button></td>
       <td><span class="code">${h(o.nr)}</span> ${h(o.name)}</td>
       <td>${schwerePill(x.schwere)}</td>
       <td class="mono">${x.auftragNr}</td>
@@ -1120,6 +1122,7 @@ function calc(){
 function prOf(A, cid){ if(!A.pr[cid]) A.pr[cid] = {f:{}, fotos:[], done:false}; return A.pr[cid]; }
 function kompErgebnis(A, c){
   const p = A.pr[c.id]; if(!p) return null;
+  if(S.stoerungen.some(x => x.kompId===c.id && x.auftragNr===A.nr)) return 'mangel';
   return clOf(c).felder.some(x => p.f[x.id] && (p.f[x.id].v==='nio' || p.f[x.id].over)) ? 'mangel' : 'ok';
 }
 function vBericht(A){
@@ -1160,7 +1163,7 @@ function vBericht(A){
       ${p.fotos && p.fotos.length ? `<div class="fotos" style="margin-top:8px">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
     </section>`; }).join('')}
     ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
-      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">#${x.nr}</td><td>${c ? kNr(c)+' '+gname(c.gruppe) : ''}</td><td>${h(x.titel)}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
+      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">#${x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
     ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
     <div class="sigs">
       <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox">${fmt(A.abgeschlossen||A.datum)} · ${h(techNames(A.techIds))}, Gundermann GmbH</div></div>
@@ -1221,11 +1224,14 @@ function vApp(){
   }
   if(sc==='komp'){
     const c = by(S.komponenten, UI.app.komp), t = typOf(c), p = prOf(A, c.id);
+    const kst = stoerOffen(c.id);
     return appShell(appBar(`${kNr(c)} ${h(tname(t))}`, h(c.standort), 'auftrag'),
-      `<div class="card clist">${clOf(c).felder.map(x => feldRow(A,c,x)).join('')}</div>
+      `${kst.length ? `<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">Offene Störungen an dieser Komponente</b>${kst.map(x => `<div class="small"><b>#${x.nr} ${h(x.titel)}</b> · ${h(x.schwere)}${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</div>`).join('')}</div>` : ''}
+      <div class="card clist">${clOf(c).felder.map(x => feldRow(A,c,x)).join('')}</div>
       <div class="card"><b>Fotos</b><div class="fotos">${p.fotos.map((f,i) => `<div class="foto"><img src="${f}" alt="Foto ${i+1}"><button data-act="fotodel" data-c="${c.id}" data-i="${i}" aria-label="Foto entfernen">×</button></div>`).join('')}
         <label class="btn sm upl">Foto aufnehmen<input type="file" accept="image/*" capture="environment" data-foto="${c.id}"></label></div></div>`,
-      `<button class="btn pri block" data-act="appkdone" data-c="${c.id}">Prüfung speichern</button><button class="btn ghost" data-act="allio" data-c="${c.id}">Offene Punkte i.O. setzen</button>`);
+      `<button class="btn pri block" data-act="appkdone" data-c="${c.id}">Prüfung speichern</button>
+       <div class="row" style="justify-content:space-between"><button class="btn ghost" data-act="allio" data-c="${c.id}">Offene Punkte i.O. setzen</button><button class="btn danger" data-act="stoerneu" data-c="${c.id}" data-nr="${A.nr}">Störung melden</button></div>`);
   }
   if(sc==='abschluss') return appShell(appBar('Abschluss', A.nr+' · '+h(o.nr), 'auftrag'),
     `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>
@@ -1260,6 +1266,7 @@ function appKompList(A){
 }
 function kompState(A,c){
   const p = A.pr[c.id];
+  if(stoerOffen(c.id).some(x => x.auftragNr===A.nr)) return pill('bad','Störung');
   if(p && p.done) return kompErgebnis(A,c)==='mangel' ? pill('bad','Mangel') : pill('ok','OK');
   const n = p ? Object.values(p.f).filter(x => x.v!=null && x.v!=='' && x.v!==false).length : 0;
   return n ? pill('acc','in Arbeit') : pill('','offen');
@@ -1314,6 +1321,34 @@ function drawQr(root){
     try{ new QRCode(el, {text:'GM-WARTUNG:'+el.dataset.qr, width:104, height:104, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M}); }
     catch(e){ el.textContent = 'QR'; }
   });
+}
+/* Störungen von Hand melden und bearbeiten */
+const stoerOffen = kid => S.stoerungen.filter(x => x.kompId===kid && x.status==='offen');
+function stoerPanel(aid){
+  const ids = new Set(kompsOf(aid).map(c => c.id));
+  const list = S.stoerungen.filter(x => ids.has(x.kompId) && x.status==='offen').sort((a,b) => a.datum < b.datum ? 1 : -1);
+  if(!list.length) return '';
+  return `<section class="panel" style="border-color:var(--bad)"><div class="panel-h"><h2>Offene Störungen an dieser Anlage</h2><span class="pill bad">${list.length}</span></div>
+    <div class="tbl-wrap"><table><tbody>${list.map(x => { const c = by(S.komponenten, x.kompId); return `<tr>
+      <td class="mono">#${x.nr}</td>
+      <td><b style="font-weight:600">${h(x.titel)}</b>${x.text ? `<span class="t2" style="color:var(--ink);white-space:pre-wrap">${h(x.text)}</span>` : ''}<span class="t2">${kNr(c)} ${h(tname(typOf(c)))} · ${fmt(x.datum)}${x.von ? ' · '+h(x.von) : ''}${x.auftragNr ? ' · '+h(x.auftragNr) : ''}</span></td>
+      <td>${schwerePill(x.schwere)}</td>
+      <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="stoeredit" data-id="${x.id}">Bearbeiten</button><button class="btn sm" data-act="sfix" data-id="${x.id}">Behoben</button></div></td></tr>`; }).join('')}</tbody></table></div></section>`;
+}
+function stoerModal(x, c, auftragNr){
+  UI.stoer = {id: x ? x.id : null, kompId: c.id, auftragNr: auftragNr || ''};
+  openModal(`<h2>${x ? `Störung #${x.nr} bearbeiten` : 'Störung melden'}</h2>
+    <p class="muted" style="margin:0"><span class="mono">${kNr(c)}</span> ${h(typLabel(typOf(c)))} · ${h(c.standort)}${auftragNr ? ' · Auftrag '+h(auftragNr) : ''}</p>
+    <form data-form="stoer" style="display:grid;gap:12px">
+      <label class="f" for="sti">Titel<input id="sti" name="titel" required value="${h(x ? x.titel : '')}" placeholder="z. B. Keilriemen verschlissen"></label>
+      <label class="f" for="stt">Beschreibung<textarea id="stt" name="text" placeholder="Was ist los, was muss getan werden?">${h(x ? x.text || '' : '')}</textarea></label>
+      <div class="fgrid">
+        <label class="f" for="sts">Einstufung<select id="sts" name="schwere">${SCHWERE.map(s => `<option ${(x ? x.schwere : 'Mangel')===s?'selected':''}>${s}</option>`).join('')}</select></label>
+        ${x ? `<label class="f" for="stz">Status<select id="stz" name="status"><option value="offen" ${x.status==='offen'?'selected':''}>Offen</option><option value="behoben" ${x.status==='behoben'?'selected':''}>Behoben</option></select></label>` : ''}
+      </div>
+      <p class="muted small" style="margin:0">${auftragNr || (x && x.auftragNr) ? 'Die Störung erscheint im Wartungsbericht dieses Auftrags, ' : ''}bleibt unter „Störungen“ und bei der Anlage sichtbar, bis sie behoben ist.</p>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">${x ? 'Speichern' : 'Störung anlegen'}</button></div>
+    </form>`);
 }
 function kontaktFelder(name, tel){
   return `<div class="fgrid"><label class="f" for="kpn">Ansprechpartner vor Ort<input id="kpn" name="ansp" value="${h(name||'')}" placeholder="z. B. Hausmeister Herr Müller" autocomplete="off"></label>
@@ -1585,7 +1620,7 @@ function importModal(){
   openModal(`<h2>Foxtag-Daten importieren</h2>
     <p style="margin:0">Entweder die <b>Foxtag-Gesamtdatei (.json)</b> mit Kunden, Objekten, Anlagen und allen Komponenten, oder die Excel-Exporte aus Foxtag: <b>Anlagen → Import/Export → Anlagen exportieren</b> und <b>Kunden → Import/Export → Kunden exportieren</b>.</p>
     <form data-form="import" style="display:grid;gap:12px">
-      <label class="f" for="imA">Gesamtdatei (.json) oder Anlagen-Export (.xlsx)<input id="imA" name="anl" type="file" accept=".json,.xlsx,.csv" required></label>
+      <label class="f" for="imA">Gesamtdatei (.json) oder Anlagen-Export (.xlsx)<input id="imA" name="anl" type="file" required></label>
       <label class="f" for="imK">Kunden-Export (optional, ergänzt die Kundenadressen)<input id="imK" name="kun" type="file" accept=".xlsx,.csv"></label>
       <div class="checks"><label><input type="checkbox" name="replace" checked>Beispieldaten vorher löschen</label></div>
       <p class="muted small" style="margin:0">Die Dateien werden nur in diesem Browser gelesen und gespeichert, nicht hochgeladen. Komponenten importierst du danach je Anlage über „Aus Foxtag importieren“.</p>
@@ -1604,8 +1639,11 @@ modal.addEventListener('submit', e => {
     (async () => {
       try{
         const file = f.get('anl'); let r;
-        if(/\.json$/i.test(file.name)){
-          let B; try{ B = JSON.parse(await file.text()); }catch(x){ throw new Error('Die JSON-Datei ist beschädigt.'); }
+        if(!file || !file.size) throw new Error('Bitte eine Datei auswählen.');
+        // Am Handy ändern manche Apps den Dateinamen, deshalb am Inhalt erkennen statt an der Endung
+        const kopf = new TextDecoder().decode(new Uint8Array(await file.slice(0, 64).arrayBuffer())).replace(/^﻿/, '').trim();
+        if(kopf.startsWith('{')){
+          let B; try{ B = JSON.parse((await file.text()).replace(/^﻿/, '')); }catch(x){ throw new Error('Die JSON-Datei ist beschädigt oder unvollständig. Bitte erneut herunterladen.'); }
           r = importBundle(B, !!f.get('replace'));
         } else {
           const rows = await readTable(file);
@@ -1626,6 +1664,17 @@ modal.addEventListener('submit', e => {
     kontaktMerken(A);
     S.auftraege.push(A); save(); closeModal(); UI.view = 'auftrag'; UI.auftrag = A.id; render(); window.scrollTo(0,0);
     toast(A.status==='geplant' ? `Auftrag ${A.nr} liegt jetzt in der App bei ${techNames(techs)}` : `Auftrag ${A.nr} angelegt, noch nicht freigegeben`);
+  }
+  if(kind==='stoer'){
+    const st = UI.stoer || {}, titel = String(f.get('titel')||'').trim(); if(!titel) return;
+    if(st.id){
+      const x = by(S.stoerungen, st.id); if(!x) return closeModal();
+      Object.assign(x, {titel, text:String(f.get('text')||'').trim(), schwere:f.get('schwere'), status:f.get('status') || x.status});
+      save(); closeModal(); render(); toast(`Störung #${x.nr} gespeichert`);
+    } else {
+      const x = {id:uid(), nr:S.nextStoerung++, auftragNr:st.auftragNr, kompId:st.kompId, titel, text:String(f.get('text')||'').trim(), schwere:f.get('schwere'), status:'offen', datum:iso(TODAY), von:me().name};
+      S.stoerungen.unshift(x); save(); closeModal(); render(); toast(`Störung #${x.nr} angelegt`);
+    }
   }
   if(kind==='kedit'){
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
@@ -1688,6 +1737,8 @@ const ACT = {
     save(); closeModal(); render(); toast('Datei gelöscht');
   },
   kedit: d => kompEditModal(by(S.komponenten, d.c)),
+  stoerneu: (d,t,e) => { e.stopPropagation(); stoerModal(null, by(S.komponenten, d.c), d.nr || ''); },
+  stoeredit: (d,t,e) => { e.stopPropagation(); const x = by(S.stoerungen, d.id); if(x) stoerModal(x, by(S.komponenten, x.kompId), x.auftragNr); },
   kdel: () => {
     const c = by(S.komponenten, UI.kEdit); if(!c) return;
     const offen = S.auftraege.filter(a => isOpen(a) && a.kompIds.includes(c.id));
