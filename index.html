@@ -995,7 +995,7 @@ function berichtAblegen(A, mitMail){
 /* ---------- Störungen ---------- */
 function vStoerungen(){
   const list = S.stoerungen.filter(x => UI.sf==='alle' || x.status===UI.sf);
-  return `<div class="head"><div><h1>Störungen</h1><p class="sub">Entstehen automatisch aus „n.i.O.“ in der App und bleiben offen, bis sie behoben sind.</p></div>
+  return `<div class="head"><div><h1>Störungen</h1><p class="sub">Eine Störung je Komponente: von Hand gemeldet oder beim Abschicken aus allen „n.i.O.“-Punkten zusammengefasst. Bleibt offen, bis sie behoben ist.</p></div>
     <div class="chips">${[['offen','Offen'],['behoben','Behoben'],['alle','Alle']].map(([v,l]) => `<button class="chip ${UI.sf===v?'on':''}" data-act="sf" data-v="${v}">${l}</button>`).join('')}</div></div>
   <section class="panel">${list.length ? `<div class="tbl-wrap"><table>
     <thead><tr><th>Nr.</th><th>Störung</th><th>Objekt</th><th>Einstufung</th><th>Auftrag</th><th></th></tr></thead>
@@ -1287,8 +1287,8 @@ function feldRow(A,c,x){
     <div>${h(x.label)}${x.max!=null ? `<div class="hint" ${d.over ? 'style="color:var(--bad);font-weight:600"' : ''}>Grenzwert ≤ ${x.max} ${h(x.einheit)}${d.over ? ' überschritten, wird als Störung erfasst' : ''}</div>` : ''}</div>
     <div class="ctl">${ctl}</div>
     ${d.v==='nio' ? `<div class="mng">
-      <textarea data-in="fm" ${attrs} placeholder="Störung beschreiben, z. B. was zu tun ist" aria-label="Störungsbeschreibung" style="min-height:44px">${h(d.m||'')}</textarea>
-      <select data-in="fsw" ${attrs} aria-label="Schwere">${SCHWERE.map(s => `<option ${(d.sw||'Mangel')===s?'selected':''}>${s}</option>`).join('')}</select>
+      <textarea data-in="fm" ${attrs} placeholder="Bemerkung, z. B. was zu tun ist (optional)" aria-label="Bemerkung zu diesem Punkt" style="min-height:44px">${h(d.m||'')}</textarea>
+      <span class="small">Wird beim Abschicken in <b>einer</b> Störung für diese Komponente zusammengefasst.</span>
     </div>` : ''}
   </div>`;
 }
@@ -1296,10 +1296,23 @@ function berichtSenden(A){
   const ks = auftragKomps(A).filter(c => A.pr[c.id] && A.pr[c.id].done);
   if(!ks.length) return;
   ks.forEach(c => {
-    clOf(c).felder.forEach(x => { const d = A.pr[c.id].f[x.id];
-      if(d && d.v==='nio') S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id, titel:d.m || x.label+' nicht in Ordnung', schwere:d.sw||'Mangel', status:'offen', datum:iso(TODAY)});
-      if(d && d.over) S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id, titel:`${x.label}: ${d.v} ${x.einheit} (Grenzwert ${x.max} ${x.einheit} überschritten)`, schwere:'Mangel', status:'offen', datum:iso(TODAY)});
+    // Alle n.i.O.-Punkte und überschrittenen Grenzwerte einer Komponente werden zu EINER Störung zusammengefasst
+    const punkte = []; let abschnitt = '';
+    clOf(c).felder.forEach(x => {
+      if(x.typ==='ueberschrift'){ abschnitt = x.label; return; }
+      const d = A.pr[c.id].f[x.id]; if(!d) return;
+      const wo = abschnitt ? `${abschnitt}: ${x.label}` : x.label;
+      if(d.v==='nio') punkte.push(`• ${wo}${d.m ? ' – '+d.m.trim() : ''}`);
+      if(d.over) punkte.push(`• ${wo}: ${d.v} ${x.einheit} (Grenzwert ${x.max} ${x.einheit} überschritten)`);
     });
+    if(punkte.length){
+      const liste = `Bei der Prüfung nicht in Ordnung:\n${punkte.join('\n')}`;
+      const da = S.stoerungen.find(x => x.kompId===c.id && x.auftragNr===A.nr && x.status==='offen');
+      if(da) da.text = [da.text, liste].filter(Boolean).join('\n\n');
+      else S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id,
+        titel: punkte.length===1 ? punkte[0].replace(/^• /,'').split(' – ')[0] : `${punkte.length} Prüfpunkte nicht in Ordnung`,
+        text:liste, schwere:'Mangel', status:'offen', datum:iso(TODAY), von:me().name});
+    }
     c.letzte = iso(TODAY);
   });
   A.status = 'erledigt'; A.abgeschlossen = iso(TODAY);
