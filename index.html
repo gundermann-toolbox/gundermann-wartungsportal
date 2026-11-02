@@ -1274,21 +1274,17 @@ function appShell(bar, body, foot){
   return `<div class="appwrap">${bar}<div class="appbody">${body}</div>${foot ? `<div class="appact">${foot}</div>` : ''}</div>`;
 }
 const appBar = (title, sub, back) => `<div class="appbar">${back ? `<button data-act="appback" data-v="${back}" aria-label="Zurück">‹</button>` : ''}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
-/* Route zum Objekt: Google Maps (Navigation) oder die Karten-App des Handys.
-   Ziel ist die Adresse; ohne Adresse die gespeicherte Kartenposition. */
+/* Route zum Objekt: ein Knopf. Android und PC öffnen Google Maps mit der Route,
+   das iPhone die Karten-App. Ziel ist die Adresse, ohne Adresse die gespeicherte Kartenposition. */
 function routeKnoepfe(o){
   const adresse = [o.adresse, o.ort].filter(Boolean).join(', ');
   const g = geo(o);
   const ziel = adresse || (g ? g[0].toFixed(5)+','+g[1].toFixed(5) : '');
   if(!ziel) return '';
-  const google = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(ziel);
-  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const andere = ios ? 'https://maps.apple.com/?daddr=' + encodeURIComponent(ziel)
-    : 'geo:0,0?q=' + encodeURIComponent(ziel + (o.name ? ' (' + o.name + ')' : ''));
-  return `<div class="row" style="gap:8px">
-    <a class="btn pri" style="flex:1" href="${h(google)}" target="_blank" rel="noopener">➜ Route starten</a>
-    <a class="btn" style="flex:1" href="${h(andere)}" ${ios ? 'target="_blank" rel="noopener"' : ''}>${ios ? 'In Apple Karten' : 'Andere Karten-App'}</a>
-  </div>`;
+  const href = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    ? 'https://maps.apple.com/?dirflg=d&daddr=' + encodeURIComponent(ziel)
+    : 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(ziel);
+  return `<a class="btn pri block" href="${h(href)}" target="_blank" rel="noopener">➜ Route starten</a>`;
 }
 /* Auftrag vor Ort: Techniker legt selbst einen Auftrag an, wenn das Büro keinen geplant hat */
 function appNeuListe(){
