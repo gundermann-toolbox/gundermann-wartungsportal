@@ -91,6 +91,31 @@ a{color:var(--accent)}
 .ico-i{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-3px}
 .nav button .ico-i{opacity:.85}
 button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
+.wgrid-wrap{overflow-x:auto}
+.wgrid{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;min-width:760px}
+.wgrid th,.wgrid td{border:1px solid var(--line);vertical-align:top;padding:6px;text-align:left}
+.wgrid thead th{background:var(--sunk);font-size:13px}
+.wgrid tbody th{width:130px;font-size:13px;background:var(--sunk)}
+.wgrid .heute{background:rgba(229,0,125,.05)}
+.wgrid thead th.heute{color:var(--mag)}
+.wgrid td{height:84px}
+.wgrid td.ziel{outline:2px dashed var(--accent);outline-offset:-3px;background:rgba(18,53,91,.06)}
+.wjob{display:grid;gap:1px;width:100%;text-align:left;border:1px solid var(--line-strong);border-left:4px solid var(--brand);border-radius:6px;background:var(--surface);padding:5px 7px;margin-bottom:5px;font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}
+.wjob[draggable=true]{cursor:grab}
+.wjob .wo{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wjob .wz{font-size:11.5px;color:var(--muted)}
+.wjob .wz b{color:var(--ink)}
+.wjob.st-planung{border-left-color:var(--muted);border-style:dashed solid dashed solid}
+.wjob.st-laeuft{border-left-color:var(--warn)}
+.wjob.st-erledigt,.wjob.st-abgerechnet{border-left-color:var(--ok);opacity:.75}
+.wplus{border:1px dashed var(--line-strong);background:none;border-radius:6px;width:100%;color:var(--muted);cursor:pointer;opacity:0;font-size:16px;line-height:1.4}
+.wgrid td:hover .wplus,.wplus:focus-visible{opacity:1}
+.wlist{display:none;gap:10px}
+.wtag{border:2px solid var(--line-strong);border-radius:10px;padding:10px 12px;display:grid;gap:8px}
+.wtag.heute{border-color:var(--mag)}
+@media (max-width:760px){ .wgrid-wrap{display:none} .wlist{display:grid} }
+.mvgl{font-size:12px;color:var(--muted);margin-top:2px}
+.mvgl.abw{color:var(--warn);font-weight:600}
 .luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
 .lueck:hover{border-color:var(--accent)}
@@ -733,13 +758,13 @@ const ICONS = {
   kunden:'M4 21V5l8-2v18M12 21h8V9l-8-2M7.5 8h1M7.5 12h1M7.5 16h1M15.5 12h1M15.5 16h1', auftraege:'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 13l2.5 2.5L16 10',
   berichte:'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6', stoerungen:'M12 3l10 18H2zM12 10v5M12 18h.01',
   admin:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4', info:'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01',
-  plus:'M12 5v14M5 12h14', pdf:'M12 4v11M7 10l5 5 5-5M5 20h14', route:'M3 11l18-8-8 18-2-8z', suche:'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
+  woche:'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2', plus:'M12 5v14M5 12h14', pdf:'M12 4v11M7 10l5 5 5-5M5 20h14', route:'M3 11l18-8-8 18-2-8z', suche:'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
   auge:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
 };
 const ico = n => `<svg class="ico-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 
 /* ---------- Kopfzeile & Navigation ---------- */
-const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','IT & Einrichtung']];
+const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['woche','Wochenplanung'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','IT & Einrichtung']];
 function renderChrome(){
   const u = me();
   if(S.mode==='app' && !u.app) S.mode = 'web';
@@ -834,6 +859,63 @@ function rmStartPanel(){
       <td class="mono" style="text-align:right">${r.imJahr} von ${r.anzahl}</td><td><b>${r.jahr}</b> ${rmPill(r.jahr)}</td></tr>`; }).join('')}
     </tbody></table></div>` : `<div class="empty">Bis Ende ${bis} ist kein Rauchmeldertausch fällig.</div>`}</section>`;
 }
+
+/* ---------- Büro: Wochenplanung ---------- */
+const montag = d => { const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - (x.getDay()+6)%7); return x; };
+const plusTage = (isoS, n) => { const x = new Date(isoS+'T00:00:00'); x.setDate(x.getDate()+n); return iso(x); };
+const kw = isoS => { const d = new Date(isoS+'T00:00:00'); d.setDate(d.getDate() + 3 - (d.getDay()+6)%7); const j = new Date(d.getFullYear(),0,4); return 1 + Math.round(((d-j)/864e5 - 3 + (j.getDay()+6)%7)/7); };
+const TAGE = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+function vWoche(){
+  const mo = UI.wo || iso(montag(TODAY)), so = plusTage(mo, 6);
+  const imZeitraum = S.auftraege.filter(a => a.datum >= mo && a.datum <= so);
+  const wochenende = imZeitraum.some(a => a.datum > plusTage(mo, 4));
+  const tage = [...Array(wochenende ? 7 : 5)].map((_,i) => plusTage(mo, i));
+  const zeilen = appUsers().map(u => ({id:u.id, name:u.name})).concat([{id:'', name:'Nicht zugeteilt'}]);
+  const inZelle = (tid, tag) => imZeitraum.filter(a => a.datum===tag && (tid ? (a.techIds||[]).includes(tid) : !(a.techIds||[]).length))
+    .sort((x,y) => (x.zeit||'99') < (y.zeit||'99') ? -1 : 1);
+  const karte = (a, tid) => { const {o} = ctx(a.anlageId), zieh = ['planung','geplant'].includes(a.status);
+    return `<button class="wjob st-${a.status}" data-act="auftrag" data-id="${a.id}" ${zieh ? `draggable="true" data-drag="${a.id}" data-von="${tid}"` : ''} title="${h(o.name)} · ${h(statusLabel(a.status))}">
+      <span class="wz">${a.zeit ? h(a.zeit) : ''} <b>${h(a.nr)}</b></span><span class="wo">${h(o.name)}</span><span class="t2">${h(o.ort)}</span></button>`; };
+  const heute = iso(TODAY);
+  // Fällig bis Wochenende und noch kein Auftrag
+  const offen = S.anlagen.filter(a => !offenerAuftrag(a.id)).map(a => ({a, ks:kompsOf(a.id).filter(c => { const d = nextDue(c); return d && d <= so; })})).filter(x => x.ks.length)
+    .sort((x,y) => cmpDe(ctx(x.a.id).o.nr, ctx(y.a.id).o.nr));
+  return `<div class="head"><div><h1>Wochenplanung</h1><p class="sub">KW ${kw(mo)} · ${fmt(mo)} bis ${fmt(tage[tage.length-1])} · ${imZeitraum.length} Aufträge</p></div>
+    <div class="row"><button class="btn" data-act="woche" data-v="-7" aria-label="Vorherige Woche">‹ Woche</button><button class="btn" data-act="woche" data-v="0">Diese Woche</button><button class="btn" data-act="woche" data-v="7" aria-label="Nächste Woche">Woche ›</button></div></div>
+  <section class="panel">
+    <div class="wgrid-wrap"><table class="wgrid"><thead><tr><th>Techniker</th>${tage.map((t,i) => `<th class="${t===heute?'heute':''}">${TAGE[i]} ${fmt(t).slice(0,6)}</th>`).join('')}</tr></thead><tbody>
+      ${zeilen.map(z => `<tr><th scope="row">${h(z.name)}</th>${tage.map(t => `<td class="${t===heute?'heute':''}" data-drop="${t}" data-tech="${z.id}">
+        ${inZelle(z.id, t).map(a => karte(a, z.id)).join('')}
+        <button class="wplus" data-act="wplanen" data-d="${t}" data-t="${z.id}" aria-label="Auftrag am ${fmt(t)} planen">+</button></td>`).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <div class="wlist">${tage.map((t,i) => { const js = imZeitraum.filter(a => a.datum===t).sort((x,y) => (x.zeit||'99') < (y.zeit||'99') ? -1 : 1);
+      return `<div class="wtag ${t===heute?'heute':''}"><div class="row" style="justify-content:space-between"><b>${TAGE[i]} ${fmt(t)}</b><button class="btn sm" data-act="wplanen" data-d="${t}" data-t="">+ Planen</button></div>
+        ${js.length ? js.map(a => `<div>${karte(a,'')}<span class="small muted">${h(techNames(a.techIds))}</span></div>`).join('') : '<span class="muted small">Keine Aufträge</span>'}</div>`; }).join('')}</div>
+    <p class="muted small" style="margin:0">Aufträge „In Planung“ und „Geplant“ lassen sich am PC mit der Maus auf einen anderen Tag oder Techniker ziehen. Mit + wird ein neuer Auftrag an diesem Tag geplant.</p>
+  </section>
+  <section class="panel"><div class="panel-h"><h2>Fällig bis ${fmt(so)}, noch ohne Auftrag</h2><span class="muted small">${offen.length} Anlagen</span></div>
+    ${offen.length ? `<div class="tbl-wrap"><table><thead><tr><th>Objekt</th><th>Kunde</th><th>Komponenten</th><th>Fällig seit / am</th><th></th></tr></thead><tbody>
+    ${offen.map(({a,ks}) => { const {o,k} = ctx(a.id), d = ks.map(nextDue).sort()[0]; return `<tr><td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.ort)}</span></td><td>${h(kName(k))}</td>
+      <td class="mono">${ks.length}</td><td>${fmt(d)} ${d < heute ? pill('bad','überfällig') : ''}</td><td style="text-align:right"><button class="btn sm pri" data-act="planen" data-a="${a.id}">Planen</button></td></tr>`; }).join('')}
+    </tbody></table></div>` : `<div class="empty">Alles Fällige ist schon eingeplant.</div>`}</section>`;
+}
+document.addEventListener('dragstart', e => { const k = e.target.closest && e.target.closest('[data-drag]'); if(!k) return;
+  e.dataTransfer.setData('text/plain', k.dataset.drag + '|' + k.dataset.von); e.dataTransfer.effectAllowed = 'move'; });
+document.addEventListener('dragover', e => { const z = e.target.closest && e.target.closest('[data-drop]'); if(!z) return; e.preventDefault(); z.classList.add('ziel'); });
+document.addEventListener('dragleave', e => { const z = e.target.closest && e.target.closest('[data-drop]'); if(z) z.classList.remove('ziel'); });
+document.addEventListener('drop', e => {
+  const z = e.target.closest && e.target.closest('[data-drop]'); if(!z) return; e.preventDefault();
+  const [id, von] = (e.dataTransfer.getData('text/plain')||'').split('|'), A = by(S.auftraege, id); if(!A) return;
+  const nach = z.dataset.tech; let ids = (A.techIds||[]).filter(x => x!==von);
+  ids = nach ? [...new Set(ids.concat(nach))] : (von ? ids : []);
+  if(!nach && ids.length){ toast('Erst alle Techniker entfernen, dann ist der Auftrag nicht zugeteilt'); render(); return; }
+  const alt = `${fmt(A.datum)} ${techNames(A.techIds)}`;
+  A.datum = z.dataset.drop; A.techIds = ids;
+  if(A.status==='planung' && ids.length) A.status = 'geplant';
+  if(!ids.length && A.status==='geplant') A.status = 'planung';
+  A.verlauf = (A.verlauf||[]).concat(`${fmt(iso(TODAY))} ${nowTime()}: ${me().name} hat umgeplant (vorher ${alt})`);
+  save(); render(); toast(`${A.nr} auf ${fmt(A.datum)} · ${techNames(A.techIds)}`);
+});
 
 /* ---------- Büro: Bitte ergänzen (fehlende Angaben) ---------- */
 function luecken(){
@@ -1405,10 +1487,10 @@ function vBericht(A){
     else st_.push({nr:'neu', kompId:c.id, titel:stoerTitel(punkte), text:'Bei der Prüfung nicht in Ordnung:\n'+punkte.join('\n'), schwere:'Mangel'}); });
   const sum = {};
   done.forEach(c => { const key = typLabel(typOf(c)); sum[key] = sum[key] || {ok:0, m:0}; sum[key][kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id) ? 'm' : 'ok']++; });
-  const res = (x,d) => {
+  const res = (x,d,c) => {
     if(!d || d.v==null || d.v==='') return '<span class="nv">–</span>';
     if(x.typ==='checkbox') return d.v ? '<span class="io">✓ erledigt</span>' : '<span class="nv">–</span>';
-    if(x.typ==='wert') return h(d.v)+' '+h(x.einheit);
+    if(x.typ==='wert'){ const vg = c && wertVergleich(A, c, x, d.v); return h(d.v)+' '+h(x.einheit) + (vg ? ` <span class="muted small">(vorher ${h(vg.l.v)} ${h(x.einheit)}${vg.abw ? `, ${vg.abw > 0 ? '+' : ''}${vg.abw} %` : ''})</span>` : ''); }
     return {io:'<span class="io">i.O.</span>', nio:'<span class="nio">n.i.O.</span>', nv:'<span class="nv">n.v.</span>', ja:'Ja', nein:'Nein'}[d.v] || h(d.v);
   };
   return `
@@ -1433,7 +1515,7 @@ function vBericht(A){
       <div class="tbl-wrap"><table><tbody>${clFor(A,c).map(x => x.typ==='ueberschrift'
         ? `<tr class="dh"><td colspan="2">${h(x.label)}</td></tr>`
         : x.typ==='text' ? (p.f[x.id] && p.f[x.id].v ? `<tr><td>${h(x.label)}</td><td>${h(p.f[x.id].v)}</td></tr>` : '')
-        : `<tr><td>${h(x.label)}</td><td class="res">${res(x,p.f[x.id])}</td></tr>`).join('')}</tbody></table></div>
+        : `<tr><td>${h(x.label)}</td><td class="res">${res(x,p.f[x.id],c)}</td></tr>`).join('')}</tbody></table></div>
       ${p.fotos && p.fotos.length ? `<div class="fotos" style="margin-top:8px">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
     </section>`; }).join('')}
     ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
@@ -1599,6 +1681,22 @@ function kompState(A,c){
   const n = p ? Object.values(p.f).filter(x => x.v!=null && x.v!=='' && x.v!==false).length : 0;
   return n ? pill('acc','in Arbeit') : pill('','offen');
 }
+/* Letzter Messwert derselben Komponente aus einem früheren, abgeschlossenen Auftrag */
+function letzterWert(A, c, fid){
+  const frueher = S.auftraege.filter(x => x.id!==A.id && ['erledigt','abgerechnet'].includes(x.status) && x.pr && x.pr[c.id] && x.pr[c.id].f && x.pr[c.id].f[fid]
+      && String(x.pr[c.id].f[fid].v||'').trim() && (x.abgeschlossen||x.datum) <= (A.status==='laeuft' ? iso(TODAY) : (A.abgeschlossen||A.datum)))
+    .sort((x,y) => (x.abgeschlossen||x.datum) < (y.abgeschlossen||y.datum) ? 1 : -1)[0];
+  return frueher ? {v:frueher.pr[c.id].f[fid].v, datum:frueher.abgeschlossen||frueher.datum, nr:frueher.nr} : null;
+}
+const vglText = (vg, x) => `Letztes Mal: ${h(vg.l.v)} ${h(x.einheit)} (${fmt(vg.l.datum)})`
+  + (vg.abw!=null && vg.abw!==0 ? ` · ${vg.abw > 0 ? '+' : ''}${vg.abw} %${vg.auffaellig ? ' – bitte prüfen' : ''}` : '');
+function wertVergleich(A, c, x, jetzt){
+  const l = letzterWert(A, c, x.id); if(!l) return null;
+  const a = num(l.v), n = num(jetzt);
+  let abw = null;
+  if(!isNaN(a) && !isNaN(n) && String(jetzt||'').trim()){ abw = a===0 ? (n===0 ? 0 : null) : Math.round((n-a)/Math.abs(a)*100); }
+  return {l, abw, auffaellig: abw!=null && Math.abs(abw) >= 25};
+}
 function feldRow(A,c,x){
   if(x.typ==='ueberschrift') return `<div class="fh">${h(x.label)}</div>`;
   const d = prOf(A,c.id).f[x.id] || {};
@@ -1610,7 +1708,9 @@ function feldRow(A,c,x){
   if(x.typ==='janein') ctl = seg([['ja','Ja'],['nein','Nein']]);
   if(x.typ==='janeinnv') ctl = seg([['ja','Ja'],['nein','Nein'],['nv','n.v.']]);
   if(x.typ==='checkbox') ctl = `<button class="cbx ${d.v?'on':''}" data-act="setf" ${attrs} data-v="toggle" aria-pressed="${!!d.v}">${d.v ? '✓ Erledigt' : 'Erledigt?'}</button>`;
-  if(x.typ==='wert') ctl = `<span class="val"><input inputmode="decimal" data-in="fv" ${attrs} value="${h(d.v||'')}" aria-label="${h(x.label)}"><span>${h(x.einheit)}</span></span>`;
+  if(x.typ==='wert'){ const vg = wertVergleich(A, c, x, d.v);
+    ctl = `<span class="val"><input inputmode="decimal" data-in="fv" ${attrs} value="${h(d.v||'')}" aria-label="${h(x.label)}"><span>${h(x.einheit)}</span></span>`
+      + (vg ? `<div class="mvgl ${vg.auffaellig?'abw':''}" data-vgl="${c.id}-${x.id}">${vglText(vg, x)}</div>` : ''); }
   if(x.typ==='text') return `<div class="pp"><label class="f" for="t-${c.id}-${x.id}">${h(x.label)}<textarea id="t-${c.id}-${x.id}" data-in="fv" ${attrs} style="min-height:44px">${h(d.v||'')}</textarea></label></div>`;
   return `<div class="pp">
     <div>${h(x.label)}${x.max!=null ? `<div class="hint" ${d.over ? 'style="color:var(--bad);font-weight:600"' : ''}>${x.ab ? `Tausch ab ${x.max} ${h(x.einheit)}` : `Grenzwert ≤ ${x.max} ${h(x.einheit)}`}${d.over ? (x.ab ? ' erreicht, Melder tauschen (wird als Störung erfasst)' : ' überschritten, wird als Störung erfasst') : ''}</div>` : ''}</div>
@@ -1747,15 +1847,15 @@ function editModal(A){
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div>
     </form>`);
 }
-function planenModal(aid){
+function planenModal(aid, datum, techId){
   const opts = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id); if(!os.length) return '';
     return `<optgroup label="${h(k.nr+' '+k.name)}">${os.map(o => S.anlagen.filter(x => x.objektId===o.id).map(a => `<option value="${a.id}" ${a.id===aid?'selected':''}>${h(o.nr+' '+o.name)}</option>`).join('')).join('')}</optgroup>`; }).join('');
   openModal(`<h2>Auftrag planen</h2>
     <form data-form="planen" style="display:grid;gap:12px">
       <label class="f" for="pa">Objekt / Anlage<select id="pa" name="anlage">${opts}</select></label>
-      <div class="fgrid"><label class="f" for="pd">Datum<input id="pd" name="datum" type="date" value="${iso(TODAY)}" required></label><label class="f" for="pz">Uhrzeit<input id="pz" name="zeit" type="time"></label></div>
+      <div class="fgrid"><label class="f" for="pd">Datum<input id="pd" name="datum" type="date" value="${datum || iso(TODAY)}" required></label><label class="f" for="pz">Uhrzeit<input id="pz" name="zeit" type="time"></label></div>
       ${kontaktFelder(...(() => { const a0 = by(S.anlagen, aid); const kt = (a0 && a0.kontakt) || {}; return [kt.name, kt.tel]; })())}
-      <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}">${h(t.name)}</label>`).join('')}</div></div>
+      <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}" ${t.id===techId?'checked':''}>${h(t.name)}</label>`).join('')}</div></div>
       <label class="f" for="pu">Umfang<select id="pu" name="umfang"><option value="ganz">Ganze Anlage</option><option value="faellig">Nur fällige Komponenten</option></select></label>
       <div class="checks"><label><input type="checkbox" name="frei" checked>Direkt an die Techniker freigeben</label></div>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Auftrag anlegen</button></div>
@@ -2067,6 +2167,8 @@ const ACT = {
     else if(d.v==='stoer'){ UI.view = 'stoerungen'; UI.sf = 'offen'; }
     else { UI.view = 'faellig'; UI.ff = d.v; }
     render(); window.scrollTo(0,0); },
+  woche: d => { const n = +d.v; UI.wo = n ? plusTage(UI.wo || iso(montag(TODAY)), n) : iso(montag(TODAY)); render(); },
+  wplanen: d => planenModal(null, d.d, d.t),
   luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
   kontaktedit: d => kontaktModal(d.a),
   appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
@@ -2345,6 +2447,13 @@ document.addEventListener('input', e => {
   const box = e.target.parentElement.querySelector('.gres'), html = gSuche(e.target.value);
   box.innerHTML = html; box.hidden = !html;
 });
+// Messwertvergleich beim Tippen nachführen
+document.addEventListener('input', e => {
+  const t = e.target; if(!t.matches || !t.matches('input[data-in="fv"]')) return;
+  const box = document.querySelector(`[data-vgl="${t.dataset.c}-${t.dataset.f}"]`), A = curA(), c = by(S.komponenten, t.dataset.c); if(!box || !A || !c) return;
+  const x = clFor(A,c).find(y => y.id===t.dataset.f), vg = x && wertVergleich(A, c, x, t.value); if(!vg) return;
+  box.innerHTML = vglText(vg, x); box.classList.toggle('abw', vg.auffaellig);
+});
 document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 document.addEventListener('click', e => { if(!e.target.closest('.gsuche')) document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 
@@ -2363,7 +2472,7 @@ function pdfSpeichern(A){
 /* Tabellen am Handy als Karten: jede Zelle bekommt die Spaltenüberschrift als Beschriftung */
 function tabellenBeschriften(root){
   (root || app).querySelectorAll('table').forEach(t => {
-    if(t.closest('.doc')) return;
+    if(t.closest('.doc') || t.classList.contains('wgrid')) return;
     const kopf = [...t.querySelectorAll('thead th')].map(x => x.innerText.trim());
     if(!kopf.length) return;
     t.classList.add('kt');
@@ -2371,7 +2480,7 @@ function tabellenBeschriften(root){
   });
 }
 
-const VIEWS = {luecken:vLuecken, faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
+const VIEWS = {woche:vWoche, luecken:vLuecken, faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
 function render(){
   kIdx = null;
   const top = document.querySelector('.top');
