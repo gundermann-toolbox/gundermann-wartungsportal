@@ -1112,7 +1112,7 @@ function vAdmin(){
     const cl = by(S.checklisten, UI.cl) || S.checklisten[0];
     body = `<div class="chips">${S.checklisten.map(c => `<button class="chip ${cl.id===c.id?'on':''}" data-act="clopen" data-id="${c.id}">${h(c.name)}</button>`).join('')}</div>
     <section class="panel">
-      <div class="panel-h"><h2>${h(cl.name)}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${cl.auftrag ? 'jeden Auftrag (im Abschluss der App)' : S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
+      <div class="panel-h"><h2>${h(cl.name)}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${cl.auftrag ? 'Aufträge allgemein (in der App derzeit ausgeblendet)' : S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
       <div class="tbl-wrap"><table><thead><tr><th>Feldname</th><th>Feldtyp</th><th>Einheit / Grenzwert</th><th></th></tr></thead><tbody>
       ${cl.felder.map((x,i) => `<tr class="${x.typ==='ueberschrift'?'grp':''}"><td>${h(x.label)}</td><td>${FELDTYPEN[x.typ]}</td><td class="mono">${x.typ==='wert' ? h(x.einheit)+(x.max!=null ? ' · ≤ '+x.max : '') : ''}</td>
         <td><div class="row" style="flex-wrap:nowrap"><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="-1" aria-label="Nach oben" ${i?'':'disabled'}>↑</button><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="1" aria-label="Nach unten" ${i<cl.felder.length-1?'':'disabled'}>↓</button><button class="btn ghost sm danger" data-act="fdel" data-id="${x.id}">Löschen</button></div></td></tr>`).join('')}
@@ -1377,9 +1377,7 @@ function vApp(){
        <div class="row" style="justify-content:space-between"><button class="btn ghost" data-act="allio" data-c="${c.id}">Offene Punkte i.O. setzen</button><button class="btn danger" data-act="stoerneu" data-c="${c.id}" data-nr="${A.nr}">Störung melden</button></div>`);
   }
   if(sc==='abschluss') return appShell(appBar('Abschluss', A.nr+' · '+h(o.nr), 'auftrag'),
-    `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>
-    ${['cl-vor','cl-nach'].map(id => { const cl = by(S.checklisten, id); return cl && cl.felder.length ? `<div class="card clist"><b>${h(cl.name)}</b>${cl.felder.map(x => feldRow(A, {id:'_'+id}, x)).join('')}</div>` : ''; }).join('')}
-    <div class="card"><label class="f" for="pbem">Bemerkung zum Bericht<textarea id="pbem" data-in="bem" placeholder="z. B. Kunde über Störungen informiert">${h(A.bem)}</textarea></label>
+    `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>    <div class="card"><label class="f" for="pbem">Bemerkung zum Bericht<textarea id="pbem" data-in="bem" placeholder="z. B. Kunde über Störungen informiert">${h(A.bem)}</textarea></label>
     <label class="f" for="pkunde">Name Kunde / Ansprechpartner<input id="pkunde" data-in="kunde" value="${h(A.kunde)}"></label></div>
     <div class="card"><div class="f">Unterschrift Techniker (${h(me().name)})<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigTech" style="justify-self:start">Löschen</button></div>
     <div class="f">Unterschrift Kunde<canvas class="sig" data-sig="sigKunde" aria-label="Unterschriftenfeld Kunde"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigKunde" style="justify-self:start">Löschen</button></div></div>`,
