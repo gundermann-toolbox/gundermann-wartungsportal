@@ -91,6 +91,11 @@ a{color:var(--accent)}
 .ico-i{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-3px}
 .nav button .ico-i{opacity:.85}
 button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
+.luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
+.lueck:hover{border-color:var(--accent)}
+.lueck .t2{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.lueck .n{font:700 24px/1 var(--f-display);font-variant-numeric:tabular-nums;color:var(--warn);min-width:28px;text-align:center}
 button.kpi:hover{border-color:var(--accent)}
 button.kpi .l::after{content:" ›";color:var(--muted)}
 /* Tabellen am Handy als Karten */
@@ -743,7 +748,7 @@ function renderChrome(){
     `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='web'?u.web:u.app)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
   document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
   document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
-  const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start'}[UI.view] || UI.view;
+  const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start', luecken:'start'}[UI.view] || UI.view;
   const band = document.querySelector('.band'), mb = document.getElementById('menubtn');
   band.classList.toggle('appmode-band', S.mode==='app');
   document.body.classList.toggle('appmode-body', S.mode==='app');
@@ -759,7 +764,7 @@ function renderChrome(){
     mb.innerHTML = `<span>Techniker-App · ${h(u.name)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
     document.getElementById('nav').innerHTML = `<span class="bandlabel">Techniker-App · ${h(u.name)}</span>` + extra; return;
   }
-  const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start'}[UI.view] || UI.view)) || NAV[0])[1];
+  const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start', luecken:'start'}[UI.view] || UI.view)) || NAV[0])[1];
   mb.innerHTML = `<span>${UI.menu ? 'Menü' : h(aktuell)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
   mb.setAttribute('aria-expanded', !!UI.menu);
   mb.setAttribute('aria-label', UI.menu ? 'Menü schließen' : 'Menü öffnen');
@@ -816,6 +821,7 @@ function vStart(){
     <section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
       ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
   </div>
+  ${lueckenPanel()}
   ${rmStartPanel()}`;
 }
 function rmStartPanel(){
@@ -827,6 +833,47 @@ function rmStartPanel(){
       <td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.ort)}</span></td><td>${h(kName(k))}</td>
       <td class="mono" style="text-align:right">${r.imJahr} von ${r.anzahl}</td><td><b>${r.jahr}</b> ${rmPill(r.jahr)}</td></tr>`; }).join('')}
     </tbody></table></div>` : `<div class="empty">Bis Ende ${bis} ist kein Rauchmeldertausch fällig.</div>`}</section>`;
+}
+
+/* ---------- Büro: Bitte ergänzen (fehlende Angaben) ---------- */
+function luecken(){
+  const nrListe = cs => cs.slice(0,8).map(kNr).join(', ') + (cs.length > 8 ? ` und ${cs.length-8} weitere` : '');
+  const proAnlage = (fn) => S.anlagen.map(a => ({a, ...fn(a)})).filter(x => x.n);
+  return [
+    {id:'rm', titel:'Rauchmelder ohne Baujahr', warum:'Ohne Baujahr lässt sich der Tausch nach 8 Jahren nicht berechnen und nicht anbieten.',
+      rows:proAnlage(a => { const cs = kompsOf(a.id).filter(c => typOf(c).ersatzJahre && !/^\d{4}$/.test(String(c.baujahr||'').trim())); return {n:cs.length, was:cs.length+' Rauchmelder: '+nrListe(cs)}; })},
+    {id:'letzte', titel:'Komponenten ohne letzte Prüfung', warum:'Ohne Datum der letzten Prüfung ist die Fälligkeit unbekannt. Diese Komponenten fehlen in „überfällig“ und auf der Karte.',
+      rows:proAnlage(a => { const cs = kompsOf(a.id).filter(c => !c.letzte); return {n:cs.length, was:cs.length+' Komponenten: '+nrListe(cs)}; })},
+    {id:'adresse', titel:'Objekte ohne Adresse oder Kartenposition', warum:'Ohne Adresse fehlt das Objekt auf der Karte, und der Techniker kann keine Route starten.',
+      rows:proAnlage(a => { const {o} = ctx(a.id); const fehlt = [!String(o.adresse||'').trim() && 'Straße', !String(o.ort||'').trim() && 'PLZ/Ort', String(o.ort||'').trim() && !geo(o) && 'Ort nicht auf der Karte gefunden'].filter(Boolean); return {n:fehlt.length, was:fehlt.join(', ')}; })},
+    {id:'kontakt', titel:'Anlagen ohne Ansprechpartner vor Ort', warum:'Der Techniker sieht in der App, wen er vor Ort anrufen kann. Wird beim Planen automatisch vorgeschlagen.',
+      rows:proAnlage(a => { const kt = a.kontakt || {}; const fehlt = [!kt.name && 'Name', !kt.tel && 'Telefon'].filter(Boolean); return {n:fehlt.length, was:fehlt.join(' und ')+' fehlt'}; })}
+  ];
+}
+function lueckenPanel(){
+  const L = luecken().filter(x => x.rows.length);
+  if(!L.length) return '';
+  return `<section class="panel"><div class="panel-h"><h2>Bitte ergänzen</h2><span class="muted small">fehlende Angaben in den Stammdaten</span></div>
+    <div class="luecken">${L.map(x => `<button class="lueck" data-act="luecken" data-v="${x.id}"><span class="n">${x.rows.length}</span><span><b>${x.titel}</b><span class="t2">${x.rows.length===1 ? '1 Anlage' : x.rows.length+' Anlagen'}</span></span><span class="muted" aria-hidden="true">›</span></button>`).join('')}</div></section>`;
+}
+function vLuecken(){
+  const L = luecken(), x = L.find(y => y.id===UI.lf) || L.find(y => y.rows.length) || L[0];
+  const rows = x.rows.slice().sort((p,q) => cmpDe(ctx(p.a.id).o.nr, ctx(q.a.id).o.nr));
+  return `<button class="back" data-act="go" data-v="start">← Start</button>
+  <div class="head"><div><h1>Bitte ergänzen</h1><p class="sub">${h(x.warum)}</p></div></div>
+  <div class="chips">${L.map(y => `<button class="chip ${y.id===x.id?'on':''}" data-act="luecken" data-v="${y.id}">${h(y.titel)} ${y.rows.length}</button>`).join('')}</div>
+  <section class="panel">${rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>Objekt</th><th>Kunde</th><th>Was fehlt</th><th></th></tr></thead><tbody>
+    ${rows.map(r => { const {o,k} = ctx(r.a.id); return `<tr>
+      <td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.ort)}</span></td><td>${h(kName(k))}</td><td>${h(r.was)}</td>
+      <td style="text-align:right">${x.id==='kontakt' ? `<button class="btn sm pri" data-act="kontaktedit" data-a="${r.a.id}">Eintragen</button>` : `<button class="btn sm" data-act="anlage" data-id="${r.a.id}">Anlage öffnen</button>`}</td></tr>`; }).join('')}
+  </tbody></table></div>` : `<div class="empty">Hier fehlt nichts mehr.</div>`}</section>`;
+}
+function kontaktModal(aid){
+  const {a,o} = ctx(aid), kt = a.kontakt || {};
+  UI.ktEdit = aid;
+  openModal(`<h2>Ansprechpartner vor Ort</h2><p class="muted" style="margin:0">${h(o.nr)} ${h(o.name)}</p>
+    <form data-form="kontakt" style="display:grid;gap:12px">${kontaktFelder(kt.name, kt.tel)}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div></form>`);
 }
 
 /* ---------- Büro: fällige Komponenten (aus den Kennzahlen) ---------- */
@@ -999,6 +1046,8 @@ function vAnlage(){
     <div><span>Objekt</span>${h(o.adresse)}<br>${h(o.ort)}</div>
     <div><span>Nächste Fälligkeit</span>${fmt(next)}</div>
     ${rmFakt(aid)}
+    <div><span>Ansprechpartner vor Ort</span>${a.kontakt && (a.kontakt.name || a.kontakt.tel) ? [h(a.kontakt.name||''), a.kontakt.tel ? telLink(a.kontakt.tel) : ''].filter(Boolean).join(' · ') : '<span class="muted">nicht angegeben</span>'}
+      <br><button class="btn sm ghost" data-act="kontaktedit" data-a="${aid}" style="margin-top:4px">${a.kontakt && a.kontakt.name ? 'Ändern' : 'Eintragen'}</button></div>
     <div><span>Hinweise für den Techniker</span>${h(a.hinweis || '–')}</div>
     ${a.techName ? `<div><span>Techniker laut Foxtag</span>${h(a.techName)}</div>` : ''}
   </div></section>
@@ -1977,6 +2026,12 @@ modal.addEventListener('submit', e => {
       S.stoerungen.unshift(x); save(); closeModal(); render(); toast(`Störung #${x.nr} angelegt`);
     }
   }
+  if(kind==='kontakt'){
+    const a = by(S.anlagen, UI.ktEdit); if(!a) return closeModal();
+    const name = (f.get('ansp')||'').trim(), tel = (f.get('tel')||'').trim();
+    a.kontakt = (name || tel) ? {name, tel} : null;
+    save(); closeModal(); render(); toast('Ansprechpartner gespeichert');
+  }
   if(kind==='kedit'){
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
     const g = parseInt(f.get('gruppe'),10) || c.gruppe, nr = parseInt(f.get('nr'),10) || c.nr, sub = parseInt(f.get('sub'),10) || 0;
@@ -2012,6 +2067,8 @@ const ACT = {
     else if(d.v==='stoer'){ UI.view = 'stoerungen'; UI.sf = 'offen'; }
     else { UI.view = 'faellig'; UI.ff = d.v; }
     render(); window.scrollTo(0,0); },
+  luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
+  kontaktedit: d => kontaktModal(d.a),
   appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
   pdf: () => pdfSpeichern(curA()),
   gstoer: () => { UI.view = 'stoerungen'; UI.sf = 'alle'; UI.menu = false; render(); window.scrollTo(0,0); },
@@ -2314,7 +2371,7 @@ function tabellenBeschriften(root){
   });
 }
 
-const VIEWS = {faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
+const VIEWS = {luecken:vLuecken, faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
 function render(){
   kIdx = null;
   const top = document.querySelector('.top');
