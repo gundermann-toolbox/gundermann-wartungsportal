@@ -240,8 +240,9 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 details.kdet{display:block}
 details.kdet>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer}
 details.kdet>summary::-webkit-details-marker{display:none}
-details.kdet>summary .kdet-hint::after{content:"aufklappen ▾"}
-details.kdet[open]>summary .kdet-hint::after{content:"zuklappen ▴"}
+details.kdet>summary .kdet-hint{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-weight:600;color:var(--brand);background:var(--surface)}
+details.kdet>summary .kdet-hint::after{content:"Komponenten anzeigen ▾"}
+details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .gtoggle{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:11px 12px;font-weight:600;cursor:pointer;text-align:left;margin-top:4px}
 .gtoggle[aria-expanded="false"]{background:var(--accent-soft);color:var(--brand)}
 .krow b{font-weight:600}
@@ -874,7 +875,7 @@ function vAnlage(){
   const next = ks.map(nextDue).filter(Boolean).sort()[0];
   const offen = offenerAuftrag(aid);
   const zaehl = c => ks.filter(x => st(x).cls===c).length;
-  const kOffen = UI.kOpen || UI.addK;
+  const kOffen = UI.kOpen !== false || UI.addK;
   let lastG = 0;
   return `
   <button class="back" data-act="kunde" data-id="${k.id}">← ${h(kName(k))}</button>
