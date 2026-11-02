@@ -670,7 +670,7 @@ function initMaps(){
 const legend = () => `<div class="legend"><span><i style="background:var(--bad)"></i>Überfällig</span><span><i style="background:var(--warn)"></i>Fällig in 30 Tagen</span><span><i style="background:var(--ok)"></i>Aktuell</span><span><i style="background:var(--muted)"></i>Unbekannt</span><span><i style="background:var(--signal);border-radius:2px"></i>Firmensitz</span></div>`;
 
 /* ---------- Kopfzeile & Navigation ---------- */
-const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','Kosten & Aufbau']];
+const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','IT & Einrichtung']];
 function renderChrome(){
   const u = me();
   if(S.mode==='app' && !u.app) S.mode = 'web';
@@ -1155,57 +1155,94 @@ function vAdmin(){
   <div class="chips">${tabs.map(([v,l]) => `<button class="chip ${UI.at===v?'on':''}" data-act="at" data-v="${v}">${l}</button>`).join('')}</div>${body}`;
 }
 
-/* ---------- Kosten & Aufbau ---------- */
+/* ---------- IT & Einrichtung ---------- */
 function vInfo(){
-  return `<div><h1>Kosten & Aufbau</h1><p class="sub">Wie die echte Lösung aufgebaut wäre und was sie kostet.</p></div>
+  const repo = 'https://github.com/gundermann-toolbox/gundermann-wartungsportal';
+  return `<div class="head"><div><h1>IT & Einrichtung</h1><p class="sub">Wie das Portal aufgebaut ist und was die IT für den Betrieb in der Firma tun muss.</p></div>
+    <button class="btn pri" data-act="itcopy">Anleitung als Text kopieren</button></div>
   <section class="panel"><h2>So hängt alles zusammen</h2>
     <div class="tbl-wrap"><table><thead><tr><th>Teil</th><th>Wer nutzt es</th><th>Was passiert dort</th></tr></thead><tbody>
-      <tr><td><b>Server bei euch</b></td><td>niemand direkt</td><td>Datenbank, Anmeldung mit Firmen-E-Mail, PDF-Erzeugung, E-Mail-Versand, Datensicherung</td></tr>
-      <tr><td><b>Büro (Web)</b></td><td>Büro, Administratoren</td><td>Kunden und Anlagen pflegen, Aufträge planen und zuteilen, Karte, Berichte, Störungen, Rechte</td></tr>
-      <tr><td><b>Techniker (App)</b></td><td>Techniker, Administratoren</td><td>Zugeteilte Aufträge sehen, Checklisten abarbeiten, Fotos, Unterschrift, Bericht zurückschicken. Funktioniert auch offline.</td></tr>
+      <tr><td><b>Server in der Firma</b></td><td>niemand direkt</td><td>Datenbank, Anmeldung mit Firmen-E-Mail, PDF-Erzeugung, E-Mail-Versand, Dateiablage, Datensicherung aufs NAS</td></tr>
+      <tr><td><b>Büro (Web)</b></td><td>Büro, Administratoren</td><td>Kunden und Anlagen pflegen, Aufträge planen und zuteilen, Karte, Berichte, Störungen, Benutzer und Rechte</td></tr>
+      <tr><td><b>Techniker (App)</b></td><td>Techniker, Administratoren</td><td>Zugeteilte Aufträge, Checklisten, Fotos, Störungen, Unterschrift, Bericht zurückschicken. Läuft auch offline.</td></tr>
     </tbody></table></div>
-    <p class="muted small" style="margin:0">Ablauf: Büro plant → Auftrag erscheint in der App → Techniker prüft und schickt zurück → Server erzeugt PDF → PDF liegt im Kundenordner und geht per E-Mail ans Büro.</p></section>
-  <div class="grid2">
-    <section class="panel"><h2>Im Prototyp schon zu sehen</h2><ul class="list">
-      <li>Getrennte Ansichten „Büro (Web)“ und „Techniker (App)“ oben umschaltbar</li>
-      <li>Rollen Administrator, Büro und Techniker mit Web- und App-Zugang je Person</li>
-      <li>Startseite mit offenen Aufträgen, Karte, fälligen Anlagen und neuen Berichten</li>
-      <li>Karte mit Umkreissuche (20 km) für Touren</li>
-      <li>Foxtag-Struktur, Checklisten, Störungen, Import der Foxtag-Exporte</li>
-    </ul></section>
-    <section class="panel"><h2>Kommt in der echten Version dazu</h2><ul class="list">
-      <li>Echte Anmeldung über euren Server mit Firmen-E-Mail</li>
-      <li>Gemeinsame Datenbank für alle Geräte</li>
-      <li>Offline-Modus in der App, Abgleich danach</li>
-      <li>Echtes PDF mit Logo, E-Mail über euren Mailserver</li>
-      <li>Straßenkarte mit genauer Adresse, QR-Scan mit der Kamera</li>
-      <li>Komponenten aller Anlagen in einem Rutsch übernehmen</li>
-    </ul></section>
-  </div>
-  <section class="panel">
-    <h2>Kostenvergleich</h2>
-    <p class="muted" style="margin:0">Trage euren Foxtag-Preis ein. Hosting entfällt weitgehend, wenn es auf eurem eigenen Server läuft. Die einmalige Entwicklung ist nicht enthalten.</p>
-    <div class="fgrid">
-      <label class="f" for="cKonten">Foxtag-Konten heute<input id="cKonten" type="number" min="1" value="3" data-calc></label>
-      <label class="f" for="cTech">Benutzer insgesamt<input id="cTech" type="number" min="1" value="${S.users.length}" data-calc></label>
-      <label class="f" for="cPreis">Preis je Konto / Monat (€)<input id="cPreis" type="number" min="0" step="1" placeholder="euer Preis" data-calc></label>
-      <label class="f" for="cHost">Betrieb eigene Lösung / Monat (€)<input id="cHost" type="number" min="0" value="0" data-calc></label>
-    </div>
-    <div class="kpis" id="calc"></div>
-  </section>
-  <section class="panel"><h2>Demo</h2><p class="muted" style="margin:0">Alle Eingaben werden nur in diesem Browser gespeichert.</p>
+    <p class="muted small" style="margin:0">Ablauf: Büro plant → Auftrag erscheint in der App → Techniker prüft und schickt zurück → Server erzeugt das PDF → PDF liegt im Kundenordner und geht per E-Mail ans Büro.</p></section>
+
+  <article id="itguide" style="display:grid;gap:18px">
+  <section class="panel"><h2>Anleitung für die IT: Wartungsportal im eigenen Netz betreiben</h2>
+    <p style="margin:0"><b>Stand heute:</b> Das Portal ist ein Prototyp. Es besteht aus einer einzelnen Web-Seite (<span class="mono">index.html</span>), einem Service Worker für den Offline-Betrieb (<span class="mono">sw.js</span>), einem App-Manifest und Symbolen. Alle Daten liegen bisher nur im Browser des jeweiligen Geräts (IndexedDB), es gibt noch keinen Server. Quellcode: <a href="${repo}" target="_blank" rel="noopener">${repo}</a> (öffentlich, ohne Kundendaten).</p>
+    <p style="margin:0"><b>Ziel:</b> Gemeinsame Daten für Büro und alle Techniker auf dem eigenen Server, Anmeldung mit der Firmen-E-Mail, Berichte als PDF, Versand per E-Mail, Sicherung aufs NAS. Die Oberfläche wird weiterverwendet.</p></section>
+
+  <section class="panel"><h2>1. Zielarchitektur</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>Baustein</th><th>Vorschlag</th><th>Zweck</th></tr></thead><tbody>
+      <tr><td><b>Server</b></td><td>Virtuelle Maschine mit Linux (z. B. Ubuntu Server 24.04 LTS), Docker und Docker Compose</td><td>Alles läuft in Containern, leicht zu sichern und zu aktualisieren</td></tr>
+      <tr><td><b>Webserver / Reverse Proxy</b></td><td>Caddy oder nginx mit HTTPS-Zertifikat</td><td>Liefert die Oberfläche aus, leitet API-Aufrufe weiter, erzwingt HTTPS</td></tr>
+      <tr><td><b>Anwendung (API)</b></td><td>Node.js/TypeScript oder Python (FastAPI)</td><td>Benutzer und Rechte, Kunden, Anlagen, Aufträge, Checklisten, Störungen, Abgleich mit der App</td></tr>
+      <tr><td><b>Datenbank</b></td><td>PostgreSQL</td><td>Alle Stammdaten, Aufträge und Prüfergebnisse</td></tr>
+      <tr><td><b>Dateiablage</b></td><td>Ordner auf dem Server (Docker-Volume)</td><td>PDF-Berichte, Fotos, Handbücher und Pläne</td></tr>
+      <tr><td><b>Anmeldung</b></td><td>Microsoft Entra ID (falls Microsoft 365) über OpenID Connect</td><td>Login mit der Gundermann-E-Mail, kein eigenes Passwort, Sperre beim Austritt automatisch</td></tr>
+      <tr><td><b>E-Mail</b></td><td>Dienstpostfach, z. B. wartung@…, über Microsoft Graph oder SMTP</td><td>Berichte ans Büro und an Kunden schicken</td></tr>
+      <tr><td><b>PDF</b></td><td>Serverseitig, z. B. mit Headless Chromium</td><td>Wartungsbericht mit Logo als PDF</td></tr>
+      <tr><td><b>App</b></td><td>Installierbare Web-App (PWA), bereits vorhanden</td><td>Aufträge vorab aufs Handy laden, offline prüfen, bei Netz abgleichen</td></tr>
+    </tbody></table></div></section>
+
+  <section class="panel"><h2>2. Was die IT bereitstellen muss</h2>
+    <div class="tbl-wrap"><table><thead><tr><th style="width:36px"></th><th>Aufgabe</th><th>Details</th></tr></thead><tbody>
+      <tr><td>☐</td><td><b>Virtuelle Maschine</b></td><td>2–4 vCPU, 8 GB RAM, 100 GB SSD. Linux mit Docker und Docker Compose. SSH-Zugang nur aus dem Firmennetz.</td></tr>
+      <tr><td>☐</td><td><b>Adresse im Internet</b></td><td>Subdomain, z. B. <span class="mono">wartung.&lt;firmendomain&gt;.de</span>, mit DNS-Eintrag auf die öffentliche IP der Firma.</td></tr>
+      <tr><td>☐</td><td><b>Erreichbarkeit von außen</b></td><td>Techniker arbeiten beim Kunden. Port 443 (HTTPS) per Portweiterleitung oder DMZ auf den Reverse Proxy. Alternative: VPN auf allen Firmenhandys (mehr Aufwand im Alltag).</td></tr>
+      <tr><td>☐</td><td><b>HTTPS-Zertifikat</b></td><td>Let's Encrypt (automatisch über Caddy) oder ein Firmenzertifikat. Ohne HTTPS funktionieren App-Installation und Offline-Betrieb nicht.</td></tr>
+      <tr><td>☐</td><td><b>Firewall</b></td><td>Eingehend nur 443. Datenbank nicht von außen erreichbar. Updates des Systems automatisch einspielen.</td></tr>
+      <tr><td>☐</td><td><b>Anmeldung (Entra ID)</b></td><td>App-Registrierung „Gundermann Wartungsportal“ anlegen, Redirect-URI <span class="mono">https://wartung.&lt;firmendomain&gt;.de/auth/callback</span>. Drei Gruppen: <i>Wartung-Admin</i>, <i>Wartung-Büro</i>, <i>Wartung-Techniker</i>.</td></tr>
+      <tr><td>☐</td><td><b>Dienstpostfach</b></td><td>Postfach für den Berichtsversand, mit Sende-Berechtigung für die Anwendung.</td></tr>
+      <tr><td>☐</td><td><b>Datensicherung aufs NAS</b></td><td>Jede Nacht Datenbank-Sicherung und Dateiablage aufs NAS, z. B. 30 Tage aufbewahren plus Monatsstände. Einmal eine Wiederherstellung testen.</td></tr>
+      <tr><td>☐</td><td><b>Überwachung</b></td><td>Benachrichtigung, wenn der Dienst nicht erreichbar ist oder eine Sicherung fehlschlägt.</td></tr>
+    </tbody></table></div>
+    <p class="muted small" style="margin:0">Nutzt die Firma kein Microsoft 365, ist die Anmeldung auch mit Firmen-E-Mail und Passwort oder per Login-Link möglich. Dann bitte Bescheid geben, welcher Mailanbieter verwendet wird.</p></section>
+
+  <section class="panel"><h2>3. Konten und Rechte</h2><ul class="list">
+    <li>Jede Person meldet sich mit ihrer eigenen Gundermann-E-Mail an. Geteilte Konten gibt es nicht mehr, im Bericht steht immer, wer geprüft hat.</li>
+    <li>Rollen: <b>Administrator</b> (alles), <b>Büro</b> (Planung, Kunden, Berichte), <b>Techniker</b> (App). Zuordnung über die drei Entra-Gruppen oder im Portal unter Administration.</li>
+    <li>Pro Person einstellbar: Zugang Büro, Zugang App, darf Aufträge vor Ort anlegen.</li>
+    <li>Verlässt jemand die Firma, wird das Firmenkonto gesperrt. Damit ist auch der Zugang zum Portal weg.</li>
+  </ul></section>
+
+  <section class="panel"><h2>4. Datenübernahme aus Foxtag</h2><ul class="list">
+    <li>Kunden, Objekte, Anlagen und alle Komponenten mit Fälligkeiten werden aus Foxtag exportiert. Ein fertiger Weg dafür existiert bereits, rund 260 Kunden, 355 Objekte und 7.900 Komponenten.</li>
+    <li>Alle 12 Checklisten sind schon 1:1 aus Foxtag im Portal enthalten.</li>
+    <li>Der Export wird nur einmal beim Umstieg eingespielt. Exportdateien mit Kundendaten gehören nicht ins GitHub-Repository und nicht in E-Mails nach außen.</li>
+  </ul></section>
+
+  <section class="panel"><h2>5. Datenschutz</h2><ul class="list">
+    <li>Kundendaten liegen danach im eigenen Haus statt bei Foxtag. Verzeichnis der Verarbeitungstätigkeiten ergänzen.</li>
+    <li>Zugriffe nur über Anmeldung, Rechte nach Rolle, Protokoll wer was geändert hat.</li>
+    <li>Löschkonzept für Berichte und Fotos festlegen, z. B. Aufbewahrungsfristen.</li>
+    <li>Bei Kündigung von Foxtag: vollständigen Datenexport sichern und Löschung der Daten dort bestätigen lassen.</li>
+  </ul></section>
+
+  <section class="panel"><h2>6. Vorgehen in Schritten</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>Schritt</th><th>Inhalt</th><th>Wer</th></tr></thead><tbody>
+      <tr><td><b>1</b></td><td>Fragen unten klären, VM, Subdomain, Zertifikat und Entra-App bereitstellen</td><td>IT</td></tr>
+      <tr><td><b>2</b></td><td>Server-Anwendung entwickeln: Datenbank, Anmeldung, Abgleich mit der App, PDF und E-Mail. Die Oberfläche aus dem Prototyp wird angebunden.</td><td>Entwicklung (intern oder extern)</td></tr>
+      <tr><td><b>3</b></td><td>Foxtag-Daten einspielen, Testbetrieb mit einem Techniker und dem Büro parallel zu Foxtag (ca. 4 Wochen)</td><td>Service, Büro</td></tr>
+      <tr><td><b>4</b></td><td>Umstieg für alle, Foxtag kündigen</td><td>Geschäftsführung</td></tr>
+    </tbody></table></div></section>
+
+  <section class="panel"><h2>7. Fragen an die IT</h2><ul class="list">
+    <li>Läuft die Firmen-E-Mail über Microsoft 365 (Entra ID)?</li>
+    <li>Welches System läuft auf dem Server, und ist Platz für eine Linux-VM mit Docker?</li>
+    <li>Kann der Server über HTTPS aus dem Internet erreichbar gemacht werden, oder nur per VPN?</li>
+    <li>Welche Firmendomain soll für <span class="mono">wartung.…</span> genutzt werden?</li>
+    <li>Wie wird das NAS heute gesichert, und darf das Portal dort seine Sicherungen ablegen?</li>
+    <li>Wer übernimmt Betrieb und Updates, und wer entwickelt die Server-Anwendung?</li>
+  </ul>
+  <p class="muted small" style="margin:0">Ansprechpartner fachlich: Marcel Schulz, Service.</p></section>
+  </article>
+
+  <section class="panel"><h2>Demo</h2><p class="muted" style="margin:0">Im Prototyp werden alle Eingaben nur in diesem Browser gespeichert.</p>
     <div><button class="btn danger" data-act="reset">Beispieldaten zurücksetzen</button></div></section>`;
 }
-function calc(){
-  const el = document.getElementById('calc'); if(!el) return;
-  const v = id => parseFloat(document.getElementById(id).value);
-  const konten = v('cKonten'), tech = v('cTech'), preis = v('cPreis'), host = v('cHost') || 0;
-  const eur = x => isFinite(x) ? Math.round(x).toLocaleString('de-DE')+' €' : '–';
-  el.innerHTML = `
-    <div class="kpi"><div class="n">${eur(konten*preis*12)}</div><div class="l">Foxtag pro Jahr, ${konten||'–'} geteilte Konten</div></div>
-    <div class="kpi warn"><div class="n">${eur(tech*preis*12)}</div><div class="l">Foxtag pro Jahr, ein Konto je Person</div></div>
-    <div class="kpi acc"><div class="n">${eur(host*12)}</div><div class="l">Eigene Lösung pro Jahr, laufend</div></div>`;
-}
+function calc(){}
 
 /* ---------- Wartungsbericht (Dokument) ---------- */
 function prOf(A, cid){ if(!A.pr[cid]) A.pr[cid] = {f:{}, fotos:[], done:false}; return A.pr[cid]; }
@@ -1860,6 +1897,12 @@ const ACT = {
   mode: d => { S.mode = d.v; save(); render(); window.scrollTo(0,0); },
   go: d => { UI.view = d.v; UI.err = ''; UI.addK = false; UI.menu = false; render(); window.scrollTo(0,0); },
   menu: () => { UI.menu = !UI.menu; renderChrome(); },
+  itcopy: () => {
+    const el = document.getElementById('itguide'); if(!el) return;
+    const text = el.innerText;
+    const auswaehlen = () => { const r = document.createRange(); r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Text ist markiert, bitte mit Strg+C kopieren'); };
+    try{ navigator.clipboard.writeText(text).then(() => toast('Anleitung kopiert, z. B. in eine E-Mail an die IT einfügen'), auswaehlen); }catch(e){ auswaehlen(); }
+  },
   install: async () => {
     if(!installHinweis) return;
     installHinweis.prompt();
