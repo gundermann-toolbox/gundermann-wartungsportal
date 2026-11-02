@@ -63,12 +63,59 @@ a{color:var(--accent)}
   .menubtn{display:flex}
   .band-in .nav{display:none;flex-direction:column;overflow:visible;padding-bottom:10px}
   .band.open .band-in .nav{display:flex}
-  .band-in .nav button{border-bottom:1px solid rgba(255,255,255,.14);border-left:4px solid transparent;padding:13px 12px;justify-content:space-between}
+  .band-in .nav button{border-bottom:1px solid rgba(255,255,255,.14);border-left:4px solid transparent;padding:13px 12px;justify-content:flex-start}
+  .band-in .nav button .cnt{margin-left:auto}
   .band-in .nav button.on{border-bottom-color:rgba(255,255,255,.14);border-left-color:var(--mag);background:rgba(255,255,255,.06)}
-  .appmode-band .menubtn{display:none}
-  .appmode-band .band-in .nav{display:flex}
+  .band-in .nav .bandlabel{display:none}
+  .top-in .demo, .top-in .modes, .top-in .who, .top-in .gsuche, .top-in #offline{display:none!important}
+  .band.open .navextra{display:grid}
 }
 .who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+/* Suche im Kopf */
+.gsuche{position:relative;min-width:0}
+.gsuche input{min-height:36px;padding:6px 10px 6px 32px;width:260px;max-width:100%;background:var(--bg)}
+.gsuche .lupe{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex}
+.gres{position:absolute;left:0;top:calc(100% + 4px);width:min(420px,90vw);max-height:60vh;overflow:auto;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;box-shadow:0 10px 30px rgba(10,30,50,.18);z-index:40;padding:6px;display:grid;gap:2px}
+.gitem{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;align-items:center;text-align:left;border:0;background:none;padding:8px;border-radius:8px;cursor:pointer;color:var(--ink)}
+.gitem:hover,.gitem:focus-visible{background:var(--sunk)}
+.gitem .art{font:600 11px var(--f-body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);grid-row:span 2}
+.gitem b{font-weight:600}
+.gitem small{color:var(--muted)}
+/* Menü-Zusatz am Handy: Suche, Ansicht, Benutzer */
+.navextra{display:none;gap:10px;padding:12px 0 6px;border-top:1px solid rgba(255,255,255,.2);margin-top:6px}
+.navextra .gsuche input{width:100%}
+.navextra .gres{width:100%}
+.navextra .modes{width:100%;display:grid;grid-template-columns:1fr 1fr}
+.navextra label{color:#fff;font-size:13px;display:grid;gap:4px}
+.navextra select{min-height:40px}
+.ico-i{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-3px}
+.nav button .ico-i{opacity:.85}
+button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
+button.kpi:hover{border-color:var(--accent)}
+button.kpi .l::after{content:" ›";color:var(--muted)}
+/* Tabellen am Handy als Karten */
+@media (max-width:640px){
+  .tbl-wrap{margin-inline:0;padding-inline:0}
+  table.kt thead{display:none}
+  table.kt, table.kt tbody{display:block}
+  table.kt tr{display:block;border:2px solid var(--line-strong);border-radius:10px;margin:8px 0;padding:6px 12px;background:var(--surface)}
+  table.kt tr.grp{border:0;background:none;padding:10px 0 0;margin:12px 0 0}
+  table.kt td{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border:0;padding:5px 0;text-align:right}
+  table.kt td>*{text-align:right}
+  table.kt td[data-l]::before{content:attr(data-l);color:var(--muted);font-size:12px;font-weight:600;text-align:left;flex:none;max-width:42%}
+  table.kt tr.grp td{display:block;text-align:left;background:none}
+  table.kt tr.click:hover td{background:none}
+}
+/* Druck / PDF: nur der Bericht */
+@media print{
+  @page{size:A4;margin:14mm}
+  body.printing *{visibility:hidden}
+  body.printing .doc, body.printing .doc *{visibility:visible}
+  body.printing .doc{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;padding:0;border-radius:0}
+  body.printing .doc .vorschau-hinweis{display:none}
+  body.printing .doc section{break-inside:avoid}
+  body{background:#fff}
+}
 .who select{min-height:34px;padding:5px 8px;width:auto}
 .modes{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .modes button{border:0;background:var(--surface);padding:6px 12px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;border-left:1px solid var(--line)}
@@ -103,7 +150,7 @@ h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em;color:var(--
 .grid2{display:grid;gap:18px}
 @media (min-width:1000px){.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2.wide-l{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.kpi{background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:14px 16px}
+.kpi{background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:14px 16px;display:block}
 .kpi .n{font:700 38px/1 var(--f-display);font-variant-numeric:tabular-nums}
 .kpi .l{color:var(--muted);font-size:13.5px;margin-top:4px}
 .kpi.bad .n{color:var(--bad)} .kpi.warn .n{color:var(--warn)} .kpi.acc .n{color:var(--accent)}
@@ -302,6 +349,7 @@ ul.list{margin:0;padding-left:20px;display:grid;gap:6px}
     <span class="demo" id="offline" hidden style="color:var(--surface);background:var(--bad);border-color:var(--bad)">Offline</span>
     <button class="btn sm pri" id="installBtn" data-act="install" hidden>App installieren</button>
     <div class="modes" id="modes" role="group" aria-label="Ansicht"></div>
+    <div class="gsuche"><span class="lupe" aria-hidden="true"></span><input type="search" data-gq placeholder="Suchen: Kunde, Objekt, Auftrag …" aria-label="Suchen" autocomplete="off"><div class="gres" hidden></div></div>
     <label class="who" for="who">Angemeldet als <select id="who"></select></label>
   </div>
   <div class="band"><div class="band-in gut"><button class="menubtn" id="menubtn" data-act="menu" aria-expanded="false" aria-controls="nav"></button><nav class="nav" id="nav" aria-label="Bereiche"></nav></div></div>
@@ -331,7 +379,7 @@ const GRUPPEN = {1:'Zentrale Lüftungsanlage', 2:'Dezentrale Lüftungsanlage', 3
 const CODES = {V:['Vierteljährlich',3], H:['Halbjährlich',6], J:['Jährlich',12], Z:['Alle 2 Jahre',24]};
 const FELDTYPEN = {ueberschrift:'Überschrift', ionv:'i.O. | n.i.O. | n.v.', ion:'i.O. | n.i.O.', janein:'Ja | Nein', janeinnv:'Ja | Nein | n.v.', checkbox:'Checkbox', text:'Text', wert:'Zahl / Messwert'};
 /* Checklisten 1:1 aus Foxtag (Wartungsanwendung „Wartung“), Stand 02.11.2026. cl-vor/cl-nach gelten für den ganzen Auftrag. */
-const FOXTAG_CL = [{"id":"cl-zla","name":"Zentrale Lüftungsanlage","felder":[{"id":"cl-zla-0","typ":"ueberschrift","label":"Allgemeine Anlagenprüfung","einheit":"","max":null},{"id":"cl-zla-1","typ":"janein","label":"Lüftungsanlage in Betrieb","einheit":"","max":null},{"id":"cl-zla-2","typ":"janein","label":"Anlage Funktionsbereit","einheit":"","max":null},{"id":"cl-zla-3","typ":"text","label":"Störmeldung","einheit":"","max":null},{"id":"cl-zla-4","typ":"ueberschrift","label":"Lüftungsgehäuse / Gerätekammer","einheit":"","max":null},{"id":"cl-zla-5","typ":"ionv","label":"Sichtprüfung - Außenbereich auf Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-6","typ":"ionv","label":"Sichtprüfung - Innenbereich auf Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-7","typ":"checkbox","label":"Funktionserhaltende Reinigung durchgeführt","einheit":"","max":null},{"id":"cl-zla-8","typ":"ueberschrift","label":"Ventilatoren","einheit":"","max":null},{"id":"cl-zla-9","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-10","typ":"checkbox","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-11","typ":"ionv","label":"Lager auf Geräusch prüfen","einheit":"","max":null},{"id":"cl-zla-12","typ":"ionv","label":"Keilriemen auf Verschleiß und Spannung prüfen","einheit":"","max":null},{"id":"cl-zla-13","typ":"ionv","label":"Schwingungsdämpfer auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-14","typ":"ueberschrift","label":"Heiz- / Kühlregister","einheit":"","max":null},{"id":"cl-zla-15","typ":"ionv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-16","typ":"checkbox","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-17","typ":"ionv","label":"Frostschutzwächter","einheit":"","max":null},{"id":"cl-zla-18","typ":"ionv","label":"Mischventil","einheit":"","max":null},{"id":"cl-zla-19","typ":"ionv","label":"Umwälzpumpe","einheit":"","max":null},{"id":"cl-zla-20","typ":"ueberschrift","label":"Kreuzstrom-Wärmeübertrager","einheit":"","max":null},{"id":"cl-zla-21","typ":"janeinnv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-22","typ":"checkbox","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-23","typ":"ionv","label":"Wasserablauf und Geruchverschluss auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-24","typ":"ueberschrift","label":"Rotations-Wärmeüberträger","einheit":"","max":null},{"id":"cl-zla-25","typ":"ionv","label":"Luftseitig auf Verschmutzung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-26","typ":"checkbox","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-27","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-28","typ":"ionv","label":"Antriebsmotor","einheit":"","max":null},{"id":"cl-zla-29","typ":"ueberschrift","label":"Luftfilter","einheit":"","max":null},{"id":"cl-zla-30","typ":"checkbox","label":"Filtereinsatz gewechselt","einheit":"","max":null},{"id":"cl-zla-31","typ":"checkbox","label":"Filtereinsatz gereinigt","einheit":"","max":null},{"id":"cl-zla-32","typ":"ueberschrift","label":"Jalousieklappen","einheit":"","max":null},{"id":"cl-zla-33","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-34","typ":"checkbox","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-35","typ":"ionv","label":"Auf mechanische Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-36","typ":"ionv","label":"Stellantriebe","einheit":"","max":null},{"id":"cl-zla-37","typ":"ueberschrift","label":"Wetterschutzgitter / Ansaugturm","einheit":"","max":null},{"id":"cl-zla-38","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-39","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-zla-40","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-zla-alt","name":"Zentrale Lüftungsanlage alt","felder":[{"id":"cl-zla-alt-0","typ":"ueberschrift","label":"Ventilatoren","einheit":"","max":null},{"id":"cl-zla-alt-1","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-alt-2","typ":"janeinnv","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-alt-3","typ":"ionv","label":"Lager auf Geräusch prüfen","einheit":"","max":null},{"id":"cl-zla-alt-4","typ":"ionv","label":"Schwingungsdämpfer auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-5","typ":"ueberschrift","label":"Lufterhitzer (Luft/Flüssigkeit)","einheit":"","max":null},{"id":"cl-zla-alt-6","typ":"ionv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-7","typ":"janeinnv","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-alt-8","typ":"ionv","label":"Frostschutzwächter","einheit":"","max":null},{"id":"cl-zla-alt-9","typ":"ionv","label":"Umschaltventil","einheit":"","max":null},{"id":"cl-zla-alt-10","typ":"ionv","label":"Umwälzpumpe","einheit":"","max":null},{"id":"cl-zla-alt-11","typ":"ueberschrift","label":"Kreuzstrom-Wärmeübertrager","einheit":"","max":null},{"id":"cl-zla-alt-12","typ":"ionv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-13","typ":"janeinnv","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-alt-14","typ":"ionv","label":"Wasserablauf und Geruchverschluss auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-15","typ":"ueberschrift","label":"Rotations-Wärmeüberträger","einheit":"","max":null},{"id":"cl-zla-alt-16","typ":"ion","label":"Luftseitig auf Verschmutzung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-17","typ":"janein","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-alt-18","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-19","typ":"ion","label":"Antriebsmotor","einheit":"","max":null},{"id":"cl-zla-alt-20","typ":"ueberschrift","label":"Luftfilter","einheit":"","max":null},{"id":"cl-zla-alt-21","typ":"ionv","label":"Filtereinsatz auf dichten Sitz prüfen","einheit":"","max":null},{"id":"cl-zla-alt-22","typ":"janeinnv","label":"Filtereinsatz gewechselt","einheit":"","max":null},{"id":"cl-zla-alt-23","typ":"ueberschrift","label":"Wetterschutzgitter / Ansaugturm","einheit":"","max":null},{"id":"cl-zla-alt-24","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-alt-25","typ":"ueberschrift","label":"Jalousieklappen","einheit":"","max":null},{"id":"cl-zla-alt-26","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-27","typ":"janeinnv","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-alt-28","typ":"ionv","label":"Auf mechanische Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-29","typ":"ionv","label":"Stellantriebe","einheit":"","max":null},{"id":"cl-zla-alt-30","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-zla-alt-31","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-dla","name":"Dezentrale Lüftungsanlage","felder":[{"id":"cl-dla-0","typ":"ueberschrift","label":"Filter","einheit":"","max":null},{"id":"cl-dla-1","typ":"janeinnv","label":"Filter gereinigt","einheit":"","max":null},{"id":"cl-dla-2","typ":"janeinnv","label":"Filter gewechselt","einheit":"","max":null},{"id":"cl-dla-3","typ":"ueberschrift","label":"Funktionsprüfung","einheit":"","max":null},{"id":"cl-dla-4","typ":"ionv","label":"Funktion Ventilator geprüft","einheit":"","max":null},{"id":"cl-dla-5","typ":"ionv","label":"Keilriemen auf Verschleiß und Spannung prüfen","einheit":"","max":null},{"id":"cl-dla-6","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-dla-7","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-klima","name":"Klima","felder":[{"id":"cl-klima-0","typ":"ueberschrift","label":"Anlagen-Status vor Wartungsbeginn","einheit":"","max":null},{"id":"cl-klima-1","typ":"janeinnv","label":"Anlage in Betrieb","einheit":"","max":null},{"id":"cl-klima-2","typ":"janeinnv","label":"Anlage spannungsfrei","einheit":"","max":null},{"id":"cl-klima-3","typ":"janeinnv","label":"Anlage mit Fehlermeldung","einheit":"","max":null},{"id":"cl-klima-4","typ":"ueberschrift","label":"Fehlerstatus","einheit":"","max":null},{"id":"cl-klima-5","typ":"text","label":"Störung Außeneinheit","einheit":"","max":null},{"id":"cl-klima-6","typ":"text","label":"Störung Inneneinheit","einheit":"","max":null},{"id":"cl-klima-7","typ":"ueberschrift","label":"Prüfung Kältekreislauf","einheit":"","max":null},{"id":"cl-klima-8","typ":"wert","label":"Anzahl der angeschlossenen Innengeräte","einheit":"Stk","max":null},{"id":"cl-klima-9","typ":"checkbox","label":"Außengerät höher als Innengeräte","einheit":"","max":null},{"id":"cl-klima-10","typ":"checkbox","label":"Außengerät tiefer als Innengeräte","einheit":"","max":null},{"id":"cl-klima-11","typ":"janeinnv","label":"Isolierte Saug- und Flüssigkeitsleitung","einheit":"","max":null},{"id":"cl-klima-12","typ":"janeinnv","label":"Sichtprüfung Kältekreislauf i.O.","einheit":"","max":null},{"id":"cl-klima-13","typ":"ueberschrift","label":"Dichtheitsprüfung","einheit":"","max":null},{"id":"cl-klima-14","typ":"janeinnv","label":"Dichtheitsprüfung","einheit":"","max":null},{"id":"cl-klima-15","typ":"ueberschrift","label":"Prüfung Außengerät","einheit":"","max":null},{"id":"cl-klima-16","typ":"janeinnv","label":"Reinigung des Wärmetauschers","einheit":"","max":null},{"id":"cl-klima-17","typ":"janeinnv","label":"Innenreinigung des Außengerätes","einheit":"","max":null},{"id":"cl-klima-18","typ":"ionv","label":"Prüfung der Ventilatoren","einheit":"","max":null},{"id":"cl-klima-19","typ":"ueberschrift","label":"Prüfung Spannungsversorgung","einheit":"","max":null},{"id":"cl-klima-20","typ":"janeinnv","label":"Reparaturschalter am AG angebracht","einheit":"","max":null},{"id":"cl-klima-21","typ":"ueberschrift","label":"Prüfung der Innengeräte","einheit":"","max":null},{"id":"cl-klima-22","typ":"ionv","label":"Externe Kondensatpumpe","einheit":"","max":null},{"id":"cl-klima-23","typ":"janeinnv","label":"Reinigung/Erneuerung Filter","einheit":"","max":null},{"id":"cl-klima-24","typ":"ionv","label":"Kondensatabfluss-Prüfung","einheit":"","max":null},{"id":"cl-klima-25","typ":"ueberschrift","label":"Prüfung Fernbedienung","einheit":"","max":null},{"id":"cl-klima-26","typ":"ionv","label":"Infrarot-Fernbedienung","einheit":"","max":null},{"id":"cl-klima-27","typ":"ionv","label":"Kabel-Fernbedienung","einheit":"","max":null},{"id":"cl-klima-28","typ":"ueberschrift","label":"Testbetrieb Manometerdruck","einheit":"","max":null},{"id":"cl-klima-29","typ":"wert","label":"Hochdruck","einheit":"bar","max":null},{"id":"cl-klima-30","typ":"wert","label":"Hochdruck","einheit":"°C","max":null},{"id":"cl-klima-31","typ":"wert","label":"Niederdruck","einheit":"bar","max":null},{"id":"cl-klima-32","typ":"wert","label":"Niederdruck","einheit":"°C","max":null},{"id":"cl-klima-33","typ":"wert","label":"Stromaufnahme L1","einheit":"A","max":null},{"id":"cl-klima-34","typ":"wert","label":"Stromaufnahme L2","einheit":"A","max":null},{"id":"cl-klima-35","typ":"wert","label":"Stromaufnahme L3","einheit":"A","max":null},{"id":"cl-klima-36","typ":"ueberschrift","label":"Kühlbetrieb","einheit":"","max":null},{"id":"cl-klima-37","typ":"wert","label":"Kühlmittel Temperatur In","einheit":"°C","max":null},{"id":"cl-klima-38","typ":"wert","label":"Außentemperatur","einheit":"°C","max":null},{"id":"cl-klima-39","typ":"wert","label":"Raumtemperatur","einheit":"°C","max":null},{"id":"cl-klima-40","typ":"ueberschrift","label":"Heizbetrieb","einheit":"","max":null},{"id":"cl-klima-41","typ":"wert","label":"Kühlmittel Temperatur In","einheit":"°C","max":null},{"id":"cl-klima-42","typ":"wert","label":"Außentemperatur","einheit":"°C","max":null},{"id":"cl-klima-43","typ":"wert","label":"Raumtemperatur","einheit":"°C","max":null},{"id":"cl-klima-44","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-klima-45","typ":"text","label":"Bemerkung","einheit":"","max":null}]},{"id":"cl-bsk","name":"Brandschutz","felder":[{"id":"cl-bsk-0","typ":"ionv","label":"Auslöseeinrichtung auf Funktion prüfen","einheit":"","max":null},{"id":"cl-bsk-1","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-bsk-2","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-rm","name":"Rauchmelder","felder":[{"id":"cl-rm-0","typ":"checkbox","label":"Funktionsprüfung","einheit":"","max":null},{"id":"cl-rm-1","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-rm-2","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-ss","name":"Schaltschrank","felder":[{"id":"cl-ss-0","typ":"ueberschrift","label":"Allgemeine Sichtprüfung","einheit":"","max":null},{"id":"cl-ss-1","typ":"ionv","label":"Schaltschrank auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-ss-2","typ":"ionv","label":"Beschriftung und Schaltpläne vorhanden und lesbar","einheit":"","max":null},{"id":"cl-ss-3","typ":"ueberschrift","label":"Funktionsprüfung","einheit":"","max":null},{"id":"cl-ss-4","typ":"ionv","label":"Phasenleuchten auf Funktion prüfen","einheit":"","max":null},{"id":"cl-ss-5","typ":"ionv","label":"Schalt- und Steuervorgänge, Sicherheitseinrichtungen, Sicherheitsketten prüfen","einheit":"","max":null},{"id":"cl-ss-6","typ":"ionv","label":"Funktionselemente am Schaltschrank prüfen (Hupe, Anzeige, LEDs)","einheit":"","max":null},{"id":"cl-ss-7","typ":"ueberschrift","label":"Schaltschranklüfter","einheit":"","max":null},{"id":"cl-ss-8","typ":"ionv","label":"Auf Funktion prüfen","einheit":"","max":null},{"id":"cl-ss-9","typ":"checkbox","label":"Filter ausgetauscht/gereinigt","einheit":"","max":null},{"id":"cl-ss-10","typ":"ueberschrift","label":"Sonstige","einheit":"","max":null},{"id":"cl-ss-11","typ":"text","label":"Bemerkung","einheit":"","max":null}]},{"id":"cl-msr","name":"MSR","felder":[{"id":"cl-msr-0","typ":"text","label":"Hersteller","einheit":"","max":null},{"id":"cl-msr-1","typ":"text","label":"Typ","einheit":"","max":null},{"id":"cl-msr-2","typ":"text","label":"Baujahr","einheit":"","max":null},{"id":"cl-msr-3","typ":"ionv","label":"Motor auf Funktion geprüft","einheit":"","max":null},{"id":"cl-msr-4","typ":"ueberschrift","label":"Motordaten","einheit":"","max":null},{"id":"cl-msr-5","typ":"checkbox","label":"1-Stufig","einheit":"","max":null},{"id":"cl-msr-6","typ":"checkbox","label":"2-Stufig","einheit":"","max":null},{"id":"cl-msr-7","typ":"checkbox","label":"3-Stufig","einheit":"","max":null},{"id":"cl-msr-8","typ":"janeinnv","label":"Frequenzumrichter","einheit":"","max":null},{"id":"cl-msr-9","typ":"janeinnv","label":"Direktantrieb auf Motorwelle","einheit":"","max":null},{"id":"cl-msr-10","typ":"janeinnv","label":"Keilriemenantrieb zum Ventilator","einheit":"","max":null},{"id":"cl-msr-11","typ":"ionv","label":"Keilriemenspannung","einheit":"","max":null},{"id":"cl-msr-12","typ":"ueberschrift","label":"Zuluftmotor","einheit":"","max":null},{"id":"cl-msr-13","typ":"wert","label":"Spannung","einheit":"V","max":null},{"id":"cl-msr-14","typ":"wert","label":"Max. Nennstrom","einheit":"A","max":null},{"id":"cl-msr-15","typ":"wert","label":"Max. Leistung","einheit":"kW","max":null},{"id":"cl-msr-16","typ":"wert","label":"Umdrehungen","einheit":"U/min","max":null},{"id":"cl-msr-17","typ":"ueberschrift","label":"Messung Zuluftmotor Stufe 1","einheit":"","max":null},{"id":"cl-msr-18","typ":"wert","label":"Zuluft L1","einheit":"A","max":null},{"id":"cl-msr-19","typ":"wert","label":"Zuluft L2","einheit":"A","max":null},{"id":"cl-msr-20","typ":"wert","label":"Zuluft L3","einheit":"A","max":null},{"id":"cl-msr-21","typ":"ueberschrift","label":"Messung Zuluftmotor Stufe 2","einheit":"","max":null},{"id":"cl-msr-22","typ":"wert","label":"Zuluft L1","einheit":"A","max":null},{"id":"cl-msr-23","typ":"wert","label":"Zuluft L2","einheit":"A","max":null},{"id":"cl-msr-24","typ":"wert","label":"Zuluft L3","einheit":"A","max":null},{"id":"cl-msr-25","typ":"ueberschrift","label":"Abluftmotor","einheit":"","max":null},{"id":"cl-msr-26","typ":"wert","label":"Spannung","einheit":"V","max":null},{"id":"cl-msr-27","typ":"wert","label":"Max. Nennstrom","einheit":"A","max":null},{"id":"cl-msr-28","typ":"wert","label":"Max. Leistung","einheit":"kW","max":null},{"id":"cl-msr-29","typ":"wert","label":"Umdrehungen","einheit":"U/min","max":null},{"id":"cl-msr-30","typ":"ueberschrift","label":"Messung Abluftmotor Stufe 1","einheit":"","max":null},{"id":"cl-msr-31","typ":"wert","label":"Abluft L1","einheit":"A","max":null},{"id":"cl-msr-32","typ":"wert","label":"Abluft L2","einheit":"A","max":null},{"id":"cl-msr-33","typ":"wert","label":"Abluft L3","einheit":"A","max":null},{"id":"cl-msr-34","typ":"ueberschrift","label":"Messung Abluftmotor Stufe 2","einheit":"","max":null},{"id":"cl-msr-35","typ":"wert","label":"Abluft L1","einheit":"A","max":null},{"id":"cl-msr-36","typ":"wert","label":"Abluft L2","einheit":"A","max":null},{"id":"cl-msr-37","typ":"wert","label":"Abluft L3","einheit":"A","max":null},{"id":"cl-msr-38","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-msr-39","typ":"text","label":"Bemerkung","einheit":"","max":null}]},{"id":"cl-lmm","name":"Luftmengenmessung","felder":[{"id":"cl-lmm-0","typ":"ueberschrift","label":"Luftmengenmessung Zuluft","einheit":"","max":null},{"id":"cl-lmm-1","typ":"wert","label":"Gesamtluftmenge RLT Soll","einheit":"m³/h","max":null},{"id":"cl-lmm-2","typ":"wert","label":"Gesamtluftmenge RLT Ist","einheit":"m³/h","max":null},{"id":"cl-lmm-3","typ":"wert","label":"K-Faktor","einheit":"","max":null},{"id":"cl-lmm-4","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-5","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-6","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-7","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-8","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-9","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-10","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-11","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-12","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-13","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-14","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-15","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-16","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-17","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-18","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-19","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-20","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-21","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-22","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-23","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-24","typ":"ueberschrift","label":"Luftmengenmessung Abluft","einheit":"","max":null},{"id":"cl-lmm-25","typ":"wert","label":"Gesamtluftmenge RLT Soll","einheit":"m³/h","max":null},{"id":"cl-lmm-26","typ":"wert","label":"Gesamtluftmenge RLT Ist","einheit":"m³/h","max":null},{"id":"cl-lmm-27","typ":"wert","label":"K-Faktor","einheit":"","max":null},{"id":"cl-lmm-28","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-29","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-30","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-31","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-32","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-33","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-34","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-35","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-36","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-37","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-38","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-39","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-40","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-41","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-42","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-43","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-44","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-45","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-46","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-47","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-48","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-lmm-49","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-sonst","name":"Sonstiges","felder":[{"id":"cl-sonst-0","typ":"checkbox","label":"Überprüft","einheit":"","max":null},{"id":"cl-sonst-1","typ":"janeinnv","label":"Gereinigt","einheit":"","max":null},{"id":"cl-sonst-2","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-sonst-3","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-vor","name":"Vorarbeiten","felder":[{"id":"cl-vor-0","typ":"text","label":"Ansprechpartner","einheit":"","max":null},{"id":"cl-vor-1","typ":"text","label":"E-Mail-Adresse","einheit":"","max":null},{"id":"cl-vor-2","typ":"checkbox","label":"Rechnung per E-Mail","einheit":"","max":null},{"id":"cl-vor-3","typ":"text","label":"Rechnungsadresse","einheit":"","max":null}],"auftrag":true},{"id":"cl-nach","name":"Nacharbeiten","felder":[{"id":"cl-nach-0","typ":"text","label":"Ausgeführte Arbeiten","einheit":"","max":null}],"auftrag":true}];
+const FOXTAG_CL = [{"id":"cl-zla","name":"Zentrale Lüftungsanlage","felder":[{"id":"cl-zla-0","typ":"ueberschrift","label":"Allgemeine Anlagenprüfung","einheit":"","max":null},{"id":"cl-zla-1","typ":"janein","label":"Lüftungsanlage in Betrieb","einheit":"","max":null},{"id":"cl-zla-2","typ":"janein","label":"Anlage Funktionsbereit","einheit":"","max":null},{"id":"cl-zla-3","typ":"text","label":"Störmeldung","einheit":"","max":null},{"id":"cl-zla-4","typ":"ueberschrift","label":"Lüftungsgehäuse / Gerätekammer","einheit":"","max":null},{"id":"cl-zla-5","typ":"ionv","label":"Sichtprüfung - Außenbereich auf Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-6","typ":"ionv","label":"Sichtprüfung - Innenbereich auf Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-7","typ":"checkbox","label":"Funktionserhaltende Reinigung durchgeführt","einheit":"","max":null},{"id":"cl-zla-8","typ":"ueberschrift","label":"Ventilatoren","einheit":"","max":null},{"id":"cl-zla-9","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-10","typ":"checkbox","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-11","typ":"ionv","label":"Lager auf Geräusch prüfen","einheit":"","max":null},{"id":"cl-zla-12","typ":"ionv","label":"Keilriemen auf Verschleiß und Spannung prüfen","einheit":"","max":null},{"id":"cl-zla-13","typ":"ionv","label":"Schwingungsdämpfer auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-14","typ":"ueberschrift","label":"Heiz- / Kühlregister","einheit":"","max":null},{"id":"cl-zla-15","typ":"ionv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-16","typ":"checkbox","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-17","typ":"ionv","label":"Frostschutzwächter","einheit":"","max":null},{"id":"cl-zla-18","typ":"ionv","label":"Mischventil","einheit":"","max":null},{"id":"cl-zla-19","typ":"ionv","label":"Umwälzpumpe","einheit":"","max":null},{"id":"cl-zla-20","typ":"ueberschrift","label":"Kreuzstrom-Wärmeübertrager","einheit":"","max":null},{"id":"cl-zla-21","typ":"janeinnv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-22","typ":"checkbox","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-23","typ":"ionv","label":"Wasserablauf und Geruchverschluss auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-24","typ":"ueberschrift","label":"Rotations-Wärmeüberträger","einheit":"","max":null},{"id":"cl-zla-25","typ":"ionv","label":"Luftseitig auf Verschmutzung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-26","typ":"checkbox","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-27","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-28","typ":"ionv","label":"Antriebsmotor","einheit":"","max":null},{"id":"cl-zla-29","typ":"ueberschrift","label":"Luftfilter","einheit":"","max":null},{"id":"cl-zla-30","typ":"checkbox","label":"Filtereinsatz gewechselt","einheit":"","max":null},{"id":"cl-zla-31","typ":"checkbox","label":"Filtereinsatz gereinigt","einheit":"","max":null},{"id":"cl-zla-32","typ":"ueberschrift","label":"Jalousieklappen","einheit":"","max":null},{"id":"cl-zla-33","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-34","typ":"checkbox","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-35","typ":"ionv","label":"Auf mechanische Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-36","typ":"ionv","label":"Stellantriebe","einheit":"","max":null},{"id":"cl-zla-37","typ":"ueberschrift","label":"Wetterschutzgitter / Ansaugturm","einheit":"","max":null},{"id":"cl-zla-38","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-39","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-zla-40","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-zla-alt","name":"Zentrale Lüftungsanlage alt","felder":[{"id":"cl-zla-alt-0","typ":"ueberschrift","label":"Ventilatoren","einheit":"","max":null},{"id":"cl-zla-alt-1","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-alt-2","typ":"janeinnv","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-alt-3","typ":"ionv","label":"Lager auf Geräusch prüfen","einheit":"","max":null},{"id":"cl-zla-alt-4","typ":"ionv","label":"Schwingungsdämpfer auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-5","typ":"ueberschrift","label":"Lufterhitzer (Luft/Flüssigkeit)","einheit":"","max":null},{"id":"cl-zla-alt-6","typ":"ionv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-7","typ":"janeinnv","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-alt-8","typ":"ionv","label":"Frostschutzwächter","einheit":"","max":null},{"id":"cl-zla-alt-9","typ":"ionv","label":"Umschaltventil","einheit":"","max":null},{"id":"cl-zla-alt-10","typ":"ionv","label":"Umwälzpumpe","einheit":"","max":null},{"id":"cl-zla-alt-11","typ":"ueberschrift","label":"Kreuzstrom-Wärmeübertrager","einheit":"","max":null},{"id":"cl-zla-alt-12","typ":"ionv","label":"Luftseitig auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-13","typ":"janeinnv","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-alt-14","typ":"ionv","label":"Wasserablauf und Geruchverschluss auf Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-15","typ":"ueberschrift","label":"Rotations-Wärmeüberträger","einheit":"","max":null},{"id":"cl-zla-alt-16","typ":"ion","label":"Luftseitig auf Verschmutzung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-17","typ":"janein","label":"Funktionserhaltendes Reinigen (luftseitig)","einheit":"","max":null},{"id":"cl-zla-alt-18","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-19","typ":"ion","label":"Antriebsmotor","einheit":"","max":null},{"id":"cl-zla-alt-20","typ":"ueberschrift","label":"Luftfilter","einheit":"","max":null},{"id":"cl-zla-alt-21","typ":"ionv","label":"Filtereinsatz auf dichten Sitz prüfen","einheit":"","max":null},{"id":"cl-zla-alt-22","typ":"janeinnv","label":"Filtereinsatz gewechselt","einheit":"","max":null},{"id":"cl-zla-alt-23","typ":"ueberschrift","label":"Wetterschutzgitter / Ansaugturm","einheit":"","max":null},{"id":"cl-zla-alt-24","typ":"ionv","label":"Auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-zla-alt-25","typ":"ueberschrift","label":"Jalousieklappen","einheit":"","max":null},{"id":"cl-zla-alt-26","typ":"ionv","label":"Auf Verschmutzung, Beschädigung und Korrosion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-27","typ":"janeinnv","label":"Funktionserhaltendes Reinigen","einheit":"","max":null},{"id":"cl-zla-alt-28","typ":"ionv","label":"Auf mechanische Funktion prüfen","einheit":"","max":null},{"id":"cl-zla-alt-29","typ":"ionv","label":"Stellantriebe","einheit":"","max":null},{"id":"cl-zla-alt-30","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-zla-alt-31","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-dla","name":"Dezentrale Lüftungsanlage","felder":[{"id":"cl-dla-0","typ":"ueberschrift","label":"Filter","einheit":"","max":null},{"id":"cl-dla-1","typ":"janeinnv","label":"Filter gereinigt","einheit":"","max":null},{"id":"cl-dla-2","typ":"janeinnv","label":"Filter gewechselt","einheit":"","max":null},{"id":"cl-dla-3","typ":"ueberschrift","label":"Funktionsprüfung","einheit":"","max":null},{"id":"cl-dla-4","typ":"ionv","label":"Funktion Ventilator geprüft","einheit":"","max":null},{"id":"cl-dla-5","typ":"ionv","label":"Keilriemen auf Verschleiß und Spannung prüfen","einheit":"","max":null},{"id":"cl-dla-6","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-dla-7","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-klima","name":"Klima","felder":[{"id":"cl-klima-0","typ":"ueberschrift","label":"Anlagen-Status vor Wartungsbeginn","einheit":"","max":null},{"id":"cl-klima-1","typ":"janeinnv","label":"Anlage in Betrieb","einheit":"","max":null},{"id":"cl-klima-2","typ":"janeinnv","label":"Anlage spannungsfrei","einheit":"","max":null},{"id":"cl-klima-3","typ":"janeinnv","label":"Anlage mit Fehlermeldung","einheit":"","max":null},{"id":"cl-klima-4","typ":"ueberschrift","label":"Fehlerstatus","einheit":"","max":null},{"id":"cl-klima-5","typ":"text","label":"Störung Außeneinheit","einheit":"","max":null},{"id":"cl-klima-6","typ":"text","label":"Störung Inneneinheit","einheit":"","max":null},{"id":"cl-klima-7","typ":"ueberschrift","label":"Prüfung Kältekreislauf","einheit":"","max":null},{"id":"cl-klima-8","typ":"wert","label":"Anzahl der angeschlossenen Innengeräte","einheit":"Stk","max":null},{"id":"cl-klima-9","typ":"checkbox","label":"Außengerät höher als Innengeräte","einheit":"","max":null},{"id":"cl-klima-10","typ":"checkbox","label":"Außengerät tiefer als Innengeräte","einheit":"","max":null},{"id":"cl-klima-11","typ":"janeinnv","label":"Isolierte Saug- und Flüssigkeitsleitung","einheit":"","max":null},{"id":"cl-klima-12","typ":"janeinnv","label":"Sichtprüfung Kältekreislauf i.O.","einheit":"","max":null},{"id":"cl-klima-13","typ":"ueberschrift","label":"Dichtheitsprüfung","einheit":"","max":null},{"id":"cl-klima-14","typ":"janeinnv","label":"Dichtheitsprüfung","einheit":"","max":null},{"id":"cl-klima-15","typ":"ueberschrift","label":"Prüfung Außengerät","einheit":"","max":null},{"id":"cl-klima-16","typ":"janeinnv","label":"Reinigung des Wärmetauschers","einheit":"","max":null},{"id":"cl-klima-17","typ":"janeinnv","label":"Innenreinigung des Außengerätes","einheit":"","max":null},{"id":"cl-klima-18","typ":"ionv","label":"Prüfung der Ventilatoren","einheit":"","max":null},{"id":"cl-klima-19","typ":"ueberschrift","label":"Prüfung Spannungsversorgung","einheit":"","max":null},{"id":"cl-klima-20","typ":"janeinnv","label":"Reparaturschalter am AG angebracht","einheit":"","max":null},{"id":"cl-klima-21","typ":"ueberschrift","label":"Prüfung der Innengeräte","einheit":"","max":null},{"id":"cl-klima-22","typ":"ionv","label":"Externe Kondensatpumpe","einheit":"","max":null},{"id":"cl-klima-23","typ":"janeinnv","label":"Reinigung/Erneuerung Filter","einheit":"","max":null},{"id":"cl-klima-24","typ":"ionv","label":"Kondensatabfluss-Prüfung","einheit":"","max":null},{"id":"cl-klima-25","typ":"ueberschrift","label":"Prüfung Fernbedienung","einheit":"","max":null},{"id":"cl-klima-26","typ":"ionv","label":"Infrarot-Fernbedienung","einheit":"","max":null},{"id":"cl-klima-27","typ":"ionv","label":"Kabel-Fernbedienung","einheit":"","max":null},{"id":"cl-klima-28","typ":"ueberschrift","label":"Testbetrieb Manometerdruck","einheit":"","max":null},{"id":"cl-klima-29","typ":"wert","label":"Hochdruck","einheit":"bar","max":null},{"id":"cl-klima-30","typ":"wert","label":"Hochdruck","einheit":"°C","max":null},{"id":"cl-klima-31","typ":"wert","label":"Niederdruck","einheit":"bar","max":null},{"id":"cl-klima-32","typ":"wert","label":"Niederdruck","einheit":"°C","max":null},{"id":"cl-klima-33","typ":"wert","label":"Stromaufnahme L1","einheit":"A","max":null},{"id":"cl-klima-34","typ":"wert","label":"Stromaufnahme L2","einheit":"A","max":null},{"id":"cl-klima-35","typ":"wert","label":"Stromaufnahme L3","einheit":"A","max":null},{"id":"cl-klima-36","typ":"ueberschrift","label":"Kühlbetrieb","einheit":"","max":null},{"id":"cl-klima-37","typ":"wert","label":"Kühlmittel Temperatur In","einheit":"°C","max":null},{"id":"cl-klima-38","typ":"wert","label":"Außentemperatur","einheit":"°C","max":null},{"id":"cl-klima-39","typ":"wert","label":"Raumtemperatur","einheit":"°C","max":null},{"id":"cl-klima-40","typ":"ueberschrift","label":"Heizbetrieb","einheit":"","max":null},{"id":"cl-klima-41","typ":"wert","label":"Kühlmittel Temperatur In","einheit":"°C","max":null},{"id":"cl-klima-42","typ":"wert","label":"Außentemperatur","einheit":"°C","max":null},{"id":"cl-klima-43","typ":"wert","label":"Raumtemperatur","einheit":"°C","max":null},{"id":"cl-klima-44","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-klima-45","typ":"text","label":"Bemerkung","einheit":"","max":null}]},{"id":"cl-bsk","name":"Brandschutz","felder":[{"id":"cl-bsk-0","typ":"ionv","label":"Auslöseeinrichtung auf Funktion prüfen","einheit":"","max":null},{"id":"cl-bsk-1","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-bsk-2","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-rm","name":"Rauchmelder","felder":[{"id":"cl-rm-0","typ":"checkbox","label":"Funktionsprüfung","einheit":"","max":null},{"id":"cl-rm-vg","typ":"wert","label":"Verschmutzungsgrad","einheit":"%","max":70,"ab":true},{"id":"cl-rm-1","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-rm-2","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-ss","name":"Schaltschrank","felder":[{"id":"cl-ss-0","typ":"ueberschrift","label":"Allgemeine Sichtprüfung","einheit":"","max":null},{"id":"cl-ss-1","typ":"ionv","label":"Schaltschrank auf Verschmutzung, Beschädigung, Korrosion und Befestigung prüfen","einheit":"","max":null},{"id":"cl-ss-2","typ":"ionv","label":"Beschriftung und Schaltpläne vorhanden und lesbar","einheit":"","max":null},{"id":"cl-ss-3","typ":"ueberschrift","label":"Funktionsprüfung","einheit":"","max":null},{"id":"cl-ss-4","typ":"ionv","label":"Phasenleuchten auf Funktion prüfen","einheit":"","max":null},{"id":"cl-ss-5","typ":"ionv","label":"Schalt- und Steuervorgänge, Sicherheitseinrichtungen, Sicherheitsketten prüfen","einheit":"","max":null},{"id":"cl-ss-6","typ":"ionv","label":"Funktionselemente am Schaltschrank prüfen (Hupe, Anzeige, LEDs)","einheit":"","max":null},{"id":"cl-ss-7","typ":"ueberschrift","label":"Schaltschranklüfter","einheit":"","max":null},{"id":"cl-ss-8","typ":"ionv","label":"Auf Funktion prüfen","einheit":"","max":null},{"id":"cl-ss-9","typ":"checkbox","label":"Filter ausgetauscht/gereinigt","einheit":"","max":null},{"id":"cl-ss-10","typ":"ueberschrift","label":"Sonstige","einheit":"","max":null},{"id":"cl-ss-11","typ":"text","label":"Bemerkung","einheit":"","max":null}]},{"id":"cl-msr","name":"MSR","felder":[{"id":"cl-msr-0","typ":"text","label":"Hersteller","einheit":"","max":null},{"id":"cl-msr-1","typ":"text","label":"Typ","einheit":"","max":null},{"id":"cl-msr-2","typ":"text","label":"Baujahr","einheit":"","max":null},{"id":"cl-msr-3","typ":"ionv","label":"Motor auf Funktion geprüft","einheit":"","max":null},{"id":"cl-msr-4","typ":"ueberschrift","label":"Motordaten","einheit":"","max":null},{"id":"cl-msr-5","typ":"checkbox","label":"1-Stufig","einheit":"","max":null},{"id":"cl-msr-6","typ":"checkbox","label":"2-Stufig","einheit":"","max":null},{"id":"cl-msr-7","typ":"checkbox","label":"3-Stufig","einheit":"","max":null},{"id":"cl-msr-8","typ":"janeinnv","label":"Frequenzumrichter","einheit":"","max":null},{"id":"cl-msr-9","typ":"janeinnv","label":"Direktantrieb auf Motorwelle","einheit":"","max":null},{"id":"cl-msr-10","typ":"janeinnv","label":"Keilriemenantrieb zum Ventilator","einheit":"","max":null},{"id":"cl-msr-11","typ":"ionv","label":"Keilriemenspannung","einheit":"","max":null},{"id":"cl-msr-12","typ":"ueberschrift","label":"Zuluftmotor","einheit":"","max":null},{"id":"cl-msr-13","typ":"wert","label":"Spannung","einheit":"V","max":null},{"id":"cl-msr-14","typ":"wert","label":"Max. Nennstrom","einheit":"A","max":null},{"id":"cl-msr-15","typ":"wert","label":"Max. Leistung","einheit":"kW","max":null},{"id":"cl-msr-16","typ":"wert","label":"Umdrehungen","einheit":"U/min","max":null},{"id":"cl-msr-17","typ":"ueberschrift","label":"Messung Zuluftmotor Stufe 1","einheit":"","max":null},{"id":"cl-msr-18","typ":"wert","label":"Zuluft L1","einheit":"A","max":null},{"id":"cl-msr-19","typ":"wert","label":"Zuluft L2","einheit":"A","max":null},{"id":"cl-msr-20","typ":"wert","label":"Zuluft L3","einheit":"A","max":null},{"id":"cl-msr-21","typ":"ueberschrift","label":"Messung Zuluftmotor Stufe 2","einheit":"","max":null},{"id":"cl-msr-22","typ":"wert","label":"Zuluft L1","einheit":"A","max":null},{"id":"cl-msr-23","typ":"wert","label":"Zuluft L2","einheit":"A","max":null},{"id":"cl-msr-24","typ":"wert","label":"Zuluft L3","einheit":"A","max":null},{"id":"cl-msr-25","typ":"ueberschrift","label":"Abluftmotor","einheit":"","max":null},{"id":"cl-msr-26","typ":"wert","label":"Spannung","einheit":"V","max":null},{"id":"cl-msr-27","typ":"wert","label":"Max. Nennstrom","einheit":"A","max":null},{"id":"cl-msr-28","typ":"wert","label":"Max. Leistung","einheit":"kW","max":null},{"id":"cl-msr-29","typ":"wert","label":"Umdrehungen","einheit":"U/min","max":null},{"id":"cl-msr-30","typ":"ueberschrift","label":"Messung Abluftmotor Stufe 1","einheit":"","max":null},{"id":"cl-msr-31","typ":"wert","label":"Abluft L1","einheit":"A","max":null},{"id":"cl-msr-32","typ":"wert","label":"Abluft L2","einheit":"A","max":null},{"id":"cl-msr-33","typ":"wert","label":"Abluft L3","einheit":"A","max":null},{"id":"cl-msr-34","typ":"ueberschrift","label":"Messung Abluftmotor Stufe 2","einheit":"","max":null},{"id":"cl-msr-35","typ":"wert","label":"Abluft L1","einheit":"A","max":null},{"id":"cl-msr-36","typ":"wert","label":"Abluft L2","einheit":"A","max":null},{"id":"cl-msr-37","typ":"wert","label":"Abluft L3","einheit":"A","max":null},{"id":"cl-msr-38","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-msr-39","typ":"text","label":"Bemerkung","einheit":"","max":null}]},{"id":"cl-lmm","name":"Luftmengenmessung","felder":[{"id":"cl-lmm-0","typ":"ueberschrift","label":"Luftmengenmessung Zuluft","einheit":"","max":null},{"id":"cl-lmm-1","typ":"wert","label":"Gesamtluftmenge RLT Soll","einheit":"m³/h","max":null},{"id":"cl-lmm-2","typ":"wert","label":"Gesamtluftmenge RLT Ist","einheit":"m³/h","max":null},{"id":"cl-lmm-3","typ":"wert","label":"K-Faktor","einheit":"","max":null},{"id":"cl-lmm-4","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-5","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-6","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-7","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-8","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-9","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-10","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-11","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-12","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-13","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-14","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-15","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-16","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-17","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-18","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-19","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-20","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-21","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-22","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-23","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-24","typ":"ueberschrift","label":"Luftmengenmessung Abluft","einheit":"","max":null},{"id":"cl-lmm-25","typ":"wert","label":"Gesamtluftmenge RLT Soll","einheit":"m³/h","max":null},{"id":"cl-lmm-26","typ":"wert","label":"Gesamtluftmenge RLT Ist","einheit":"m³/h","max":null},{"id":"cl-lmm-27","typ":"wert","label":"K-Faktor","einheit":"","max":null},{"id":"cl-lmm-28","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-29","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-30","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-31","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-32","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-33","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-34","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-35","typ":"wert","label":"Luftmenge Auslass","einheit":"m³/h","max":null},{"id":"cl-lmm-36","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-37","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-38","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-39","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-40","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-41","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-42","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-43","typ":"wert","label":"Luftmenge TV","einheit":"m³/h","max":null},{"id":"cl-lmm-44","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-45","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-46","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-47","typ":"wert","label":"Luftmenge Kanal","einheit":"m³/h","max":null},{"id":"cl-lmm-48","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-lmm-49","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-sonst","name":"Sonstiges","felder":[{"id":"cl-sonst-0","typ":"checkbox","label":"Überprüft","einheit":"","max":null},{"id":"cl-sonst-1","typ":"janeinnv","label":"Gereinigt","einheit":"","max":null},{"id":"cl-sonst-2","typ":"ueberschrift","label":"Sonstiges","einheit":"","max":null},{"id":"cl-sonst-3","typ":"text","label":"Bemerkungen","einheit":"","max":null}]},{"id":"cl-vor","name":"Vorarbeiten","felder":[{"id":"cl-vor-0","typ":"text","label":"Ansprechpartner","einheit":"","max":null},{"id":"cl-vor-1","typ":"text","label":"E-Mail-Adresse","einheit":"","max":null},{"id":"cl-vor-2","typ":"checkbox","label":"Rechnung per E-Mail","einheit":"","max":null},{"id":"cl-vor-3","typ":"text","label":"Rechnungsadresse","einheit":"","max":null}],"auftrag":true},{"id":"cl-nach","name":"Nacharbeiten","felder":[{"id":"cl-nach-0","typ":"text","label":"Ausgeführte Arbeiten","einheit":"","max":null}],"auftrag":true}];
 const STATUS = [['planung','In Planung'],['geplant','Geplant'],['laeuft','Auftrag läuft'],['erledigt','Erledigt'],['abgerechnet','Abgerechnet']];
 const statusLabel = s => (STATUS.find(x => x[0]===s)||[])[1] || s;
 const statusPill = s => pill({planung:'',geplant:'acc',laeuft:'warn',erledigt:'ok',abgerechnet:''}[s], statusLabel(s));
@@ -503,6 +551,11 @@ function migrate(){
     S.typen.forEach(t => { const passend = FOXTAG_CL.find(c => !c.auftrag && c.name.toLowerCase()===tname(t).toLowerCase()); if(passend && (t.checklisteId==='cl-sonst' || !by(S.checklisten, t.checklisteId))) t.checklisteId = passend.id; });
     S.v = 5;
   }
+  if((S.v||0) < 6){
+    const rmCl = by(S.checklisten, 'cl-rm');
+    if(rmCl && !rmCl.felder.some(f => f.id==='cl-rm-vg')) rmCl.felder.splice(1, 0, {id:'cl-rm-vg', typ:'wert', label:'Verschmutzungsgrad', einheit:'%', max:70, ab:true});
+    S.v = 6;
+  }
   // Recht „Aufträge vor Ort anlegen“: standardmäßig für alle mit App-Zugang
   S.users.forEach(u => { if(u.eigen===undefined) u.eigen = !!u.app; });
   S.auftraege.filter(A => ['erledigt','abgerechnet'].includes(A.status) && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
@@ -669,6 +722,17 @@ function initMaps(){
 }
 const legend = () => `<div class="legend"><span><i style="background:var(--bad)"></i>Überfällig</span><span><i style="background:var(--warn)"></i>Fällig in 30 Tagen</span><span><i style="background:var(--ok)"></i>Aktuell</span><span><i style="background:var(--muted)"></i>Unbekannt</span><span><i style="background:var(--signal);border-radius:2px"></i>Firmensitz</span></div>`;
 
+/* ---------- Symbole (einfache Linien, Farbe vom Text) ---------- */
+const ICONS = {
+  start:'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10', karte:'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14',
+  kunden:'M4 21V5l8-2v18M12 21h8V9l-8-2M7.5 8h1M7.5 12h1M7.5 16h1M15.5 12h1M15.5 16h1', auftraege:'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 13l2.5 2.5L16 10',
+  berichte:'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6', stoerungen:'M12 3l10 18H2zM12 10v5M12 18h.01',
+  admin:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4', info:'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01',
+  plus:'M12 5v14M5 12h14', pdf:'M12 4v11M7 10l5 5 5-5M5 20h14', route:'M3 11l18-8-8 18-2-8z', suche:'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
+  auge:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
+};
+const ico = n => `<svg class="ico-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
+
 /* ---------- Kopfzeile & Navigation ---------- */
 const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','IT & Einrichtung']];
 function renderChrome(){
@@ -679,12 +743,23 @@ function renderChrome(){
     `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='web'?u.web:u.app)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
   document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
   document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
-  const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege'}[UI.view] || UI.view;
+  const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start'}[UI.view] || UI.view;
   const band = document.querySelector('.band'), mb = document.getElementById('menubtn');
   band.classList.toggle('appmode-band', S.mode==='app');
-  band.classList.toggle('open', !!UI.menu && S.mode!=='app');
-  if(S.mode==='app'){ document.getElementById('nav').innerHTML = `<span class="bandlabel">Techniker-App · ${h(u.name)}</span>`; return; }
-  const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', kunde:'kunden', auftrag:'auftraege'}[UI.view] || UI.view)) || NAV[0])[1];
+  document.body.classList.toggle('appmode-body', S.mode==='app');
+  const lupe = document.querySelector('.top-in .gsuche .lupe'); if(lupe && !lupe.innerHTML) lupe.innerHTML = ico('suche');
+  // Am Handy stehen Suche, Ansicht und Benutzer im aufklappbaren Menü
+  const extra = `<div class="navextra">
+    ${S.mode==='app' ? '' : `<div class="gsuche"><span class="lupe" aria-hidden="true">${ico('suche')}</span><input type="search" data-gq placeholder="Suchen: Kunde, Objekt, Auftrag …" aria-label="Suchen" autocomplete="off"><div class="gres" hidden></div></div>`}
+    <div class="modes" role="group" aria-label="Ansicht">${document.getElementById('modes').innerHTML}</div>
+    <label>Angemeldet als<select data-whosel>${document.getElementById('who').innerHTML}</select></label>
+    <span class="demo" style="justify-self:start;color:#fff;border-color:rgba(255,255,255,.6)">Prototyp</span></div>`;
+  band.classList.toggle('open', !!UI.menu);
+  if(S.mode==='app'){
+    mb.innerHTML = `<span>Techniker-App · ${h(u.name)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
+    document.getElementById('nav').innerHTML = `<span class="bandlabel">Techniker-App · ${h(u.name)}</span>` + extra; return;
+  }
+  const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start'}[UI.view] || UI.view)) || NAV[0])[1];
   mb.innerHTML = `<span>${UI.menu ? 'Menü' : h(aktuell)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
   mb.setAttribute('aria-expanded', !!UI.menu);
   mb.setAttribute('aria-label', UI.menu ? 'Menü schließen' : 'Menü öffnen');
@@ -692,8 +767,8 @@ function renderChrome(){
     let extra = '';
     if(v==='stoerungen'){ const c = offeneSt().length; if(c) extra = `<span class="cnt">${c}</span>`; }
     if(v==='auftraege'){ const c = S.auftraege.filter(a => a.status==='laeuft').length; if(c) extra = `<span class="cnt live" title="laufende Aufträge">${c}</span>`; }
-    return `<button data-act="go" data-v="${v}" class="${cur===v?'on':''}" ${cur===v?'aria-current="page"':''}>${l}${extra}</button>`;
-  }).join('');
+    return `<button data-act="go" data-v="${v}" class="${cur===v?'on':''}" ${cur===v?'aria-current="page"':''}>${ico(v)}${l}${extra}</button>`;
+  }).join('') + extra;
 }
 
 /* ---------- Büro: Start ---------- */
@@ -714,12 +789,12 @@ function vStart(){
   const neu =S.berichte.slice().sort((a,b) => a.erstellt < b.erstellt ? 1 : -1).slice(0,4);
   return `
   <div class="head"><div><h1>Start</h1><p class="sub">Heute ${fmt(iso(TODAY))} · ${h(me().name)}</p></div>
-    <button class="btn pri" data-act="planen">Auftrag planen</button></div>
+    <button class="btn pri" data-act="planen">${ico('plus')} Auftrag planen</button></div>
   <div class="kpis">
-    <div class="kpi acc"><div class="n">${offen.length}</div><div class="l">Aufträge offen</div></div>
-    <div class="kpi bad"><div class="n">${all.filter(x => x.cls==='bad').length}</div><div class="l">Komponenten überfällig</div></div>
-    <div class="kpi warn"><div class="n">${all.filter(x => x.cls==='warn').length}</div><div class="l">fällig in 30 Tagen</div></div>
-    <div class="kpi"><div class="n">${offeneSt().length}</div><div class="l">offene Störungen</div></div>
+    <button class="kpi acc" data-act="kpi" data-v="offen"><div class="n">${offen.length}</div><div class="l">Aufträge offen</div></button>
+    <button class="kpi bad" data-act="kpi" data-v="bad"><div class="n">${all.filter(x => x.cls==='bad').length}</div><div class="l">Komponenten überfällig</div></button>
+    <button class="kpi warn" data-act="kpi" data-v="warn"><div class="n">${all.filter(x => x.cls==='warn').length}</div><div class="l">fällig in 30 Tagen</div></button>
+    <button class="kpi" data-act="kpi" data-v="stoer"><div class="n">${offeneSt().length}</div><div class="l">offene Störungen</div></button>
   </div>
   ${(() => { const vo = S.auftraege.filter(a => a.vorOrt && !a.geprueft); return vo.length ? `<section class="panel" style="border-color:var(--warn)">
     <div class="panel-h"><h2>Vom Techniker vor Ort angelegt – bitte prüfen</h2><span class="pill warn">${vo.length}</span></div>
@@ -752,6 +827,23 @@ function rmStartPanel(){
       <td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.ort)}</span></td><td>${h(kName(k))}</td>
       <td class="mono" style="text-align:right">${r.imJahr} von ${r.anzahl}</td><td><b>${r.jahr}</b> ${rmPill(r.jahr)}</td></tr>`; }).join('')}
     </tbody></table></div>` : `<div class="empty">Bis Ende ${bis} ist kein Rauchmeldertausch fällig.</div>`}</section>`;
+}
+
+/* ---------- Büro: fällige Komponenten (aus den Kennzahlen) ---------- */
+function vFaellig(){
+  const art = UI.ff || 'bad';
+  const gruppen = S.anlagen.map(a => ({a, ks:kompsOf(a.id).filter(c => st(c).cls===art)})).filter(x => x.ks.length)
+    .sort((x,y) => cmpDe(nextDue(x.ks.slice().sort((p,q) => nextDue(p) < nextDue(q) ? -1 : 1)[0]), nextDue(y.ks.slice().sort((p,q) => nextDue(p) < nextDue(q) ? -1 : 1)[0])));
+  const n = gruppen.reduce((s,x) => s + x.ks.length, 0);
+  return `<button class="back" data-act="go" data-v="start">← Start</button>
+  <div class="head"><div><h1>${art==='bad' ? 'Überfällige Komponenten' : 'Fällig in den nächsten 30 Tagen'}</h1><p class="sub">${n} Komponenten in ${gruppen.length} Anlagen</p></div>
+    <div class="chips">${[['bad','Überfällig'],['warn','Fällig in 30 Tagen']].map(([v,l]) => `<button class="chip ${art===v?'on':''}" data-act="kpi" data-v="${v}">${l}</button>`).join('')}</div></div>
+  <section class="panel">${gruppen.length ? `<div class="tbl-wrap"><table><thead><tr><th>Nummer</th><th>Komponente</th><th>Details</th><th>Fällig</th></tr></thead><tbody>
+    ${gruppen.map(({a,ks}) => { const {o,k} = ctx(a.id), oa = offenerAuftrag(a.id); return `<tr class="grp"><td colspan="4"><div class="row" style="justify-content:space-between">
+        <span><span class="code">${h(o.nr)}</span> <a href="#" data-act="anlage" data-id="${a.id}" style="font-weight:600">${h(o.name)}</a> <span class="muted small" style="font-weight:400">· ${h(kName(k))} · ${h(o.ort)}</span></span>
+        ${oa ? `<button class="btn sm" data-act="auftrag" data-id="${oa.id}">Auftrag ${oa.nr}</button>` : `<button class="btn sm pri" data-act="planen" data-a="${a.id}">Planen</button>`}</div></td></tr>`
+      + ks.map(c => { const s = st(c), t = typOf(c); return `<tr><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(c.standort)}</td><td>${pill(s.cls, s.label)}<span class="t2">${fmt(nextDue(c))} · ${dueText(s)}</span></td></tr>`; }).join(''); }).join('')}
+  </tbody></table></div>` : `<div class="empty">Keine Komponenten in dieser Ansicht.</div>`}</section>`;
 }
 
 /* ---------- Büro: Karte ---------- */
@@ -1054,7 +1146,8 @@ function vAuftrag(){
   ${ber ? `<section class="panel"><div class="panel-h"><h2>Bericht eingegangen</h2>${pill('ok','im Kundenordner gespeichert')}</div>
     <div class="facts"><div><span>Datei</span>${h(ber.datei)}</div><div><span>Eingegangen</span>${fmt(ber.erstellt)}${ber.zeit ? ' · '+ber.zeit+' Uhr' : ''}</div>
     <div><span>E-Mail ans Büro</span>${mail ? h(mail.an)+' · '+fmt(mail.am) : '–'}</div></div>
-    <p class="muted small" style="margin:0">Prototyp: PDF-Datei und E-Mail sind nachgestellt. In der echten Version erzeugt der Server das PDF und verschickt die Mail über euren Mailserver.</p></section>${vBericht(A)}` : ''}
+    <div class="row"><button class="btn pri" data-act="pdf">${ico('pdf')} Als PDF speichern / drucken</button></div>
+    <p class="muted small" style="margin:0">Im Druckfenster „Als PDF speichern“ wählen. Die E-Mail ans Büro ist im Prototyp nachgestellt.</p></section>${vBericht(A)}` : ''}
   ${['planung','geplant'].includes(A.status) ? `<section class="panel"><h2>Geplante Prüfungen</h2>
     <div class="tbl-wrap"><table><thead><tr><th>Nummer</th><th>Typ</th><th>Details</th><th>Fälligkeit</th></tr></thead><tbody>
     ${ks.map(c => { const s = st(c), t = typOf(c); return `<tr><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(c.standort)}</td><td>${pill(s.cls,s.label)}</td></tr>`; }).join('')}
@@ -1255,9 +1348,14 @@ function vBericht(A){
   const {o,k} = ctx(A.anlageId);
   const ks = auftragKomps(A);
   const done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done);
-  const st_ = S.stoerungen.filter(x => x.auftragNr===A.nr);
+  const vorschau = A.status==='laeuft';
+  const st_ = S.stoerungen.filter(x => x.auftragNr===A.nr).slice();
+  if(vorschau) done.forEach(c => { const punkte = stoerPunkte(A, c); if(!punkte.length) return;
+    const da = st_.find(x => x.kompId===c.id);
+    if(da) st_[st_.indexOf(da)] = {...da, text:[da.text, 'Bei der Prüfung nicht in Ordnung:\n'+punkte.join('\n')].filter(Boolean).join('\n\n')};
+    else st_.push({nr:'neu', kompId:c.id, titel:stoerTitel(punkte), text:'Bei der Prüfung nicht in Ordnung:\n'+punkte.join('\n'), schwere:'Mangel'}); });
   const sum = {};
-  done.forEach(c => { const key = typLabel(typOf(c)); sum[key] = sum[key] || {ok:0, m:0}; sum[key][kompErgebnis(A,c)==='mangel' ? 'm' : 'ok']++; });
+  done.forEach(c => { const key = typLabel(typOf(c)); sum[key] = sum[key] || {ok:0, m:0}; sum[key][kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id) ? 'm' : 'ok']++; });
   const res = (x,d) => {
     if(!d || d.v==null || d.v==='') return '<span class="nv">–</span>';
     if(x.typ==='checkbox') return d.v ? '<span class="io">✓ erledigt</span>' : '<span class="nv">–</span>';
@@ -1266,6 +1364,7 @@ function vBericht(A){
   };
   return `
   <article class="doc">
+    ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: Der Bericht ist noch nicht abgeschickt.</div>` : ''}
     <div class="doc-head">
       <div><div class="doc-firm">GUNDERMANN</div><div class="doc-sub">LÜFTUNG<i>/</i>KLIMA<i>/</i>REGELUNG</div><div style="color:var(--paper-muted);margin-top:6px">Gundermann GmbH · 76846 Hauenstein</div></div>
       <div class="r"><div class="doc-type">Wartungsbericht</div><div class="mono" style="margin-top:6px">Auftrag ${A.nr}</div><div>${aDatum(A)}</div></div>
@@ -1289,14 +1388,13 @@ function vBericht(A){
       ${p.fotos && p.fotos.length ? `<div class="fotos" style="margin-top:8px">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
     </section>`; }).join('')}
     ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
-      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">#${x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
+      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
     ${['cl-vor','cl-nach'].map(id => { const cl = by(S.checklisten, id), p = A.pr['_'+id]; if(!cl || !p) return '';
       const zeilen = cl.felder.filter(x => x.typ!=='ueberschrift' && p.f[x.id] && p.f[x.id].v!=null && p.f[x.id].v!=='' && p.f[x.id].v!==false);
       return zeilen.length ? `<section><h3>${h(cl.name)}</h3><div class="tbl-wrap"><table><tbody>${zeilen.map(x => `<tr><td>${h(x.label)}</td><td style="white-space:pre-wrap">${x.typ==='checkbox' ? '✓' : h(p.f[x.id].v)}</td></tr>`).join('')}</tbody></table></div></section>` : ''; }).join('')}
     ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
     <div class="sigs">
       <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox">${fmt(A.abgeschlossen||A.datum)} · ${h(techNames(A.techIds))}, Gundermann GmbH</div></div>
-      <div>${A.sigKunde ? `<img src="${A.sigKunde}" alt="Unterschrift Kunde" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox">${fmt(A.abgeschlossen||A.datum)} · ${h(A.kunde || 'Kunde')}, ${h(k.name)}</div></div>
     </div>
     <div class="foot">Prüfgrundlagen: Herstellerangaben, VDI 6022 Blatt 1, DIN EN 15650 und DIN 31051 (Brandschutzklappen). Dieser Bericht wurde digital erstellt.</div>
   </article>`;
@@ -1321,7 +1419,7 @@ function routeKnoepfe(o){
   const href = /iPhone|iPad|iPod/i.test(navigator.userAgent)
     ? 'https://maps.apple.com/?dirflg=d&daddr=' + encodeURIComponent(ziel)
     : 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(ziel);
-  return `<a class="btn pri block" href="${h(href)}" target="_blank" rel="noopener">➜ Route starten</a>`;
+  return `<a class="btn pri block" href="${h(href)}" target="_blank" rel="noopener">${ico('route')} Route starten</a>`;
 }
 /* Auftrag vor Ort: Techniker legt selbst einen Auftrag an, wenn das Büro keinen geplant hat */
 function appNeuListe(){
@@ -1411,17 +1509,23 @@ function vApp(){
   }
   if(sc==='abschluss') return appShell(appBar('Abschluss', A.nr+' · '+h(o.nr), 'auftrag'),
     `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>    <div class="card"><label class="f" for="pbem">Bemerkung zum Bericht<textarea id="pbem" data-in="bem" placeholder="z. B. Kunde über Störungen informiert">${h(A.bem)}</textarea></label>
-    <label class="f" for="pkunde">Name Kunde / Ansprechpartner<input id="pkunde" data-in="kunde" value="${h(A.kunde)}"></label></div>
-    <div class="card"><div class="f">Unterschrift Techniker (${h(me().name)})<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigTech" style="justify-self:start">Löschen</button></div>
-    <div class="f">Unterschrift Kunde<canvas class="sig" data-sig="sigKunde" aria-label="Unterschriftenfeld Kunde"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigKunde" style="justify-self:start">Löschen</button></div></div>`,
-    `<button class="btn pri block" data-act="appsend">Bericht ans Büro schicken</button>`);
+</div>
+    <div class="card"><div class="f">Unterschrift Techniker (${h(me().name)}), optional<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigTech" style="justify-self:start">Löschen</button></div>
+    <div class="small muted">Die Kundenunterschrift läuft über den Regiebericht in KWP mobiler Monteur.</div></div>`,
+    `<button class="btn block" data-act="appvorschau">${ico('auge')} Bericht ansehen und als PDF speichern</button>
+     <button class="btn pri block" data-act="appsend">Bericht ans Büro schicken</button>`);
+  if(sc==='vorschau') return appShell(appBar('Berichtsvorschau', A.nr+' · '+h(o.nr), 'abschluss'),
+    `<div style="overflow-x:auto">${vBericht(A)}</div>`,
+    `<button class="btn block" data-act="pdf">${ico('pdf')} Als PDF speichern</button>
+     <button class="btn pri block" data-act="appsend">Bericht ans Büro schicken</button>`);
   if(sc==='gesendet'){
     const b = S.berichte.find(x => x.auftragId===A.id);
     const n = S.stoerungen.filter(x => x.auftragNr===A.nr).length;
     return appShell(appBar('Bericht verschickt', A.nr),
       `<div class="okbig"><div class="tick">✓</div><b style="font-size:18px">Danke, der Bericht ist beim Büro.</b>
        <div class="small muted">${h(b ? b.datei : '')}<br>im Kundenordner gespeichert und per E-Mail an ${h(S.settings.bueroMail)}${n ? `<br>${n} Störung${n>1?'en':''} erfasst` : ''}</div></div>`,
-      `<button class="btn pri block" data-act="appback" data-v="liste">Zurück zu meinen Aufträgen</button>`);
+      `<button class="btn block" data-act="appvorschau">${ico('pdf')} Bericht als PDF speichern</button>
+       <button class="btn pri block" data-act="appback" data-v="liste">Zurück zu meinen Aufträgen</button>`);
   }
   return '';
 }
@@ -1460,7 +1564,7 @@ function feldRow(A,c,x){
   if(x.typ==='wert') ctl = `<span class="val"><input inputmode="decimal" data-in="fv" ${attrs} value="${h(d.v||'')}" aria-label="${h(x.label)}"><span>${h(x.einheit)}</span></span>`;
   if(x.typ==='text') return `<div class="pp"><label class="f" for="t-${c.id}-${x.id}">${h(x.label)}<textarea id="t-${c.id}-${x.id}" data-in="fv" ${attrs} style="min-height:44px">${h(d.v||'')}</textarea></label></div>`;
   return `<div class="pp">
-    <div>${h(x.label)}${x.max!=null ? `<div class="hint" ${d.over ? 'style="color:var(--bad);font-weight:600"' : ''}>Grenzwert ≤ ${x.max} ${h(x.einheit)}${d.over ? ' überschritten, wird als Störung erfasst' : ''}</div>` : ''}</div>
+    <div>${h(x.label)}${x.max!=null ? `<div class="hint" ${d.over ? 'style="color:var(--bad);font-weight:600"' : ''}>${x.ab ? `Tausch ab ${x.max} ${h(x.einheit)}` : `Grenzwert ≤ ${x.max} ${h(x.einheit)}`}${d.over ? (x.ab ? ' erreicht, Melder tauschen (wird als Störung erfasst)' : ' überschritten, wird als Störung erfasst') : ''}</div>` : ''}</div>
     <div class="ctl">${ctl}</div>
     ${d.v==='nio' ? `<div class="mng">
       <textarea data-in="fm" ${attrs} placeholder="Bemerkung, z. B. was zu tun ist (optional)" aria-label="Bemerkung zu diesem Punkt" style="min-height:44px">${h(d.m||'')}</textarea>
@@ -1468,26 +1572,32 @@ function feldRow(A,c,x){
     </div>` : ''}
   </div>`;
 }
+function stoerPunkte(A, c){
+  const punkte = []; let abschnitt = '';
+  const p = A.pr[c.id]; if(!p) return punkte;
+  clFor(A,c).forEach(x => {
+    if(x.typ==='ueberschrift'){ abschnitt = x.label; return; }
+    const d = p.f[x.id]; if(!d) return;
+    const wo = abschnitt ? `${abschnitt}: ${x.label}` : x.label;
+    if(d.v==='nio') punkte.push(`• ${wo}${d.m ? ' – '+d.m.trim() : ''}`);
+    if(d.over) punkte.push(`• ${wo}: ${d.v} ${x.einheit} (${x.ab ? `Tausch ab ${x.max} ${x.einheit} erforderlich` : `Grenzwert ${x.max} ${x.einheit} überschritten`})`);
+  });
+  return punkte;
+}
+const stoerTitel = punkte => punkte.length===1 ? punkte[0].replace(/^• /,'').split(' – ')[0] : `${punkte.length} Prüfpunkte nicht in Ordnung`;
 function berichtSenden(A){
   clFesthalten(A);
   const ks = auftragKomps(A).filter(c => A.pr[c.id] && A.pr[c.id].done);
   if(!ks.length) return;
   ks.forEach(c => {
     // Alle n.i.O.-Punkte und überschrittenen Grenzwerte einer Komponente werden zu EINER Störung zusammengefasst
-    const punkte = []; let abschnitt = '';
-    clFor(A,c).forEach(x => {
-      if(x.typ==='ueberschrift'){ abschnitt = x.label; return; }
-      const d = A.pr[c.id].f[x.id]; if(!d) return;
-      const wo = abschnitt ? `${abschnitt}: ${x.label}` : x.label;
-      if(d.v==='nio') punkte.push(`• ${wo}${d.m ? ' – '+d.m.trim() : ''}`);
-      if(d.over) punkte.push(`• ${wo}: ${d.v} ${x.einheit} (Grenzwert ${x.max} ${x.einheit} überschritten)`);
-    });
+    const punkte = stoerPunkte(A, c);
     if(punkte.length){
       const liste = `Bei der Prüfung nicht in Ordnung:\n${punkte.join('\n')}`;
       const da = S.stoerungen.find(x => x.kompId===c.id && x.auftragNr===A.nr && x.status==='offen');
       if(da) da.text = [da.text, liste].filter(Boolean).join('\n\n');
       else S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id,
-        titel: punkte.length===1 ? punkte[0].replace(/^• /,'').split(' – ')[0] : `${punkte.length} Prüfpunkte nicht in Ordnung`,
+        titel: stoerTitel(punkte),
         text:liste, schwere:'Mangel', status:'offen', datum:iso(TODAY), von:me().name});
     }
     c.letzte = iso(TODAY);
@@ -1897,6 +2007,14 @@ const ACT = {
   mode: d => { S.mode = d.v; save(); render(); window.scrollTo(0,0); },
   go: d => { UI.view = d.v; UI.err = ''; UI.addK = false; UI.menu = false; render(); window.scrollTo(0,0); },
   menu: () => { UI.menu = !UI.menu; renderChrome(); },
+  kpi: d => { UI.menu = false;
+    if(d.v==='offen'){ UI.view = 'auftraege'; UI.af = 'offen'; }
+    else if(d.v==='stoer'){ UI.view = 'stoerungen'; UI.sf = 'offen'; }
+    else { UI.view = 'faellig'; UI.ff = d.v; }
+    render(); window.scrollTo(0,0); },
+  appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
+  pdf: () => pdfSpeichern(curA()),
+  gstoer: () => { UI.view = 'stoerungen'; UI.sf = 'alle'; UI.menu = false; render(); window.scrollTo(0,0); },
   itcopy: () => {
     const el = document.getElementById('itguide'); if(!el) return;
     const text = el.innerText;
@@ -2039,6 +2157,7 @@ const ACT = {
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
   if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok','kdel','kdelok'].includes(t.dataset.act)) return;
+  if(t.closest('.gres')){ document.querySelectorAll('[data-gq]').forEach(i => i.value = ''); document.querySelectorAll('.gres').forEach(g => g.hidden = true); UI.menu = false; e.preventDefault(); }
   ACT[t.dataset.act](t.dataset, t, e);
 });
 const app = document.getElementById('app');
@@ -2046,8 +2165,8 @@ app.addEventListener('input', e => {
   const t = e.target, k = t.dataset.in;
   if(t.hasAttribute('data-calc')) return calc();
   if(!k) return;
-  if(k==='q'){ UI.q = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
-  if(k==='ksort'){ UI.ks = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
+  if(k==='q'){ UI.q = t.value; document.getElementById('alist').innerHTML = kundenList(); tabellenBeschriften(); return; }
+  if(k==='ksort'){ UI.ks = t.value; document.getElementById('alist').innerHTML = kundenList(); tabellenBeschriften(); return; }
   if(k==='appq'){ UI.app.q = t.value; document.getElementById('klist').innerHTML = appKompList(curA()); return; }
   if(k==='appneuq'){ UI.app.nq = t.value; document.getElementById('neulist').innerHTML = appNeuListe(); return; }
   const A = curA(); if(!A) return;
@@ -2078,10 +2197,10 @@ app.addEventListener('change', e => {
   if(t.dataset.in==='fv' && t.tagName==='INPUT'){
     const c = by(S.komponenten,t.dataset.c); if(!c) return; const x = clFor(curA(),c).find(y => y.id===t.dataset.f); if(!x) return;
     if(x.max==null) return;
-    const over = !!t.value.trim() && num(t.value) > x.max;
+    const over = !!t.value.trim() && (x.ab ? num(t.value) >= x.max : num(t.value) > x.max);
     const p = prOf(curA(), c.id); p.f[x.id] = Object.assign({}, p.f[x.id], {v:t.value, over});
     save(); render();
-    if(over) toast(`Grenzwert ${x.max} ${x.einheit} überschritten`);
+    if(over) toast(x.ab ? `Ab ${x.max} ${x.einheit} muss getauscht werden` : `Grenzwert ${x.max} ${x.einheit} überschritten`);
   }
 });
 app.addEventListener('submit', e => {
@@ -2110,8 +2229,12 @@ app.addEventListener('submit', e => {
   }
   if(kind==='mail'){ S.settings.bueroMail = f.get('an'); save(); render(); toast('E-Mail-Empfänger gespeichert'); }
 });
+document.addEventListener('change', e => {
+  if(!e.target.matches('[data-whosel]')) return;
+  const w = document.getElementById('who'); w.value = e.target.value; w.dispatchEvent(new Event('change'));
+});
 document.getElementById('who').addEventListener('change', e => {
-  S.currentUser = e.target.value; UI.app.screen = 'liste';
+  S.currentUser = e.target.value; UI.app.screen = 'liste'; UI.menu = false;
   if(me().rolle!=='admin' && UI.view==='admin') UI.view = 'start';
   save(); render(); toast('Angemeldet als '+me().name);
 });
@@ -2144,7 +2267,54 @@ let toastT;
 function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
 
 app.addEventListener('toggle', e => { if(e.target.id==='kdetails') UI.kOpen = e.target.open; }, true);
-const VIEWS = {start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
+/* Suche im Kopf: Kunden, Objekte, Aufträge, Störungen */
+function gSuche(q){
+  q = q.trim().toLowerCase();
+  if(q.length < 2) return '';
+  const treffer = [];
+  S.kunden.filter(k => [k.nr, k.name, k.ort].join(' ').toLowerCase().includes(q) && S.objekte.some(o => o.kundeId===k.id)).slice(0,5)
+    .forEach(k => treffer.push(`<button class="gitem" data-act="kunde" data-id="${k.id}"><span class="art">Kunde</span><b>${h(kName(k))}</b><small>${h(k.nr)} · ${h(k.ort)}</small></button>`));
+  S.objekte.filter(o => [o.nr, o.name, o.adresse, o.ort].join(' ').toLowerCase().includes(q)).slice(0,6).forEach(o => {
+    const a = S.anlagen.find(x => x.objektId===o.id); if(!a) return;
+    treffer.push(`<button class="gitem" data-act="anlage" data-id="${a.id}"><span class="art">Objekt</span><b>${h(o.nr)} ${h(o.name)}</b><small>${h(o.adresse)}, ${h(o.ort)}</small></button>`); });
+  S.auftraege.filter(a => a.nr.toLowerCase().includes(q)).slice(0,4).forEach(a => { const {o} = ctx(a.anlageId);
+    treffer.push(`<button class="gitem" data-act="auftrag" data-id="${a.id}"><span class="art">Auftrag</span><b>${h(a.nr)} · ${h(statusLabel(a.status))}</b><small>${h(o.name)} · ${aDatum(a)}</small></button>`); });
+  S.stoerungen.filter(x => ('#'+x.nr+' '+x.titel).toLowerCase().includes(q)).slice(0,3).forEach(x =>
+    treffer.push(`<button class="gitem" data-act="gstoer"><span class="art">Störung</span><b>#${x.nr} ${h(x.titel)}</b><small>${h(x.status)}</small></button>`));
+  return treffer.length ? treffer.join('') : `<div class="muted small" style="padding:8px">Nichts gefunden.</div>`;
+}
+document.addEventListener('input', e => {
+  if(!e.target.matches('[data-gq]')) return;
+  const box = e.target.parentElement.querySelector('.gres'), html = gSuche(e.target.value);
+  box.innerHTML = html; box.hidden = !html;
+});
+document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
+document.addEventListener('click', e => { if(!e.target.closest('.gsuche')) document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
+
+/* Bericht als PDF: Druckfenster nur mit dem Bericht, Dateiname aus Auftrag und Objekt */
+function pdfSpeichern(A){
+  if(!A || !document.querySelector('.doc')) return;
+  const {o} = ctx(A.anlageId), titel = document.title;
+  document.title = `Wartungsbericht_${A.nr}_${(o.nr||'Objekt').replace(/[^\w-]/g,'')}`;
+  document.body.classList.add('printing');
+  const fertig = () => { document.body.classList.remove('printing'); document.title = titel; removeEventListener('afterprint', fertig); };
+  addEventListener('afterprint', fertig);
+  try{ window.print(); }catch(e){ fertig(); toast('Drucken ist hier nicht möglich. Bitte die Seite im Browser öffnen.'); }
+  setTimeout(() => { if(document.body.classList.contains('printing') && !matchMedia('print').matches) fertig(); }, 60000);
+}
+
+/* Tabellen am Handy als Karten: jede Zelle bekommt die Spaltenüberschrift als Beschriftung */
+function tabellenBeschriften(root){
+  (root || app).querySelectorAll('table').forEach(t => {
+    if(t.closest('.doc')) return;
+    const kopf = [...t.querySelectorAll('thead th')].map(x => x.innerText.trim());
+    if(!kopf.length) return;
+    t.classList.add('kt');
+    t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td,i) => { if(!td.hasAttribute('colspan') && kopf[i]) td.dataset.l = kopf[i]; }));
+  });
+}
+
+const VIEWS = {faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
 function render(){
   kIdx = null;
   const top = document.querySelector('.top');
@@ -2156,6 +2326,7 @@ function render(){
   renderChrome();
   app.innerHTML = S.mode==='app' ? vApp() : (VIEWS[UI.view] || vStart)();
   app.querySelectorAll('canvas[data-sig]').forEach(initSig);
+  tabellenBeschriften();
   initMaps();
   calc();
 }
