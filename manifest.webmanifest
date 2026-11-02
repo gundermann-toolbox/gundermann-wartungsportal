@@ -3,6 +3,7 @@
   "short_name": "Wartung",
   "description": "Wartungsportal für Lüftungsanlagen: Planung im Büro, Prüfung in der Techniker-App",
   "lang": "de",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

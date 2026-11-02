@@ -299,6 +299,8 @@ ul.list{margin:0;padding-left:20px;display:grid;gap:6px}
       <div class="appname">Service<span class="slash">/</span>Wartungsportal</div>
     </div>
     <span class="demo">Prototyp</span>
+    <span class="demo" id="offline" hidden style="color:var(--surface);background:var(--bad);border-color:var(--bad)">Offline</span>
+    <button class="btn sm pri" id="installBtn" data-act="install" hidden>App installieren</button>
     <div class="modes" id="modes" role="group" aria-label="Ansicht"></div>
     <label class="who" for="who">Angemeldet als <select id="who"></select></label>
   </div>
@@ -1809,6 +1811,13 @@ const ACT = {
   mode: d => { S.mode = d.v; save(); render(); window.scrollTo(0,0); },
   go: d => { UI.view = d.v; UI.err = ''; UI.addK = false; UI.menu = false; render(); window.scrollTo(0,0); },
   menu: () => { UI.menu = !UI.menu; renderChrome(); },
+  install: async () => {
+    if(!installHinweis) return;
+    installHinweis.prompt();
+    const r = await installHinweis.userChoice.catch(() => null);
+    installHinweis = null; document.getElementById('installBtn').hidden = true;
+    if(r && r.outcome==='accepted') toast('App wird installiert');
+  },
   anlage: (d,t,e) => { e.stopPropagation(); UI.view = 'anlage'; UI.anlage = d.id; UI.addK = false; render(); window.scrollTo(0,0); },
   auftrag: (d,t,e) => { e.stopPropagation(); UI.view = 'auftrag'; UI.auftrag = d.id; UI.err = ''; render(); window.scrollTo(0,0); },
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
@@ -2038,6 +2047,17 @@ function render(){
   calc();
 }
 app.innerHTML = '<div class="empty">Daten werden geladen …</div>';
+/* App installieren und offline nutzen (nur auf der echten Seite, nicht in der Claude-Vorschau) */
+let installHinweis = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installHinweis = e; document.getElementById('installBtn').hidden = false; });
+addEventListener('appinstalled', () => { installHinweis = null; document.getElementById('installBtn').hidden = true; });
+const offlineAnzeigen = () => { document.getElementById('offline').hidden = navigator.onLine; };
+addEventListener('online', () => { offlineAnzeigen(); toast('Wieder online'); });
+addEventListener('offline', () => { offlineAnzeigen(); toast('Offline: Du kannst weiterarbeiten, alles wird auf dem Gerät gespeichert.'); });
+offlineAnzeigen();
+if('serviceWorker' in navigator && /github\.io$|^localhost$/.test(location.hostname)){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 Promise.all([load(), datenPruefen()]).then(render).catch(e => {
   app.innerHTML = `<section class="panel" style="max-width:640px"><h2>Die Seite konnte nicht geladen werden</h2>
     <p style="margin:0">Fehler: <span class="mono">${h(e && e.message || e)}</span></p><p class="muted small" style="margin:0">Bitte diese Meldung an Marcel weitergeben.</p>
