@@ -517,6 +517,8 @@ function migrate(){
   }
   // Wer die Foxtag-Daten schon von Hand importiert hat, muss sich nicht noch einmal anmelden
   if(!S.daten && S.objekte.length > 20) S.daten = 'import';
+  // Recht „Aufträge vor Ort anlegen“: standardmäßig für alle mit App-Zugang
+  S.users.forEach(u => { if(u.eigen===undefined) u.eigen = !!u.app; });
   S.auftraege.filter(A => ['erledigt','abgerechnet'].includes(A.status) && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
 }
 let saveT;
@@ -714,7 +716,7 @@ function auftragTable(list, compact){
       <td class="mono">${a.nr}</td><td class="mono">${aDatum(a)}</td>
       <td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(o.adresse)}, ${h(o.ort)}</span></td>
       ${compact ? '' : `<td>${h(techNames(a.techIds))}</td>`}
-      <td>${statusPill(a.status)}${n ? ` <span class="pill bad">${n} Störung${n>1?'en':''}</span>` : ''}${compact ? `<span class="t2">${h(techNames(a.techIds))}</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+      <td>${statusPill(a.status)}${a.vorOrt && !a.geprueft ? ' <span class="pill warn">vor Ort angelegt</span>' : ''}${n ? ` <span class="pill bad">${n} Störung${n>1?'en':''}</span>` : ''}${compact ? `<span class="t2">${h(techNames(a.techIds))}</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
 }
 function vStart(){
   const all = S.komponenten.filter(c => !c.entfernt).map(st);
@@ -731,6 +733,10 @@ function vStart(){
     <div class="kpi warn"><div class="n">${all.filter(x => x.cls==='warn').length}</div><div class="l">fällig in 30 Tagen</div></div>
     <div class="kpi"><div class="n">${offeneSt().length}</div><div class="l">offene Störungen</div></div>
   </div>
+  ${(() => { const vo = S.auftraege.filter(a => a.vorOrt && !a.geprueft); return vo.length ? `<section class="panel" style="border-color:var(--warn)">
+    <div class="panel-h"><h2>Vom Techniker vor Ort angelegt – bitte prüfen</h2><span class="pill warn">${vo.length}</span></div>
+    <p class="muted small" style="margin:0">Diese Aufträge hat kein Büro geplant. Bitte Anlage und Umfang kontrollieren und als geprüft markieren.</p>
+    ${auftragTable(vo, true)}</section>` : ''; })()}
   <div class="grid2 wide-l">
     <section class="panel"><div class="panel-h"><h2>Offene Aufträge</h2><button class="btn ghost sm" data-act="go" data-v="auftraege">Alle Aufträge</button></div>${auftragTable(offen, true)}</section>
     <section class="panel"><div class="panel-h"><h2>Karte</h2><div class="row">
@@ -1029,6 +1035,7 @@ function vAuftrag(){
   let actions = '';
   if(A.status==='planung') actions = `<button class="btn pri" data-act="setstatus" data-v="geplant">Freigeben an Techniker</button>`;
   if(A.status==='erledigt') actions = `<button class="btn pri" data-act="setstatus" data-v="abgerechnet">Als abgerechnet markieren</button>`;
+  if(A.vorOrt && !A.geprueft) actions = `<button class="btn pri" data-act="ageprueft" style="background:var(--warn);border-color:var(--warn)">Vor-Ort-Auftrag als geprüft markieren</button>` + actions;
   const canApp = me().app && (A.techIds.includes(me().id) || me().rolle==='admin');
   if(['geplant','laeuft'].includes(A.status) && canApp) actions += `<button class="btn" data-act="inapp" data-id="${A.id}">In der App öffnen</button>`;
   if(isOpen(A)){
@@ -1046,6 +1053,8 @@ function vAuftrag(){
     <div><span>Techniker</span>${h(techNames(A.techIds))}</div>
     <div><span>Ansprechpartner vor Ort</span>${kontaktText(A) || '<span class="muted">nicht angegeben</span>'}</div>
     <div><span>Umfang</span>${A.umfang==='ganz' ? 'Ganze Anlage' : 'Nur fällige Komponenten'} (${ks.length})</div>
+    ${A.vorOrt ? `<div><span>Angelegt</span>vor Ort von ${h(A.angelegtVon)}<br><span class="small muted">${h(A.angelegtAm)}</span><br>${A.geprueft ? pill('ok', 'vom Büro geprüft'+(A.geprueftVon ? ' ('+A.geprueftVon+')' : '')) : pill('warn','noch nicht geprüft')}</div>` : ''}
+    ${(A.verlauf||[]).length ? `<div><span>Verlauf</span>${A.verlauf.map(v => `<span class="small" style="display:block">${h(v)}</span>`).join('')}</div>` : ''}
     <div><span>Kunde</span><span class="code">${h(k.nr)}</span> ${h(k.name)}</div>
     <div><span>Objekt</span>${h(o.adresse)}, ${h(o.ort)}</div>
     ${a.hinweis ? `<div><span>Hinweise</span>${h(a.hinweis)}</div>` : ''}
@@ -1134,15 +1143,16 @@ function vAdmin(){
       <div class="tbl-wrap"><table><thead><tr><th>Rolle</th><th>Büro (Web)</th><th>Techniker (App)</th><th>Darf</th></tr></thead><tbody>
         <tr><td><b>Administrator</b></td><td>ja</td><td>ja</td><td>Alles, auch Benutzer, Rechte, Checklisten und Einstellungen</td></tr>
         <tr><td><b>Büro</b></td><td>ja</td><td>nein</td><td>Kunden anlegen, Aufträge planen, Berichte und Störungen bearbeiten</td></tr>
-        <tr><td><b>Techniker</b></td><td>nein</td><td>ja</td><td>Nur eigene zugeteilte Aufträge in der App prüfen und zurückschicken</td></tr>
+        <tr><td><b>Techniker</b></td><td>nein</td><td>ja</td><td>Zugeteilte Aufträge in der App prüfen und zurückschicken. Mit dem Recht „Aufträge vor Ort“ auch selbst einen Auftrag anlegen, wenn das Büro einen vergessen hat.</td></tr>
       </tbody></table></div>
       <p class="muted small" style="margin:0">Pro Person lässt sich Web- und App-Zugang zusätzlich einzeln ein- oder ausschalten. Anmeldung später mit der Firmen-E-Mail über euren eigenen Server.</p></section>
     <section class="panel"><h2>Benutzer</h2>
-      <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>E-Mail (Login)</th><th>Rolle</th><th>Web</th><th>App</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>E-Mail (Login)</th><th>Rolle</th><th>Web</th><th>App</th><th>Aufträge vor Ort</th></tr></thead><tbody>
       ${S.users.map(u => `<tr><td>${h(u.name)}</td><td class="mono">${h(u.email||'–')}</td>
         <td><select data-uin="rolle" data-id="${u.id}" aria-label="Rolle ${h(u.name)}" style="width:auto">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${u.rolle===v?'selected':''}>${l}</option>`).join('')}</select></td>
         <td><input type="checkbox" data-uin="web" data-id="${u.id}" ${u.web?'checked':''} aria-label="Web-Zugang ${h(u.name)}"></td>
-        <td><input type="checkbox" data-uin="app" data-id="${u.id}" ${u.app?'checked':''} aria-label="App-Zugang ${h(u.name)}"></td></tr>`).join('')}
+        <td><input type="checkbox" data-uin="app" data-id="${u.id}" ${u.app?'checked':''} aria-label="App-Zugang ${h(u.name)}"></td>
+        <td><input type="checkbox" data-uin="eigen" data-id="${u.id}" ${u.eigen?'checked':''} ${u.app?'':'disabled'} aria-label="Darf Aufträge vor Ort anlegen: ${h(u.name)}"></td></tr>`).join('')}
       </tbody></table></div>
       <form class="fgrid inset" data-form="uadd">
         <label class="f" for="un">Name<input id="un" name="name" required></label>
@@ -1238,7 +1248,7 @@ function vBericht(A){
     <dl class="doc-meta">
       <div><dt>Kunde</dt><dd>${h(k.nr)}<br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</dd></div>
       <div><dt>Objekt</dt><dd>${h(o.nr)}<br>${h(o.name)}<br>${h(o.adresse)}, ${h(o.ort)}</dd></div>
-      <div><dt>Techniker</dt><dd>${h(techNames(A.techIds))}</dd></div>
+      <div><dt>Techniker</dt><dd>${h(techNames(A.techIds))}${A.vorOrt ? `<br><span style="color:var(--paper-muted);font-size:12px">Auftrag vor Ort angelegt von ${h(A.angelegtVon)}</span>` : ''}</dd></div>
       <div><dt>Geprüfte Komponenten</dt><dd>${done.length} von ${ks.length} (${ks.length ? Math.round(done.length/ks.length*100) : 0} %)</dd></div>
     </dl>
     <div class="summary ${st_.length?'nio':'io'}">${st_.length ? `${st_.length} ${st_.length===1?'Störung':'Störungen'} festgestellt, siehe Störungsliste.` : 'Alle geprüften Komponenten ohne Mängel.'}</div>
@@ -1273,8 +1283,42 @@ function appShell(bar, body, foot){
   return `<div class="appwrap">${bar}<div class="appbody">${body}</div>${foot ? `<div class="appact">${foot}</div>` : ''}</div>`;
 }
 const appBar = (title, sub, back) => `<div class="appbar">${back ? `<button data-act="appback" data-v="${back}" aria-label="Zurück">‹</button>` : ''}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+/* Auftrag vor Ort: Techniker legt selbst einen Auftrag an, wenn das Büro keinen geplant hat */
+function appNeuListe(){
+  const q = (UI.app.nq || '').trim().toLowerCase();
+  if(q.length < 2) return `<div class="empty">Mindestens 2 Zeichen eingeben, z. B. Objektnummer, Kunde oder Ort.</div>`;
+  const rows = S.anlagen.map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k && [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q)).slice(0, 30);
+  if(!rows.length) return `<div class="empty">Keine Anlage gefunden.</div>`;
+  return rows.map(({a,o,k}) => { const s = anlSt(a.id), oa = offenerAuftrag(a.id); return `
+    <button class="krow" data-act="appneuwahl" data-id="${a.id}"><span><b><span class="code">${h(o.nr)}</span> ${h(o.name)}</b><span class="muted small" style="display:block">${h(kName(k))} · ${h(o.ort)}${oa ? ' · Auftrag '+h(oa.nr)+' offen' : ''}</span></span>${pill(s.cls, s.label)}</button>`; }).join('');
+}
+function vAppNeu(){
+  const u = me();
+  if(!UI.app.neuAnlage) return appShell(appBar('Auftrag vor Ort', 'Anlage suchen', 'liste'),
+    `<div class="card"><input type="search" id="appneuq" data-in="appneuq" value="${h(UI.app.nq||'')}" placeholder="Objektnummer, Kunde oder Ort" aria-label="Anlage suchen" autofocus>
+      <span class="small muted">Nur nutzen, wenn das Büro keinen Auftrag geplant hat. Das Büro bekommt einen Hinweis zum Prüfen.</span></div>
+     <div id="neulist" style="display:grid;gap:8px">${appNeuListe()}</div>`);
+  const {a,o,k} = ctx(UI.app.neuAnlage), oa = offenerAuftrag(a.id), ks = kompsOf(a.id);
+  const faellig = ks.filter(c => ['bad','warn'].includes(st(c).cls) || !c.letzte).length;
+  const info = `<div class="card"><div><b style="font-size:17px">${h(o.name)}</b><div class="muted small">${h(o.adresse)}, ${h(o.ort)}</div></div>
+    <div class="small"><span class="muted">Kunde:</span> ${h(kName(k))}<br><span class="muted">Objekt:</span> ${h(o.nr)} · ${ks.length} Komponenten</div></div>`;
+  if(oa){
+    const meins = oa.techIds.includes(u.id);
+    return appShell(appBar('Auftrag vor Ort', h(o.nr), 'neu'),
+      info + `<div class="card" style="border-color:var(--warn)"><b>Für diese Anlage gibt es schon einen offenen Auftrag</b>
+        <div class="small">${h(oa.nr)} · ${aDatum(oa)} · ${statusPill(oa.status)}<br>Techniker: ${h(techNames(oa.techIds))}</div>
+        <div class="small muted">Damit nichts doppelt angelegt wird, arbeitest du in diesem Auftrag weiter.</div></div>`,
+      `<button class="btn pri block" data-act="appneuvorhanden" data-id="${oa.id}">${meins ? 'Diesen Auftrag öffnen' : 'Mich zuteilen und öffnen'}</button>`);
+  }
+  return appShell(appBar('Auftrag vor Ort', h(o.nr), 'neu'),
+    info + `<div class="card"><b>Was wird geprüft?</b>
+      <label class="small" style="display:flex;gap:8px;align-items:center"><input type="radio" name="nUmfang" value="ganz" checked> Ganze Anlage (${ks.length} Komponenten)</label>
+      <label class="small" style="display:flex;gap:8px;align-items:center"><input type="radio" name="nUmfang" value="faellig" ${faellig ? '' : 'disabled'}> Nur fällige Komponenten (${faellig})</label></div>`,
+    `<button class="btn pri block" data-act="appneuanlegen" ${ks.length ? '' : 'disabled'}>Auftrag anlegen und starten</button>`);
+}
 function vApp(){
   const u = me(), sc = UI.app.screen, A = curA();
+  if(sc==='neu') return vAppNeu();
   if(sc==='liste' || !A){
     const jobs = myJobs();
     const T = {heute:a => ['geplant','laeuft'].includes(a.status) && a.datum <= iso(TODAY), bald:a => a.status==='geplant' && a.datum > iso(TODAY), erledigt:a => ['erledigt','abgerechnet'].includes(a.status)};
@@ -1283,6 +1327,7 @@ function vApp(){
     const cnt = k => jobs.filter(T[k]).length;
     return appShell(appBar('Meine Aufträge', h(u.name)+' · '+fmt(iso(TODAY))),
       `<div class="chips">${[['heute','Heute'],['bald','Demnächst'],['erledigt','Erledigt']].map(([v,l]) => `<button class="chip ${UI.app.tab===v?'on':''}" data-act="apptab" data-v="${v}">${l} ${cnt(v)}</button>`).join('')}</div>
+      ${u.eigen ? `<button class="btn block" data-act="appneu" style="border-style:dashed;border-width:2px">+ Auftrag vor Ort anlegen</button>` : ''}
       ${list.length ? list.map(a => { const {o} = ctx(a.anlageId); const ks = auftragKomps(a); const done = ks.filter(c => a.pr[c.id] && a.pr[c.id].done).length; return `
         <button class="jcard" data-act="appopen" data-id="${a.id}">
           <span class="top2"><span class="mono">${a.nr} · ${aDatum(a)}</span>${statusPill(a.status)}</span>
@@ -1869,6 +1914,7 @@ const ACT = {
     save(); closeModal(); render(); toast(`Komponente ${kNr(c)} entfernt`);
   },
   aedit: () => editModal(curA()),
+  ageprueft: () => { const A = curA(); A.geprueft = true; A.geprueftVon = me().name; save(); render(); toast(`Auftrag ${A.nr} als geprüft markiert`); },
   azurueck: () => {
     const A = curA(), lauf = A.status==='laeuft';
     openModal(`<h2>Auftrag ${A.nr} zurückziehen?</h2>
@@ -1888,6 +1934,25 @@ const ACT = {
   inapp: d => { S.mode = 'app'; UI.auftrag = d.id; UI.app.screen = 'auftrag'; save(); render(); window.scrollTo(0,0); },
   apptab: d => { UI.app.tab = d.v; render(); },
   appopen: d => { UI.auftrag = d.id; UI.app.screen = 'auftrag'; UI.app.q = ''; render(); window.scrollTo(0,0); },
+  appneu: () => { if(!me().eigen) return; UI.app.screen = 'neu'; UI.app.neuAnlage = null; UI.app.nq = ''; render(); window.scrollTo(0,0); },
+  appneuwahl: d => { UI.app.neuAnlage = d.id; render(); window.scrollTo(0,0); },
+  appneuvorhanden: d => {
+    const A = by(S.auftraege, d.id), u = me(); if(!A) return;
+    if(!A.techIds.includes(u.id)){ A.techIds.push(u.id); A.verlauf = (A.verlauf||[]).concat(`${fmt(iso(TODAY))} ${nowTime()}: ${u.name} hat sich vor Ort selbst zugeteilt`); }
+    if(A.status==='planung') A.status = 'geplant';
+    save(); UI.auftrag = A.id; UI.app.screen = 'auftrag'; UI.app.neuAnlage = null; render(); window.scrollTo(0,0);
+  },
+  appneuanlegen: () => {
+    const aid = UI.app.neuAnlage, u = me(); if(!aid || !u.eigen || offenerAuftrag(aid)) return render();
+    const umfang = (document.querySelector('input[name=nUmfang]:checked') || {}).value || 'ganz';
+    const ks = kompsOf(aid).filter(c => umfang==='ganz' || ['bad','warn'].includes(st(c).cls) || !c.letzte);
+    const A = {id:uid(), nr:'A-'+(S.nextAuftrag++), anlageId:aid, datum:iso(TODAY), zeit:nowTime(), techIds:[u.id], status:'laeuft', umfang, kompIds:ks.map(c => c.id), pr:{},
+      bem:'', kunde:'', sigTech:null, sigKunde:null, vorOrt:true, angelegtVon:u.name, angelegtAm:`${fmt(iso(TODAY))} ${nowTime()}`, geprueft:false};
+    const kt = (by(S.anlagen, aid)||{}).kontakt; if(kt){ A.ansp = kt.name; A.tel = kt.tel; }
+    S.auftraege.push(A); save();
+    UI.auftrag = A.id; UI.app.screen = 'auftrag'; UI.app.neuAnlage = null; render(); window.scrollTo(0,0);
+    toast(`Auftrag ${A.nr} angelegt. Das Büro sieht ihn zum Prüfen.`);
+  },
   appgrp: d => {
     const A = curA(); const zu = (UI.app.zu = UI.app.zu || {})[A.id] = UI.app.zu[A.id] || {};
     const gruppen = [...new Set(auftragKomps(A).map(c => c.gruppe))];
@@ -1896,7 +1961,7 @@ const ACT = {
     else zu[d.v] = !zu[d.v];
     document.getElementById('klist').innerHTML = appKompList(A);
   },
-  appback: d => { UI.app.screen = d.v; render(); window.scrollTo(0,0); },
+  appback: d => { if(d.v==='neu') UI.app.neuAnlage = null; UI.app.screen = d.v; render(); window.scrollTo(0,0); },
   appstart: () => { const A = curA(); A.status = 'laeuft'; save(); render(); },
   appkomp: d => { UI.app.komp = d.c; UI.app.screen = 'komp'; render(); window.scrollTo(0,0); },
   appkdone: d => { prOf(curA(), d.c).done = true; save(); UI.app.screen = 'auftrag'; render(); window.scrollTo(0,0); toast('Prüfung gespeichert'); },
@@ -1937,6 +2002,7 @@ app.addEventListener('input', e => {
   if(k==='q'){ UI.q = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
   if(k==='ksort'){ UI.ks = t.value; document.getElementById('alist').innerHTML = kundenList(); return; }
   if(k==='appq'){ UI.app.q = t.value; document.getElementById('klist').innerHTML = appKompList(curA()); return; }
+  if(k==='appneuq'){ UI.app.nq = t.value; document.getElementById('neulist').innerHTML = appNeuListe(); return; }
   const A = curA(); if(!A) return;
   if(k==='bem' || k==='kunde'){ A[k] = t.value; return save(); }
   const p = prOf(A, t.dataset.c);
@@ -1992,7 +2058,7 @@ app.addEventListener('submit', e => {
   }
   if(kind==='uadd'){
     const rolle = f.get('rolle');
-    S.users.push({id:'u'+uid(), name:f.get('name'), email:f.get('email'), rolle, web:rolle!=='techniker', app:rolle!=='buero'});
+    S.users.push({id:'u'+uid(), name:f.get('name'), email:f.get('email'), rolle, web:rolle!=='techniker', app:rolle!=='buero', eigen:rolle!=='buero'});
     save(); render(); toast('Benutzer angelegt');
   }
   if(kind==='mail'){ S.settings.bueroMail = f.get('an'); save(); render(); toast('E-Mail-Empfänger gespeichert'); }
