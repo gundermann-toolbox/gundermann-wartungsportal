@@ -249,7 +249,7 @@ input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--acce
 .lmap.mini{height:320px}
 .hqpin{width:18px;height:18px;background:var(--mag);border:3px solid var(--brand);border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .leaflet-container{font-family:var(--f-body)}
-.mapbox svg{display:block;width:100%;height:auto}
+.mapbox > svg{display:block;width:100%;height:auto}
 .mapbox .grid{stroke:var(--map-grid);stroke-width:1}
 .mapbox .town circle{fill:var(--map-town)}
 .mapbox .town text{fill:var(--map-town);font:600 17px var(--f-body)}
@@ -746,7 +746,17 @@ function initMaps(){
     if(sp && UI.mapFocus){ map.setView([sp.lat, sp.lng], 11); UI.mapFocus = false; }
     else if(!mini && UI.mapView) map.setView(UI.mapView.c, UI.mapView.z);
     else map.fitBounds(L.latLngBounds(pts.map(p => [p.lat,p.lng]).concat([TOWNS['hauenstein']])), {padding:[24,24], maxZoom:12});
-    if(!mini) map.on('moveend', () => { const c = map.getCenter(); UI.mapView = {c:[c.lat,c.lng], z:map.getZoom()}; });
+    // Hatte das Kartenfeld beim Anlegen noch keine Größe, Ansicht neu berechnen, sobald es sichtbar ist
+    let ohneGroesse = !el.clientWidth || !el.clientHeight, bewegt = false;
+    if(!mini) map.on('moveend', () => { if(ohneGroesse) return; const c = map.getCenter(); UI.mapView = {c:[c.lat,c.lng], z:map.getZoom()}; });
+    map.on('dragstart zoomstart', () => { bewegt = true; });
+    const pruefen = () => { if(!LMAPS.includes(map) || !el.clientWidth || !el.clientHeight) return; map.invalidateSize();
+      // Karte komplett neu aufbauen, jetzt mit Größe: Ausschnitt und Punkte stimmen dann sicher
+      if(ohneGroesse && !bewegt){ ohneGroesse = false; initMaps(); } };
+    if(window.ResizeObserver){ const ro = new ResizeObserver(pruefen); ro.observe(el); map.on('unload', () => ro.disconnect()); }
+    addEventListener('resize', pruefen); document.addEventListener('visibilitychange', pruefen);
+    map.on('unload', () => { removeEventListener('resize', pruefen); document.removeEventListener('visibilitychange', pruefen); });
+    [300, 1000, 2500].forEach(t => setTimeout(pruefen, t));
     LMAPS.push(map);
   });
 }
@@ -838,10 +848,11 @@ function vStart(){
       ${pts.length ? `<div class="mapbox lmap mini" data-lmap="mini"></div>${legend()}` : `<div class="empty">${(UI.miniF||'alle')==='alle' ? 'Keine Objekte mit Kartenposition.' : 'Nichts fällig.'}</div>`}</section>
   </div>
   <div class="grid2">
-    <section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2></div>
-      ${ohneAuftrag.length ? `<div class="tbl-wrap"><table><tbody>${ohneAuftrag.map(a => { const {o,k} = ctx(a.id); const s = anlSt(a.id); return `
+    <section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2>${ohneAuftrag.length ? `<span class="muted small">${ohneAuftrag.length} Anlagen</span>` : ''}</div>
+      ${ohneAuftrag.length ? `<div class="tbl-wrap"><table><tbody>${(UI.ohneAuf ? ohneAuftrag : ohneAuftrag.slice(0,3)).map(a => { const {o,k} = ctx(a.id); const s = anlSt(a.id); return `
         <tr class="click" data-act="anlage" data-id="${a.id}"><td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(k.name)} · ${h(o.ort)}</span></td>
-        <td>${pill(s.cls,s.label)}</td><td><button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button></td></tr>`; }).join('')}</tbody></table></div>`
+        <td>${pill(s.cls,s.label)}</td><td><button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button></td></tr>`; }).join('')}</tbody></table></div>
+        ${ohneAuftrag.length > 3 ? `<button class="btn ghost sm" data-act="ohneauf" style="justify-self:start">${UI.ohneAuf ? 'Weniger anzeigen ▴' : `Alle ${ohneAuftrag.length} anzeigen ▾`}</button>` : ''}`
         : `<div class="empty">Für alle fälligen Anlagen gibt es einen Auftrag.</div>`}</section>
     <section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
       ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
@@ -2171,6 +2182,7 @@ const ACT = {
   wplanen: d => planenModal(null, d.d, d.t),
   luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
   kontaktedit: d => kontaktModal(d.a),
+  ohneauf: () => { UI.ohneAuf = !UI.ohneAuf; render(); },
   appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
   pdf: () => pdfSpeichern(curA()),
   gstoer: () => { UI.view = 'stoerungen'; UI.sf = 'alle'; UI.menu = false; render(); window.scrollTo(0,0); },
