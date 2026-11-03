@@ -156,7 +156,7 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   body.printing *{visibility:hidden}
   body.printing .doc, body.printing .doc *{visibility:visible}
   body.printing .doc{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;padding:0;border-radius:0}
-  body.printing .doc .vorschau-hinweis{display:none}
+  body.printing .doc .vorschau-hinweis, body.printing .doc .no-print{display:none}
   body.printing .doc section:not(.kblock){break-inside:avoid}
   body.printing .doc .pgrp{break-inside:avoid}
   body{background:#fff}
@@ -438,6 +438,12 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .rm.wert.nio{color:var(--paper-bad);background:rgba(180,51,42,.10)}
 .doc .vorher{font-size:11px;color:var(--paper-muted);white-space:nowrap}
 .doc .fotos{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
+.doc .kzus{padding:6px 12px 8px;font-size:12px;color:var(--paper-ok);border-top:1px solid var(--paper-line)}
+.doc .kzus::before{content:"✓ "}
+.doc .ohnetbl{width:100%;font-size:12.5px}
+.doc .ohnetbl td{padding:5px 12px;vertical-align:top}
+.doc .ohnetbl td.r .t2{font-size:11px;color:var(--paper-muted);font-weight:400}
+.doc .bart{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px dashed var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)}
 
 .label{background:var(--paper);color:var(--paper-ink);border:2px solid var(--paper-ink);border-radius:6px;padding:12px;display:flex;gap:14px;align-items:center;max-width:100%}
 .label .qr{width:104px;height:104px;flex:none;display:grid;place-items:center;background:#fff}
@@ -1692,6 +1698,8 @@ function vBericht(A){
   };
   return `
   <article class="doc">
+    <div class="bart no-print"><span class="small muted">Bericht:</span><div class="chips">${[['kompakt','Kompakt'],['voll','Ausführlich']].map(([v,l]) => `<button class="chip ${(S.settings.berichtArt||'kompakt')===v?'on':''}" data-act="berichtart" data-v="${v}">${l}</button>`).join('')}</div>
+      <span class="small muted">${(S.settings.berichtArt||'kompakt')==='kompakt' ? 'Nur Mängel, Messwerte und Bemerkungen; Komponenten ohne Befund als Liste.' : 'Alle Prüfpunkte jeder Komponente.'}</span></div>
     ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: ${A.korrektur ? `Korrigierte Fassung ${A.korrektur}, noch nicht abgeschickt.` : 'Der Bericht ist noch nicht abgeschickt.'}</div>` : ''}
     ${!vorschau && A.korrektur ? (() => { const b = aktBericht(A); return `<div class="summary">Korrigierte Fassung ${A.korrektur}${b && b.ersetztVom ? `, ersetzt den Bericht vom ${fmt(b.ersetztVom)}` : ''}.</div>`; })() : ''}
     <div class="doc-head">
@@ -1709,12 +1717,28 @@ function vBericht(A){
       ${Object.entries(sum).map(([t,v]) => `<tr><td>${h(t)}</td><td class="r io">${v.ok}</td><td class="r nio">${v.m}</td><td class="r">${v.ok+v.m}</td></tr>`).join('')}
     </tbody></table></div></section>
     <h3 class="doc-h">Geprüfte Komponenten</h3>
-    ${done.map(c => { const t = typOf(c), p = A.pr[c.id], mangel = kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id); return `<section class="kblock">
-      <div class="khead"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(t))}</b><small>${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
-        <span class="kres ${mangel ? 'nio' : 'io'}">${mangel ? 'Mangel' : 'i.O.'}</span></div>
-      ${punkteHtml(clFor(A,c), p.f, c)}
-      ${p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
-    </section>`; }).join('')}
+    ${(() => {
+      // Kompakt: Komponenten ohne Befund als Tabellenzeile, sonst nur Mängel, Messwerte und Bemerkungen
+      const kompakt = (S.settings.berichtArt || 'kompakt')==='kompakt';
+      const wichtig = (x, d) => d && (d.v==='nio' || d.over || (['wert','text'].includes(x.typ) && String(d.v||'').trim()));
+      const kopf = (c, mangel) => `<div class="khead"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(typOf(c)))}</b><small>${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
+        <span class="kres ${mangel ? 'nio' : 'io'}">${mangel ? 'Mangel' : 'i.O.'}</span></div>`;
+      const fotos = (c, p) => p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : '';
+      const istMangel = c => kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id);
+      if(!kompakt) return done.map(c => { const p = A.pr[c.id]; return `<section class="kblock">${kopf(c, istMangel(c))}${punkteHtml(clFor(A,c), p.f, c)}${fotos(c, p)}</section>`; }).join('');
+      const zaehlen = (c, p) => { const z = {io:0, nv:0, ja:0, ok:0};
+        clFor(A,c).forEach(x => { const d = p.f[x.id]; if(!d || d.v==null || d.v==='') return;
+          if(d.v==='io') z.io++; else if(d.v==='nv') z.nv++; else if(d.v==='ja' || d.v==='nein') z.ja++; else if(x.typ==='checkbox' && d.v) z.ok++; });
+        return [z.io && `${z.io} Prüfpunkte i.O.`, z.ok && `${z.ok} erledigt`, z.ja && `${z.ja} Ja/Nein-Angaben`, z.nv && `${z.nv} n.v.`].filter(Boolean).join(' · '); };
+      const ohne = done.filter(c => { const p = A.pr[c.id]; return !istMangel(c) && !(p.fotos||[]).length && !clFor(A,c).some(x => wichtig(x, p.f[x.id])); });
+      const mit = done.filter(c => !ohne.includes(c));
+      return mit.map(c => { const p = A.pr[c.id];
+          return `<section class="kblock">${kopf(c, istMangel(c))}
+            ${punkteHtml(clFor(A,c).filter(x => x.typ==='ueberschrift' || wichtig(x, p.f[x.id])), p.f, c)}
+            <div class="kzus">${zaehlen(c, p) || 'Keine weiteren Angaben'}</div>${fotos(c, p)}</section>`; }).join('')
+        + (ohne.length ? `<section class="kblock"><div class="khead"><div class="kname"><b>Ohne Befund</b><small>${ohne.length} Komponenten, alle Prüfpunkte in Ordnung</small></div><span class="kres io">i.O.</span></div>
+          <table class="ohnetbl"><tbody>${ohne.map(c => { const p = A.pr[c.id]; return `<tr><td class="mono">${kNr(c)}</td><td>${h(typLabel(typOf(c)))}<span class="t2">${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></td><td class="r"><span class="rm io">i.O.</span><span class="t2">${zaehlen(c, p)}</span></td></tr>`; }).join('')}</tbody></table></section>` : '');
+    })()}
     ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
       <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
     ${['cl-vor','cl-nach'].map(id => { const cl = by(S.checklisten, id), p = A.pr['_'+id]; if(!cl || !p) return '';
@@ -2392,6 +2416,7 @@ const ACT = {
   luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
   kontaktedit: d => kontaktModal(d.a),
   ohneauf: () => { UI.ohneAuf = !UI.ohneAuf; render(); },
+  berichtart: d => { S.settings.berichtArt = d.v; save(); render(); },
   startanpassen: () => startModal(),
   sbtoggle: d => startAendern(cfg => { const x = cfg.find(y => y.id===d.v); x.an = !x.an; }),
   sbbreit: d => startAendern(cfg => { const x = cfg.find(y => y.id===d.v); x.breit = !x.breit; }),
