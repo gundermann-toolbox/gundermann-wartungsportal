@@ -323,6 +323,14 @@ input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--acce
 .upl input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .sigs{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);border-radius:8px;background:var(--paper);touch-action:none;cursor:crosshair}
+.signame{border-top:1px solid var(--ink);padding-top:4px;font-size:13px;font-weight:600;color:var(--ink);margin:2px 8px 0}
+#sigvoll{position:fixed;inset:0;z-index:200;background:var(--surface);display:grid;grid-template-rows:auto 1fr auto auto;gap:8px;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+#sigvoll canvas.sig{height:100%;min-height:0;border-width:2px}
+#sigvoll .sv-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#sigvoll .sv-dreh{display:none;color:var(--warn);font-weight:600;font-size:13px}
+@media (orientation:portrait){ #sigvoll .sv-dreh{display:inline} }
+#sigvoll .sv-fuss{justify-content:flex-end}
+#sigvoll .sv-fuss .btn{min-width:120px;min-height:46px}
 .err{color:var(--bad);font-weight:600}
 
 /* Techniker-App */
@@ -803,7 +811,7 @@ const ICONS = {
   kunden:'M4 21V5l8-2v18M12 21h8V9l-8-2M7.5 8h1M7.5 12h1M7.5 16h1M15.5 12h1M15.5 16h1', auftraege:'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 13l2.5 2.5L16 10',
   berichte:'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6', stoerungen:'M12 3l10 18H2zM12 10v5M12 18h.01',
   admin:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4', info:'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01',
-  woche:'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2', plus:'M12 5v14M5 12h14', pdf:'M12 4v11M7 10l5 5 5-5M5 20h14', route:'M3 11l18-8-8 18-2-8z', suche:'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
+  woche:'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2', voll:'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', plus:'M12 5v14M5 12h14', pdf:'M12 4v11M7 10l5 5 5-5M5 20h14', route:'M3 11l18-8-8 18-2-8z', suche:'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
   auge:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
 };
 const ico = n => `<svg class="ico-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
@@ -1603,7 +1611,7 @@ function vBericht(A){
       return zeilen.length ? `<section><h3>${h(cl.name)}</h3><div class="tbl-wrap"><table><tbody>${zeilen.map(x => `<tr><td>${h(x.label)}</td><td style="white-space:pre-wrap">${x.typ==='checkbox' ? '✓' : h(p.f[x.id].v)}</td></tr>`).join('')}</tbody></table></div></section>` : ''; }).join('')}
     ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
     <div class="sigs">
-      <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox">${fmt(A.abgeschlossen||A.datum)} · ${h(techNames(A.techIds))}, Gundermann GmbH</div></div>
+      <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.abgeschlossen||A.datum)}</div></div>
     </div>
     <div class="foot">Prüfgrundlagen: Herstellerangaben, VDI 6022 Blatt 1, DIN EN 15650 und DIN 31051 (Brandschutzklappen). Dieser Bericht wurde digital erstellt.</div>
   </article>`;
@@ -1723,8 +1731,9 @@ function vApp(){
   if(sc==='abschluss') return appShell(appBar('Abschluss', A.nr+' · '+h(o.nr), 'auftrag'),
     `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>    <div class="card"><label class="f" for="pbem">Bemerkung zum Bericht<textarea id="pbem" data-in="bem" placeholder="z. B. Kunde über Störungen informiert">${h(A.bem)}</textarea></label>
 </div>
-    <div class="card"><div class="f">Unterschrift Techniker (${h(me().name)}), optional<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigTech" style="justify-self:start">Löschen</button></div>
-    <div class="small muted">Die Kundenunterschrift läuft über den Regiebericht in KWP mobiler Monteur.</div></div>`,
+    <div class="card"><div class="f">Unterschrift Techniker, optional<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas>
+      <div class="signame">${h(A.sigName || me().name)} · Gundermann GmbH</div>
+      <div class="row"><button class="btn sm" data-act="sigvoll">${ico('voll')} Vollbild zum Unterschreiben</button><button class="btn ghost sm" data-act="sigclear" data-k="sigTech">Löschen</button></div></div></div>`,
     `<button class="btn block" data-act="appvorschau">${ico('auge')} Bericht ansehen und als PDF speichern</button>
      <button class="btn pri block" data-act="appsend">${A.korrektur ? 'Korrigierte Fassung ans Büro schicken' : 'Bericht ans Büro schicken'}</button>`);
   if(sc==='vorschau') return appShell(appBar('Berichtsvorschau', A.nr+' · '+h(o.nr), A.status==='laeuft' ? 'abschluss' : 'auftrag'),
@@ -2418,6 +2427,7 @@ const ACT = {
   },
   fotodel: d => { prOf(curA(),d.c).fotos.splice(+d.i,1); save(); render(); },
   sigclear: d => { curA()[d.k] = null; save(); render(); },
+  sigvoll: () => sigVollbild(),
   sfix: d => { const x = by(S.stoerungen,d.id); x.status = x.status==='offen' ? 'behoben' : 'offen'; save(); render(); toast(x.status==='behoben' ? `Störung #${x.nr} behoben` : `Störung #${x.nr} wieder offen`); },
   fdel: d => { const cl = by(S.checklisten,UI.cl); cl.felder = cl.felder.filter(x => x.id!==d.id); save(); render(); },
   fmove: d => { const cl = by(S.checklisten,UI.cl), i = +d.i, j = i + +d.d; [cl.felder[i], cl.felder[j]] = [cl.felder[j], cl.felder[i]]; save(); render(); },
@@ -2531,12 +2541,43 @@ function initSig(cv){
   const c = cv.getContext('2d'); c.scale(dpr,dpr);
   c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
   c.strokeStyle = c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--paper-ink').trim() || '#1a1f24';
-  if(A[key]){ const img = new Image(); img.onload = () => c.drawImage(img,0,0,r.width,r.height); img.src = A[key]; }
+  if(A[key]){ const img = new Image(); img.onload = () => {
+    // Unterschrift unverzerrt einpassen (z. B. nach Vollbild im Querformat)
+    const w = img.width, hh = img.height, f = Math.min(r.width*dpr/w, r.height*dpr/hh) / dpr;
+    c.drawImage(img, 0, 0, w*f, hh*f); }; img.src = A[key]; }
   let down = false, last = null;
   const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX-b.left, e.clientY-b.top]; };
   cv.onpointerdown = e => { down = true; last = pt(e); cv.setPointerCapture(e.pointerId); c.beginPath(); c.arc(last[0],last[1],1.1,0,7); c.fill(); };
   cv.onpointermove = e => { if(!down) return; const p = pt(e); c.beginPath(); c.moveTo(last[0],last[1]); c.lineTo(p[0],p[1]); c.stroke(); last = p; };
-  cv.onpointerup = cv.onpointercancel = () => { if(!down) return; down = false; A[key] = cv.toDataURL('image/png'); save(); };
+  cv.onpointerup = cv.onpointercancel = () => { if(!down) return; down = false; A[key] = cv.toDataURL('image/png'); if(key==='sigTech') A.sigName = me().name; save(); };
+}
+/* Unterschrift im Vollbild, am Handy möglichst im Querformat */
+function sigVollbild(){
+  const A = curA(); if(!A) return;
+  const el = document.createElement('div');
+  el.id = 'sigvoll';
+  el.innerHTML = `<div class="sv-kopf"><b>Unterschrift Techniker</b><span class="sv-dreh">Handy quer halten für mehr Platz</span></div>
+    <canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker im Vollbild"></canvas>
+    <div class="signame">${h(me().name)} · Gundermann GmbH</div>
+    <div class="row sv-fuss"><button class="btn" data-sv="loeschen">Löschen</button><button class="btn pri" data-sv="fertig">Fertig</button></div>`;
+  document.body.appendChild(el);
+  const cv = el.querySelector('canvas');
+  const neu = () => setTimeout(() => initSig(cv), 120);
+  const zu = () => {
+    removeEventListener('resize', neu); document.removeEventListener('fullscreenchange', beiVollbild);
+    try{ screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); }catch(e){}
+    if(document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    el.remove(); render();
+  };
+  const beiVollbild = () => { if(!document.fullscreenElement && document.getElementById('sigvoll')) zu(); };
+  el.addEventListener('click', e => { const b = e.target.closest('[data-sv]'); if(!b) return;
+    if(b.dataset.sv==='loeschen'){ A.sigTech = null; save(); initSig(cv); } else zu(); });
+  addEventListener('resize', neu);
+  const start = el.requestFullscreen ? el.requestFullscreen({navigationUI:'hide'}) : Promise.reject();
+  start.then(() => { document.addEventListener('fullscreenchange', beiVollbild);
+      return screen.orientation && screen.orientation.lock ? screen.orientation.lock('landscape') : null; })
+    .catch(() => {}).finally(neu);
+  neu();
 }
 let toastT;
 function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
