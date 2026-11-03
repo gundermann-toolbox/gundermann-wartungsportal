@@ -2539,7 +2539,8 @@ function initSig(cv){
   if(!r.width) return;
   cv.width = r.width*dpr; cv.height = r.height*dpr;
   const c = cv.getContext('2d'); c.scale(dpr,dpr);
-  c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
+  const lw = cv.closest('#sigvoll') ? 4.2 : 3.4; // kräftiger Strich, im Vollbild etwas dicker
+  c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
   c.strokeStyle = c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--paper-ink').trim() || '#1a1f24';
   if(A[key]){ const img = new Image(); img.onload = () => {
     // Unterschrift unverzerrt einpassen (z. B. nach Vollbild im Querformat)
@@ -2547,7 +2548,7 @@ function initSig(cv){
     c.drawImage(img, 0, 0, w*f, hh*f); }; img.src = A[key]; }
   let down = false, last = null;
   const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX-b.left, e.clientY-b.top]; };
-  cv.onpointerdown = e => { down = true; last = pt(e); cv.setPointerCapture(e.pointerId); c.beginPath(); c.arc(last[0],last[1],1.1,0,7); c.fill(); };
+  cv.onpointerdown = e => { down = true; last = pt(e); cv.setPointerCapture(e.pointerId); c.beginPath(); c.arc(last[0],last[1],lw/2,0,7); c.fill(); };
   cv.onpointermove = e => { if(!down) return; const p = pt(e); c.beginPath(); c.moveTo(last[0],last[1]); c.lineTo(p[0],p[1]); c.stroke(); last = p; };
   cv.onpointerup = cv.onpointercancel = () => { if(!down) return; down = false; A[key] = cv.toDataURL('image/png'); if(key==='sigTech') A.sigName = me().name; save(); };
 }
