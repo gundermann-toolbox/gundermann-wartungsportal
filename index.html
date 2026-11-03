@@ -438,6 +438,14 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .rm.wert.nio{color:var(--paper-bad);background:rgba(180,51,42,.10)}
 .doc .vorher{font-size:11px;color:var(--paper-muted);white-space:nowrap}
 .doc .fotos{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
+.doc .pinline{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:12.5px;line-height:1.5;padding:1px 0 3px}
+.doc .pk{max-width:100%}
+.doc .pk b{font-size:11.5px;margin-right:2px}
+.doc .pk b.io{color:var(--paper-ok)} .doc .pk b.nv,.doc .pk b.leer{color:var(--paper-muted)} .doc .pk b.ja{color:var(--paper-ink)}
+.doc .pgrp.kz{padding:4px 12px 5px}
+.doc .pgt-in{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--paper-brand);margin-right:2px}
+.doc .pgt-in::after{content:":"}
+.doc .pinline + .pitems{margin-top:4px;border-top:1px dotted var(--paper-line)}
 .doc .kzus{padding:6px 12px 8px;font-size:12px;color:var(--paper-ok);border-top:1px solid var(--paper-line)}
 .doc .kzus::before{content:"✓ "}
 .doc .ohnetbl{width:100%;font-size:12.5px}
@@ -1699,7 +1707,7 @@ function vBericht(A){
   return `
   <article class="doc">
     <div class="bart no-print"><span class="small muted">Bericht:</span><div class="chips">${[['kompakt','Kompakt'],['voll','Ausführlich']].map(([v,l]) => `<button class="chip ${(S.settings.berichtArt||'kompakt')===v?'on':''}" data-act="berichtart" data-v="${v}">${l}</button>`).join('')}</div>
-      <span class="small muted">${(S.settings.berichtArt||'kompakt')==='kompakt' ? 'Nur Mängel, Messwerte und Bemerkungen; Komponenten ohne Befund als Liste.' : 'Alle Prüfpunkte jeder Komponente.'}</span></div>
+      <span class="small muted">${(S.settings.berichtArt||'kompakt')==='kompakt' ? 'Alle Prüfpunkte platzsparend als Liste, Mängel und Messwerte hervorgehoben.' : 'Alle Prüfpunkte als Tabelle, zweispaltig.'}</span></div>
     ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: ${A.korrektur ? `Korrigierte Fassung ${A.korrektur}, noch nicht abgeschickt.` : 'Der Bericht ist noch nicht abgeschickt.'}</div>` : ''}
     ${!vorschau && A.korrektur ? (() => { const b = aktBericht(A); return `<div class="summary">Korrigierte Fassung ${A.korrektur}${b && b.ersetztVom ? `, ersetzt den Bericht vom ${fmt(b.ersetztVom)}` : ''}.</div>`; })() : ''}
     <div class="doc-head">
@@ -1726,18 +1734,24 @@ function vBericht(A){
       const fotos = (c, p) => p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : '';
       const istMangel = c => kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id);
       if(!kompakt) return done.map(c => { const p = A.pr[c.id]; return `<section class="kblock">${kopf(c, istMangel(c))}${punkteHtml(clFor(A,c), p.f, c)}${fotos(c, p)}</section>`; }).join('');
-      const zaehlen = (c, p) => { const z = {io:0, nv:0, ja:0, ok:0};
-        clFor(A,c).forEach(x => { const d = p.f[x.id]; if(!d || d.v==null || d.v==='') return;
-          if(d.v==='io') z.io++; else if(d.v==='nv') z.nv++; else if(d.v==='ja' || d.v==='nein') z.ja++; else if(x.typ==='checkbox' && d.v) z.ok++; });
-        return [z.io && `${z.io} Prüfpunkte i.O.`, z.ok && `${z.ok} erledigt`, z.ja && `${z.ja} Ja/Nein-Angaben`, z.nv && `${z.nv} n.v.`].filter(Boolean).join(' · '); };
-      const ohne = done.filter(c => { const p = A.pr[c.id]; return !istMangel(c) && !(p.fotos||[]).length && !clFor(A,c).some(x => wichtig(x, p.f[x.id])); });
-      const mit = done.filter(c => !ohne.includes(c));
-      return mit.map(c => { const p = A.pr[c.id];
-          return `<section class="kblock">${kopf(c, istMangel(c))}
-            ${punkteHtml(clFor(A,c).filter(x => x.typ==='ueberschrift' || wichtig(x, p.f[x.id])), p.f, c)}
-            <div class="kzus">${zaehlen(c, p) || 'Keine weiteren Angaben'}</div>${fotos(c, p)}</section>`; }).join('')
-        + (ohne.length ? `<section class="kblock"><div class="khead"><div class="kname"><b>Ohne Befund</b><small>${ohne.length} Komponenten, alle Prüfpunkte in Ordnung</small></div><span class="kres io">i.O.</span></div>
-          <table class="ohnetbl"><tbody>${ohne.map(c => { const p = A.pr[c.id]; return `<tr><td class="mono">${kNr(c)}</td><td>${h(typLabel(typOf(c)))}<span class="t2">${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></td><td class="r"><span class="rm io">i.O.</span><span class="t2">${zaehlen(c, p)}</span></td></tr>`; }).join('')}</tbody></table></section>` : '');
+      // Jedes Bauteil mit allen Prüfpunkten: unauffällige Punkte als Fließliste, Mängel/Messwerte/Bemerkungen als eigene Zeilen
+      const kompaktHtml = (felder, f, c) => {
+        const gruppen = [{titel:'', items:[]}];
+        felder.forEach(x => { if(x.typ==='ueberschrift') gruppen.push({titel:x.label, items:[]}); else gruppen[gruppen.length-1].items.push(x); });
+        return gruppen.map(g => {
+          const normal = g.items.filter(x => x.typ!=='text' && !wichtig(x, f[x.id]));
+          const extra = g.items.filter(x => wichtig(x, f[x.id]));
+          if(!normal.length && !extra.length) return '';
+          const pk = x => { const d = f[x.id] || {}, v = d.v;
+            const m = v==='io' ? ['io','✓'] : x.typ==='checkbox' && v ? ['io','✓'] : v==='ja' ? ['ja','Ja'] : v==='nein' ? ['ja','Nein'] : v==='nv' ? ['nv','n.v.'] : ['leer','–'];
+            return `<span class="pk"><b class="${m[0]}">${m[1]}</b> ${h(x.label)}</span>`; };
+          const titel = g.titel ? `<span class="pgt-in">${h(g.titel)}</span>` : '';
+          return `<div class="pgrp kz">${normal.length ? `<div class="pinline">${titel}${normal.map(pk).join('')}</div>` : (g.titel ? `<div class="pgt">${h(g.titel)}</div>` : '')}
+            ${extra.length ? punkteHtml(extra, f, c).replace(/^<div class="pgrp">|<\/div>$/g, '') : ''}</div>`;
+        }).join('');
+      };
+      return done.map(c => { const p = A.pr[c.id];
+        return `<section class="kblock">${kopf(c, istMangel(c))}${kompaktHtml(clFor(A,c), p.f, c)}${fotos(c, p)}</section>`; }).join('');
     })()}
     ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
       <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
