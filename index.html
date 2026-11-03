@@ -451,7 +451,6 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .ohnetbl{width:100%;font-size:12.5px}
 .doc .ohnetbl td{padding:5px 12px;vertical-align:top}
 .doc .ohnetbl td.r .t2{font-size:11px;color:var(--paper-muted);font-weight:400}
-.doc .bart{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px dashed var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)}
 
 .label{background:var(--paper);color:var(--paper-ink);border:2px solid var(--paper-ink);border-radius:6px;padding:12px;display:flex;gap:14px;align-items:center;max-width:100%}
 .label .qr{width:104px;height:104px;flex:none;display:grid;place-items:center;background:#fff}
@@ -1706,8 +1705,6 @@ function vBericht(A){
   };
   return `
   <article class="doc">
-    <div class="bart no-print"><span class="small muted">Bericht:</span><div class="chips">${[['kompakt','Kompakt'],['voll','Ausführlich']].map(([v,l]) => `<button class="chip ${(S.settings.berichtArt||'kompakt')===v?'on':''}" data-act="berichtart" data-v="${v}">${l}</button>`).join('')}</div>
-      <span class="small muted">${(S.settings.berichtArt||'kompakt')==='kompakt' ? 'Alle Prüfpunkte platzsparend als Liste, Mängel und Messwerte hervorgehoben.' : 'Alle Prüfpunkte als Tabelle, zweispaltig.'}</span></div>
     ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: ${A.korrektur ? `Korrigierte Fassung ${A.korrektur}, noch nicht abgeschickt.` : 'Der Bericht ist noch nicht abgeschickt.'}</div>` : ''}
     ${!vorschau && A.korrektur ? (() => { const b = aktBericht(A); return `<div class="summary">Korrigierte Fassung ${A.korrektur}${b && b.ersetztVom ? `, ersetzt den Bericht vom ${fmt(b.ersetztVom)}` : ''}.</div>`; })() : ''}
     <div class="doc-head">
@@ -1727,13 +1724,11 @@ function vBericht(A){
     <h3 class="doc-h">Geprüfte Komponenten</h3>
     ${(() => {
       // Kompakt: Komponenten ohne Befund als Tabellenzeile, sonst nur Mängel, Messwerte und Bemerkungen
-      const kompakt = (S.settings.berichtArt || 'kompakt')==='kompakt';
       const wichtig = (x, d) => d && (d.v==='nio' || d.over || (['wert','text'].includes(x.typ) && String(d.v||'').trim()));
       const kopf = (c, mangel) => `<div class="khead"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(typOf(c)))}</b><small>${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
         <span class="kres ${mangel ? 'nio' : 'io'}">${mangel ? 'Mangel' : 'i.O.'}</span></div>`;
       const fotos = (c, p) => p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : '';
       const istMangel = c => kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id);
-      if(!kompakt) return done.map(c => { const p = A.pr[c.id]; return `<section class="kblock">${kopf(c, istMangel(c))}${punkteHtml(clFor(A,c), p.f, c)}${fotos(c, p)}</section>`; }).join('');
       // Jedes Bauteil mit allen Prüfpunkten: unauffällige Punkte als Fließliste, Mängel/Messwerte/Bemerkungen als eigene Zeilen
       const kompaktHtml = (felder, f, c) => {
         const gruppen = [{titel:'', items:[]}];
@@ -2430,7 +2425,6 @@ const ACT = {
   luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
   kontaktedit: d => kontaktModal(d.a),
   ohneauf: () => { UI.ohneAuf = !UI.ohneAuf; render(); },
-  berichtart: d => { S.settings.berichtArt = d.v; save(); render(); },
   startanpassen: () => startModal(),
   sbtoggle: d => startAendern(cfg => { const x = cfg.find(y => y.id===d.v); x.an = !x.an; }),
   sbbreit: d => startAendern(cfg => { const x = cfg.find(y => y.id===d.v); x.breit = !x.breit; }),
