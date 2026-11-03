@@ -1582,7 +1582,7 @@ function vBericht(A){
       <div><dt>Kunde</dt><dd>${h(k.nr)}<br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</dd></div>
       <div><dt>Objekt</dt><dd>${h(o.nr)}<br>${h(o.name)}<br>${h(o.adresse)}, ${h(o.ort)}</dd></div>
       <div><dt>Techniker</dt><dd>${h(techNames(A.techIds))}${A.vorOrt ? `<br><span style="color:var(--paper-muted);font-size:12px">Auftrag vor Ort angelegt von ${h(A.angelegtVon)}</span>` : ''}</dd></div>
-      <div><dt>Geprüfte Komponenten</dt><dd>${done.length} von ${ks.length} (${ks.length ? Math.round(done.length/ks.length*100) : 0} %)</dd></div>
+      <div><dt>Geprüfte Komponenten</dt><dd>${done.length}</dd></div>
     </dl>
     <div class="summary ${st_.length?'nio':'io'}">${st_.length ? `${st_.length} ${st_.length===1?'Störung':'Störungen'} festgestellt, siehe Störungsliste.` : 'Alle geprüften Komponenten ohne Mängel.'}</div>
     <section><h3>Prüfungen</h3><div class="tbl-wrap"><table><thead><tr><th>Typ</th><th class="r">OK</th><th class="r">Mangel</th><th class="r">Gesamt</th></tr></thead><tbody>
