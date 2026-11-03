@@ -146,7 +146,8 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   body.printing .doc, body.printing .doc *{visibility:visible}
   body.printing .doc{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;padding:0;border-radius:0}
   body.printing .doc .vorschau-hinweis{display:none}
-  body.printing .doc section{break-inside:avoid}
+  body.printing .doc section:not(.kblock){break-inside:avoid}
+  body.printing .doc .pgrp{break-inside:avoid}
   body{background:#fff}
 }
 .who select{min-height:34px;padding:5px 8px;width:auto}
@@ -390,6 +391,40 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .sigspace{height:74px}
 .doc .foot{font-size:11px;color:var(--paper-muted);border-top:1px solid var(--paper-line);padding-top:10px}
 .doc .fotos img{width:110px;height:82px;object-fit:cover;border:1px solid var(--paper-line)}
+.doc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc .sumtbl{max-width:560px}
+.doc .doc-h{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--paper-muted);margin:4px 0 -10px}
+.doc .kblock{border:1.5px solid var(--paper-line);border-radius:6px;overflow:hidden;display:grid}
+.doc .khead{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--paper-sunk);border-bottom:1.5px solid var(--paper-line);break-after:avoid}
+.doc .knr{font:700 13px var(--f-mono);background:var(--paper-brand);color:#fff;border-radius:4px;padding:3px 7px;flex:none}
+.doc .kname{flex:1;min-width:0;display:grid}
+.doc .kname b{font:700 14.5px var(--f-display)}
+.doc .kname small{color:var(--paper-muted);font-size:11.5px}
+.doc .kres{flex:none;font-weight:700;font-size:12px;border-radius:999px;padding:3px 10px;border:1.5px solid currentColor}
+.doc .kres.io{color:var(--paper-ok)} .doc .kres.nio{color:var(--paper-bad)}
+.doc .pgrp{padding:6px 12px 8px}
+.doc .pgrp + .pgrp{border-top:1px solid var(--paper-line)}
+.doc .pgt{font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--paper-brand);margin:2px 0 2px}
+.doc .pitems{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px;grid-auto-flow:row dense}
+@media (max-width:620px){ .doc .pitems{grid-template-columns:minmax(0,1fr)} }
+.doc .pi{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:4px 0;border-bottom:1px dotted var(--paper-line);break-inside:avoid}
+.doc .pi .pl{flex:1 1 auto;min-width:0}
+.doc .pi .pr{flex:none;display:flex;gap:6px;align-items:baseline}
+.doc .pi .pm{flex-basis:100%;font-size:12px;color:var(--paper-bad)}
+.doc .pi.bad .pl{color:var(--paper-bad);font-weight:600}
+.doc .pi.txt{display:grid;gap:0}
+.doc .pi.txt.lang{grid-column:1/-1}
+.doc .pi.txt .pl{font-size:11.5px;color:var(--paper-muted)}
+.doc .pi.txt .pt{white-space:pre-wrap}
+.doc .rm{font-weight:700;font-size:12px;border-radius:4px;padding:1px 7px;white-space:nowrap}
+.doc .rm.io{color:var(--paper-ok);background:rgba(35,120,74,.10)}
+.doc .rm.nio{color:var(--paper-bad);background:rgba(180,51,42,.10)}
+.doc .rm.nv,.doc .rm.leer{color:var(--paper-muted);background:var(--paper-sunk)}
+.doc .rm.ja{color:var(--paper-ink);background:var(--paper-sunk)}
+.doc .rm.wert{font-family:var(--f-mono);color:var(--paper-ink);background:var(--paper-sunk)}
+.doc .rm.wert.nio{color:var(--paper-bad);background:rgba(180,51,42,.10)}
+.doc .vorher{font-size:11px;color:var(--paper-muted);white-space:nowrap}
+.doc .fotos{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
 
 .label{background:var(--paper);color:var(--paper-ink);border:2px solid var(--paper-ink);border-radius:6px;padding:12px;display:flex;gap:14px;align-items:center;max-width:100%}
 .label .qr{width:104px;height:104px;flex:none;display:grid;place-items:center;background:#fff}
@@ -1575,10 +1610,21 @@ function vBericht(A){
   const sum = {};
   done.forEach(c => { const key = typLabel(typOf(c)); sum[key] = sum[key] || {ok:0, m:0}; sum[key][kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id) ? 'm' : 'ok']++; });
   const res = (x,d,c) => {
-    if(!d || d.v==null || d.v==='') return '<span class="nv">–</span>';
-    if(x.typ==='checkbox') return d.v ? '<span class="io">✓ erledigt</span>' : '<span class="nv">–</span>';
-    if(x.typ==='wert'){ const vg = c && wertVergleich(A, c, x, d.v); return h(d.v)+' '+h(x.einheit) + (vg ? ` <span class="muted small">(vorher ${h(vg.l.v)} ${h(x.einheit)}${vg.abw ? `, ${vg.abw > 0 ? '+' : ''}${vg.abw} %` : ''})</span>` : ''); }
-    return {io:'<span class="io">i.O.</span>', nio:'<span class="nio">n.i.O.</span>', nv:'<span class="nv">n.v.</span>', ja:'Ja', nein:'Nein'}[d.v] || h(d.v);
+    if(!d || d.v==null || d.v==='') return '<span class="rm leer">–</span>';
+    if(x.typ==='checkbox') return d.v ? '<span class="rm io">✓ erledigt</span>' : '<span class="rm leer">–</span>';
+    if(x.typ==='wert'){ const vg = c && wertVergleich(A, c, x, d.v);
+      return `<span class="rm wert ${d.over ? 'nio' : ''}">${h(d.v)} ${h(x.einheit)}</span>` + (vg ? `<span class="vorher">vorher ${h(vg.l.v)}${vg.abw ? `, ${vg.abw > 0 ? '+' : ''}${vg.abw} %` : ''}</span>` : ''); }
+    return {io:'<span class="rm io">i.O.</span>', nio:'<span class="rm nio">n.i.O.</span>', nv:'<span class="rm nv">n.v.</span>', ja:'<span class="rm ja">Ja</span>', nein:'<span class="rm ja">Nein</span>'}[d.v] || `<span class="rm ja">${h(d.v)}</span>`;
+  };
+  // Prüfpunkte nach Überschriften gruppiert, zweispaltig: Text und Ergebnis direkt nebeneinander
+  const punkteHtml = (felder, f, c) => {
+    const gruppen = [{titel:'', items:[]}];
+    felder.forEach(x => { if(x.typ==='ueberschrift') gruppen.push({titel:x.label, items:[]}); else gruppen[gruppen.length-1].items.push(x); });
+    return gruppen.filter(g => g.items.some(x => x.typ!=='text' || (f[x.id] && f[x.id].v))).map(g => `<div class="pgrp">${g.titel ? `<div class="pgt">${h(g.titel)}</div>` : ''}<div class="pitems">
+      ${g.items.map(x => { const d = f[x.id];
+        if(x.typ==='text') return d && d.v ? `<div class="pi txt ${String(d.v).length > 40 ? 'lang' : ''}"><span class="pl">${h(x.label)}</span><span class="pt">${h(d.v)}</span></div>` : '';
+        return `<div class="pi ${d && (d.v==='nio' || d.over) ? 'bad' : ''}"><span class="pl">${h(x.label)}</span><span class="pr">${res(x,d,c)}</span>${d && d.v==='nio' && d.m ? `<span class="pm">${h(d.m)}</span>` : ''}</div>`; }).join('')}
+    </div></div>`).join('');
   };
   return `
   <article class="doc">
@@ -1595,22 +1641,21 @@ function vBericht(A){
       <div><dt>Geprüfte Komponenten</dt><dd>${done.length}</dd></div>
     </dl>
     <div class="summary ${st_.length?'nio':'io'}">${st_.length ? `${st_.length} ${st_.length===1?'Störung':'Störungen'} festgestellt, siehe Störungsliste.` : 'Alle geprüften Komponenten ohne Mängel.'}</div>
-    <section><h3>Prüfungen</h3><div class="tbl-wrap"><table><thead><tr><th>Typ</th><th class="r">OK</th><th class="r">Mangel</th><th class="r">Gesamt</th></tr></thead><tbody>
+    <section><h3>Übersicht</h3><div class="tbl-wrap"><table class="sumtbl"><thead><tr><th>Typ</th><th class="r">i.O.</th><th class="r">Mangel</th><th class="r">Gesamt</th></tr></thead><tbody>
       ${Object.entries(sum).map(([t,v]) => `<tr><td>${h(t)}</td><td class="r io">${v.ok}</td><td class="r nio">${v.m}</td><td class="r">${v.ok+v.m}</td></tr>`).join('')}
     </tbody></table></div></section>
-    ${done.map(c => { const t = typOf(c), p = A.pr[c.id]; return `<section>
-      <h3><span class="mono">${kNr(c)}</span> ${h(typLabel(t))} <span>${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></h3>
-      <div class="tbl-wrap"><table><tbody>${clFor(A,c).map(x => x.typ==='ueberschrift'
-        ? `<tr class="dh"><td colspan="2">${h(x.label)}</td></tr>`
-        : x.typ==='text' ? (p.f[x.id] && p.f[x.id].v ? `<tr><td>${h(x.label)}</td><td>${h(p.f[x.id].v)}</td></tr>` : '')
-        : `<tr><td>${h(x.label)}</td><td class="res">${res(x,p.f[x.id],c)}</td></tr>`).join('')}</tbody></table></div>
-      ${p.fotos && p.fotos.length ? `<div class="fotos" style="margin-top:8px">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
+    <h3 class="doc-h">Geprüfte Komponenten</h3>
+    ${done.map(c => { const t = typOf(c), p = A.pr[c.id], mangel = kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id); return `<section class="kblock">
+      <div class="khead"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(t))}</b><small>${h(c.standort)}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
+        <span class="kres ${mangel ? 'nio' : 'io'}">${mangel ? 'Mangel' : 'i.O.'}</span></div>
+      ${punkteHtml(clFor(A,c), p.f, c)}
+      ${p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : ''}
     </section>`; }).join('')}
     ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
       <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
     ${['cl-vor','cl-nach'].map(id => { const cl = by(S.checklisten, id), p = A.pr['_'+id]; if(!cl || !p) return '';
       const zeilen = cl.felder.filter(x => x.typ!=='ueberschrift' && p.f[x.id] && p.f[x.id].v!=null && p.f[x.id].v!=='' && p.f[x.id].v!==false);
-      return zeilen.length ? `<section><h3>${h(cl.name)}</h3><div class="tbl-wrap"><table><tbody>${zeilen.map(x => `<tr><td>${h(x.label)}</td><td style="white-space:pre-wrap">${x.typ==='checkbox' ? '✓' : h(p.f[x.id].v)}</td></tr>`).join('')}</tbody></table></div></section>` : ''; }).join('')}
+      return zeilen.length ? `<section class="kblock"><div class="khead"><div class="kname"><b>${h(cl.name)}</b></div></div>${punkteHtml(zeilen, p.f, null)}</section>` : ''; }).join('')}
     ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
     <div class="sigs">
       <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.abgeschlossen||A.datum)}</div></div>
