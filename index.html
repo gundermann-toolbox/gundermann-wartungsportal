@@ -92,6 +92,8 @@ a{color:var(--accent)}
 .nav button .ico-i{opacity:.85}
 @media (min-width:901px) and (max-width:1180px){ .nav button .ico-i{display:none} }
 button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
+.pdf.ersetzt{opacity:.6}
+.pdf.ersetzt b{text-decoration:line-through}
 .wgrid-wrap{overflow-x:auto}
 .wgrid{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;min-width:760px}
 .wgrid th,.wgrid td{border:1px solid var(--line);vertical-align:top;padding:6px;text-align:left}
@@ -534,7 +536,7 @@ function seed(){
 }
 
 let S;
-const UI = {view:'start', anlage:null, auftrag:null, af:'offen', sf:'offen', at:'typen', cl:'cl-zla', q:'', addK:false, err:'', mapF:'alle', mapSel:null,
+const UI = {view:'start', anlage:null, auftrag:null, af:'offen', sf:'offen', at:'ideen', cl:'cl-zla', q:'', addK:false, err:'', mapF:'alle', mapSel:null,
   app:{screen:'liste', tab:'heute', komp:null}};
 /* Speicher: IndexedDB (fasst auch alle Foxtag-Daten), localStorage nur als Rückfall */
 const IDB = {
@@ -696,6 +698,13 @@ const offenerAuftrag = aid => S.auftraege.find(a => a.anlageId===aid && ['planun
 const aDatum = a => fmt(a.datum) + (a.zeit ? ' · '+a.zeit+' Uhr' : '');
 const curA = () => by(S.auftraege, UI.auftrag);
 const isOpen = a => ['planung','geplant','laeuft'].includes(a.status);
+/* Korrektur: Techniker darf 7 Tage nach dem ersten Abschicken korrigieren, danach nur nach Freigabe durchs Büro.
+   In der App bleiben erledigte Aufträge 30 Tage unter „Erledigt“. */
+const KORREKTUR_TAGE = 7, ERLEDIGT_TAGE = 30;
+const tageSeit = isoS => isoS ? Math.round((TODAY - new Date(isoS+'T00:00:00')) / 864e5) : 0;
+const korrekturBis = A => plusTage(A.erstGesendet || A.abgeschlossen || A.datum, KORREKTUR_TAGE);
+const korrekturMoeglich = A => A.status==='erledigt' && (A.korrekturFrei || iso(TODAY) <= korrekturBis(A));
+const aktBericht = A => S.berichte.filter(b => b.auftragId===A.id && !b.ersetzt).sort((x,y) => (x.fassung||0) - (y.fassung||0)).pop() || S.berichte.find(b => b.auftragId===A.id);
 
 /* ---------- Geo ---------- */
 function hashJ(s){ let x = 7; for(const ch of s) x = (x*31 + ch.charCodeAt(0)) % 100003; return (x % 1000)/1000; }
@@ -1116,7 +1125,7 @@ function kundenList(){
 function pdfItem(b){
   const A = by(S.auftraege, b.auftragId); if(!A) return '';
   const {o} = ctx(A.anlageId);
-  return `<button class="pdf" data-act="auftrag" data-id="${A.id}"><i>PDF</i><span><b>${h(b.datei)}</b><span class="muted small" style="display:block">${fmt(b.erstellt)} · ${h(o.name)} · ${h(techNames(A.techIds))}</span></span></button>`;
+  return `<button class="pdf ${b.ersetzt ? 'ersetzt' : ''}" data-act="auftrag" data-id="${A.id}"><i>PDF</i><span><b>${h(b.datei)}</b>${b.ersetzt ? ' '+pill('','ersetzt') : b.fassung ? ' '+pill('warn','Korrektur '+b.fassung) : ''}<span class="muted small" style="display:block">${fmt(b.erstellt)} · ${h(o.name)} · ${h(techNames(A.techIds))}</span></span></button>`;
 }
 function vKunde(){
   const k = by(S.kunden, UI.kunde); if(!k) return vKunden();
@@ -1275,18 +1284,21 @@ function vAuftrag(){
   const idx = STATUS.findIndex(s => s[0]===A.status);
   const ks = auftragKomps(A);
   const done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done).length;
-  const ber = S.berichte.find(b => b.auftragId===A.id);
+  const ber = aktBericht(A);
   const mail = ber && S.mails.find(m => m.berichtId===ber.id);
   let actions = '';
   if(A.status==='planung') actions = `<button class="btn pri" data-act="setstatus" data-v="geplant">Freigeben an Techniker</button>`;
-  if(A.status==='erledigt') actions = `<button class="btn pri" data-act="setstatus" data-v="abgerechnet">Als abgerechnet markieren</button>`;
+  if(A.status==='erledigt'){
+    actions = `<button class="btn pri" data-act="setstatus" data-v="abgerechnet">Als abgerechnet markieren</button>`;
+    if(!korrekturMoeglich(A)) actions += `<button class="btn" data-act="korrfrei">Zur Korrektur freigeben</button>`;
+  }
   if(A.vorOrt && !A.geprueft) actions = `<button class="btn pri" data-act="ageprueft" style="background:var(--warn);border-color:var(--warn)">Vor-Ort-Auftrag als geprüft markieren</button>` + actions;
   const canApp = me().app && (A.techIds.includes(me().id) || me().rolle==='admin');
   if(['geplant','laeuft'].includes(A.status) && canApp) actions += `<button class="btn" data-act="inapp" data-id="${A.id}">In der App öffnen</button>`;
   if(isOpen(A)){
     actions += `<button class="btn" data-act="aedit">Bearbeiten</button>`;
     if(A.status!=='planung') actions += `<button class="btn" data-act="azurueck">Vom Techniker zurückziehen</button>`;
-    actions += `<button class="btn danger" data-act="adel">Löschen</button>`;
+    if(!A.korrektur) actions += `<button class="btn danger" data-act="adel">Löschen</button>`;
   }
   return `
   <button class="back" data-act="go" data-v="auftraege">← Alle Aufträge</button>
@@ -1308,6 +1320,13 @@ function vAuftrag(){
     ${A.techIds.length ? '' : `<p class="err" style="margin:0">Noch kein Techniker zugeteilt. Beim Freigeben wird der Auftrag dir zugeteilt.</p>`}</section>` : ''}
   ${A.status==='geplant' ? `<section class="panel"><p style="margin:0">Liegt in der App bei <b>${h(techNames(A.techIds))}</b> unter „Meine Aufträge“. Noch nicht begonnen.</p></section>` : ''}
   ${A.status==='laeuft' ? `<section class="panel"><div class="panel-h"><b>Wird gerade in der App bearbeitet: ${done} von ${ks.length} Komponenten geprüft</b></div><div class="prog"><i style="width:${ks.length ? done/ks.length*100 : 0}%"></i></div></section>` : ''}
+  ${A.status==='laeuft' && A.korrektur ? `<section class="panel" style="border-color:var(--warn)"><div class="panel-h"><h2>Bericht wird korrigiert</h2>${pill('warn','Korrektur '+A.korrektur)}</div>
+    <p style="margin:0">Der Techniker überarbeitet den Bericht. Der bisherige Bericht bleibt gültig, bis die neue Fassung kommt. Automatisch angelegte Störungen und Fälligkeiten aus dem letzten Abschicken sind so lange zurückgenommen.</p></section>` : ''}
+  ${A.status==='erledigt' ? `<section class="panel"><div class="panel-h"><h2>Korrektur</h2></div><p style="margin:0">${korrekturMoeglich(A)
+      ? (A.korrekturFrei ? 'Vom Büro zur Korrektur freigegeben. Der Techniker kann den Bericht in der App überarbeiten.' : `Der Techniker kann den Bericht bis ${fmt(korrekturBis(A))} in der App selbst korrigieren.`)
+      : `Die Frist für den Techniker ist am ${fmt(korrekturBis(A))} abgelaufen. Mit „Zur Korrektur freigeben“ kann er den Bericht noch einmal überarbeiten.`}
+      Der Bericht wird nie aus der App an Kunden geschickt, nur ans Büro.</p>
+    ${S.berichte.filter(b => b.auftragId===A.id).length > 1 ? `<div class="alist">${S.berichte.filter(b => b.auftragId===A.id).sort((x,y) => (y.fassung||0)-(x.fassung||0)).map(pdfItem).join('')}</div>` : ''}</section>` : ''}
   ${ber ? `<section class="panel"><div class="panel-h"><h2>Bericht eingegangen</h2>${pill('ok','im Kundenordner gespeichert')}</div>
     <div class="facts"><div><span>Datei</span>${h(ber.datei)}</div><div><span>Eingegangen</span>${fmt(ber.erstellt)}${ber.zeit ? ' · '+ber.zeit+' Uhr' : ''}</div>
     <div><span>E-Mail ans Büro</span>${mail ? h(mail.an)+' · '+fmt(mail.am) : '–'}</div></div>
@@ -1332,9 +1351,11 @@ function vBerichte(){
 }
 function berichtAblegen(A, mitMail){
   const {o,k} = ctx(A.anlageId);
-  const b = {id:uid(), auftragId:A.id, datei:`Wartungsbericht_${A.nr}_${(o.nr||'Objekt').replace(/[^\w-]/g,'')}.pdf`, erstellt:A.abgeschlossen || A.datum, zeit: mitMail ? nowTime() : ''};
+  const n = A.korrektur || 0, alt = aktBericht(A);
+  const b = {id:uid(), auftragId:A.id, fassung:n, datei:`Wartungsbericht_${A.nr}_${(o.nr||'Objekt').replace(/[^\w-]/g,'')}${n ? '_Korrektur'+n : ''}.pdf`, erstellt: n ? iso(TODAY) : (A.abgeschlossen || A.datum), zeit: mitMail ? nowTime() : ''};
+  if(n && alt){ alt.ersetzt = true; alt.ersetztDurch = b.id; b.ersetztBericht = alt.datei; b.ersetztVom = alt.erstellt; }
   S.berichte.push(b);
-  S.mails.push({id:uid(), berichtId:b.id, an:S.settings.bueroMail, betreff:`Wartungsbericht ${A.nr} · ${o.nr} ${o.name} · ${k.name}`, am:b.erstellt, zeit:b.zeit, datei:b.datei});
+  S.mails.push({id:uid(), berichtId:b.id, an:S.settings.bueroMail, betreff:`${n ? 'Korrektur: ' : ''}Wartungsbericht ${A.nr} · ${o.nr} ${o.name} · ${k.name}${n && alt ? ` (ersetzt Bericht vom ${fmt(alt.erstellt)})` : ''}`, am:b.erstellt, zeit:b.zeit, datei:b.datei});
   return b;
 }
 
@@ -1359,7 +1380,7 @@ function vStoerungen(){
 /* ---------- Administration ---------- */
 function vAdmin(){
   if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
-  const tabs = [['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['it','IT & Einrichtung']];
+  const tabs = [['ideen','Notizen'],['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['it','IT & Einrichtung']];
   let body = '';
   if(UI.at==='typen') body = `<section class="panel"><p class="muted" style="margin:0">Der Typ bestimmt Prüfintervall und Checkliste. Kürzel wie in Foxtag: [V] vierteljährlich, [H] halbjährlich, [J] jährlich, [Z] alle 2 Jahre.</p>
     <div class="tbl-wrap"><table><thead><tr><th>Typ</th><th>Intervall</th><th>Checkliste</th><th>Austausch</th><th>Anzahl</th></tr></thead><tbody>
@@ -1407,6 +1428,7 @@ function vAdmin(){
         <button class="btn pri" type="submit">Benutzer anlegen</button>
       </form></section>`;
   if(UI.at==='it') body = vInfo(true);
+  if(UI.at==='ideen') body = vIdeen();
   if(UI.at==='mail') body = `<section class="panel"><h2>Berichte per E-Mail</h2>
     <p class="muted" style="margin:0">Jeder zurückgeschickte Bericht wird als PDF im Kundenordner gespeichert und zusätzlich an diese Adresse geschickt, damit das Büro ihn weiterleiten kann.</p>
     <form class="fgrid inset" data-form="mail"><label class="f" for="bm">Empfänger im Büro<input id="bm" name="an" type="email" value="${h(S.settings.bueroMail)}" required></label><button class="btn pri" type="submit">Speichern</button></form></section>`;
@@ -1415,6 +1437,24 @@ function vAdmin(){
 }
 
 /* ---------- IT & Einrichtung ---------- */
+/* Vorübergehend: Notizen für Ideen unterwegs. Liegen nur auf diesem Gerät (eigener Speicher, übersteht auch „Beispieldaten zurücksetzen“). */
+const IDEEN_KEY = 'gm-wartung-ideen';
+const ideenLesen = () => { try{ return JSON.parse(localStorage.getItem(IDEEN_KEY) || '[]'); }catch(e){ return UI.ideen || []; } };
+const ideenSchreiben = l => { UI.ideen = l; try{ localStorage.setItem(IDEEN_KEY, JSON.stringify(l)); }catch(e){} };
+function vIdeen(){
+  const l = ideenLesen().slice().reverse();
+  return `<section class="panel"><div class="panel-h"><h2>Notizen für später</h2><span class="muted small">nur auf diesem Gerät gespeichert</span></div>
+    <form data-form="idee" style="display:grid;gap:8px">
+      <textarea name="text" placeholder="Was ist dir aufgefallen? z. B. „In der App fehlt …“" style="min-height:90px" required></textarea>
+      <div class="row"><button class="btn pri" type="submit">${ico('plus')} Notiz speichern</button>
+      ${l.length ? `<button type="button" class="btn" data-act="ideencopy">Alle kopieren (für Claude)</button>` : ''}</div>
+    </form>
+    ${l.length ? `<div class="tbl-wrap"><table><thead><tr><th>Datum</th><th>Notiz</th><th></th></tr></thead><tbody>${l.map(x => `<tr>
+      <td class="mono" style="white-space:nowrap">${fmt(x.am)} ${h(x.zeit||'')}</td><td style="white-space:pre-wrap">${h(x.text)}</td>
+      <td style="text-align:right"><button class="btn sm ghost danger" data-act="ideedel" data-id="${x.id}">Löschen</button></td></tr>`).join('')}</tbody></table></div>`
+      : `<div class="empty">Noch keine Notizen.</div>`}
+    <p class="muted small" style="margin:0">Die Notizen bleiben auf dem Gerät, auf dem du sie schreibst. Zu Hause mit „Alle kopieren“ kopieren und bei Claude einfügen.</p></section>`;
+}
 function vInfo(eingebettet){
   const repo = 'https://github.com/gundermann-toolbox/gundermann-wartungsportal';
   return `<div class="head"><div>${eingebettet ? '' : '<h1>IT & Einrichtung</h1>'}<p class="sub">Wie das Portal aufgebaut ist und was die IT für den Betrieb in der Firma tun muss.</p></div>
@@ -1530,7 +1570,8 @@ function vBericht(A){
   };
   return `
   <article class="doc">
-    ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: Der Bericht ist noch nicht abgeschickt.</div>` : ''}
+    ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: ${A.korrektur ? `Korrigierte Fassung ${A.korrektur}, noch nicht abgeschickt.` : 'Der Bericht ist noch nicht abgeschickt.'}</div>` : ''}
+    ${!vorschau && A.korrektur ? (() => { const b = aktBericht(A); return `<div class="summary">Korrigierte Fassung ${A.korrektur}${b && b.ersetztVom ? `, ersetzt den Bericht vom ${fmt(b.ersetztVom)}` : ''}.</div>`; })() : ''}
     <div class="doc-head">
       <div><div class="doc-firm">GUNDERMANN</div><div class="doc-sub">LÜFTUNG<i>/</i>KLIMA<i>/</i>REGELUNG</div><div style="color:var(--paper-muted);margin-top:6px">Gundermann GmbH · 76846 Hauenstein</div></div>
       <div class="r"><div class="doc-type">Wartungsbericht</div><div class="mono" style="margin-top:6px">Auftrag ${A.nr}</div><div>${aDatum(A)}</div></div>
@@ -1625,7 +1666,7 @@ function vApp(){
   if(sc==='neu') return vAppNeu();
   if(sc==='liste' || !A){
     const jobs = myJobs();
-    const T = {heute:a => ['geplant','laeuft'].includes(a.status) && a.datum <= iso(TODAY), bald:a => a.status==='geplant' && a.datum > iso(TODAY), erledigt:a => ['erledigt','abgerechnet'].includes(a.status)};
+    const T = {heute:a => ['geplant','laeuft'].includes(a.status) && a.datum <= iso(TODAY), bald:a => a.status==='geplant' && a.datum > iso(TODAY), erledigt:a => ['erledigt','abgerechnet'].includes(a.status) && tageSeit(a.erstGesendet || a.abgeschlossen || a.datum) <= ERLEDIGT_TAGE};
     const list = jobs.filter(T[UI.app.tab]).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
     if(UI.app.tab==='erledigt') list.reverse();
     const cnt = k => jobs.filter(T[k]).length;
@@ -1638,7 +1679,8 @@ function vApp(){
           <b>${h(o.name)}</b>
           <span class="muted small">${h(o.adresse)}, ${h(o.ort)}</span>
           <span class="muted small">${ks.length} Komponenten${a.status==='laeuft' ? ` · ${done} geprüft` : ''}${a.techIds.length > 1 ? ' · mit '+h(a.techIds.filter(x => x!==u.id).map(userName).join(', ')) : ''}</span>
-        </button>`; }).join('') : `<div class="empty">${UI.app.tab==='heute' ? 'Heute keine Aufträge. Neue Aufträge vom Büro erscheinen hier automatisch.' : 'Keine Aufträge.'}</div>`}`);
+        </button>`; }).join('') : `<div class="empty">${UI.app.tab==='heute' ? 'Heute keine Aufträge. Neue Aufträge vom Büro erscheinen hier automatisch.' : 'Keine Aufträge.'}</div>`}
+      ${UI.app.tab==='erledigt' ? `<div class="small muted" style="text-align:center">Hier stehen die letzten ${ERLEDIGT_TAGE} Tage. Ältere Berichte hat das Büro.</div>` : ''}`);
   }
   const {a,o,k} = ctx(A.anlageId);
   const ks = auftragKomps(A), done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done).length;
@@ -1652,7 +1694,10 @@ function vApp(){
       info + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small">${kNr(c)} ${h(tname(typOf(c)))} · ${h(c.standort)}</div>`).join('')}</div>`,
       `<button class="btn pri block" data-act="appstart">Auftrag starten</button>`);
     if(['erledigt','abgerechnet'].includes(A.status)) return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
-      info + `<div class="card">${pill('ok','Bericht übermittelt')}<div class="small">Am ${fmt(A.abgeschlossen)} zurückgeschickt. Das Büro hat den Bericht als PDF.</div></div>`);
+      info + `<div class="card">${pill('ok','Bericht übermittelt')}<div class="small">Am ${fmt(A.erstGesendet || A.abgeschlossen)} ans Büro geschickt${A.korrektur ? `, korrigierte Fassung ${A.korrektur}` : ''}. Das Büro hat den Bericht als PDF.</div>
+        ${korrekturMoeglich(A) ? `<div class="small muted">${A.korrekturFrei ? 'Das Büro hat den Bericht zur Korrektur freigegeben.' : `Korrigieren ist noch bis ${fmt(korrekturBis(A))} möglich.`}</div>` : ''}</div>`,
+      `<button class="btn block" data-act="appvorschau">${ico('pdf')} Bericht ansehen / als PDF speichern</button>
+       ${korrekturMoeglich(A) ? `<button class="btn pri block" data-act="korrektur">Bericht korrigieren</button>` : ''}`);
     return appShell(appBar(A.nr, `${done} von ${ks.length} geprüft · ${h(o.nr)}`, 'liste'),
       info + `<div class="prog"><i style="width:${ks.length ? done/ks.length*100 : 0}%"></i></div>
       <div class="card" style="gap:8px">
@@ -1679,17 +1724,17 @@ function vApp(){
     <div class="card"><div class="f">Unterschrift Techniker (${h(me().name)}), optional<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas><button class="btn ghost sm" data-act="sigclear" data-k="sigTech" style="justify-self:start">Löschen</button></div>
     <div class="small muted">Die Kundenunterschrift läuft über den Regiebericht in KWP mobiler Monteur.</div></div>`,
     `<button class="btn block" data-act="appvorschau">${ico('auge')} Bericht ansehen und als PDF speichern</button>
-     <button class="btn pri block" data-act="appsend">Bericht ans Büro schicken</button>`);
-  if(sc==='vorschau') return appShell(appBar('Berichtsvorschau', A.nr+' · '+h(o.nr), 'abschluss'),
+     <button class="btn pri block" data-act="appsend">${A.korrektur ? 'Korrigierte Fassung ans Büro schicken' : 'Bericht ans Büro schicken'}</button>`);
+  if(sc==='vorschau') return appShell(appBar('Berichtsvorschau', A.nr+' · '+h(o.nr), A.status==='laeuft' ? 'abschluss' : 'auftrag'),
     `<div style="overflow-x:auto">${vBericht(A)}</div>`,
-    `<button class="btn block" data-act="pdf">${ico('pdf')} Als PDF speichern</button>
-     <button class="btn pri block" data-act="appsend">Bericht ans Büro schicken</button>`);
+    `<button class="btn ${A.status==='laeuft' ? '' : 'pri'} block" data-act="pdf">${ico('pdf')} Als PDF speichern</button>
+     ${A.status==='laeuft' ? `<button class="btn pri block" data-act="appsend">${A.korrektur ? 'Korrigierte Fassung ans Büro schicken' : 'Bericht ans Büro schicken'}</button>` : ''}`);
   if(sc==='gesendet'){
-    const b = S.berichte.find(x => x.auftragId===A.id);
+    const b = aktBericht(A);
     const n = S.stoerungen.filter(x => x.auftragNr===A.nr).length;
     return appShell(appBar('Bericht verschickt', A.nr),
-      `<div class="okbig"><div class="tick">✓</div><b style="font-size:18px">Danke, der Bericht ist beim Büro.</b>
-       <div class="small muted">${h(b ? b.datei : '')}<br>im Kundenordner gespeichert und per E-Mail an ${h(S.settings.bueroMail)}${n ? `<br>${n} Störung${n>1?'en':''} erfasst` : ''}</div></div>`,
+      `<div class="okbig"><div class="tick">✓</div><b style="font-size:18px">${A.korrektur ? 'Danke, die korrigierte Fassung ist beim Büro.' : 'Danke, der Bericht ist beim Büro.'}</b>
+       <div class="small muted">${h(b ? b.datei : '')}<br>im Kundenordner gespeichert und per E-Mail an ${h(S.settings.bueroMail)}${n ? `<br>${n} Störung${n>1?'en':''} erfasst` : ''}<br>Korrigieren ist bis ${fmt(korrekturBis(A))} möglich.</div></div>`,
       `<button class="btn block" data-act="appvorschau">${ico('pdf')} Bericht als PDF speichern</button>
        <button class="btn pri block" data-act="appback" data-v="liste">Zurück zu meinen Aufträgen</button>`);
   }
@@ -1773,21 +1818,40 @@ function berichtSenden(A){
   clFesthalten(A);
   const ks = auftragKomps(A).filter(c => A.pr[c.id] && A.pr[c.id].done);
   if(!ks.length) return;
+  const pruefTag = A.korrektur ? (A.abgeschlossen || iso(TODAY)) : iso(TODAY);
+  if(!A.letzteVorher){ A.letzteVorher = {}; auftragKomps(A).forEach(c => A.letzteVorher[c.id] = c.letzte || null); }
+  A.autoSt = [];
   ks.forEach(c => {
     // Alle n.i.O.-Punkte und überschrittenen Grenzwerte einer Komponente werden zu EINER Störung zusammengefasst
     const punkte = stoerPunkte(A, c);
     if(punkte.length){
       const liste = `Bei der Prüfung nicht in Ordnung:\n${punkte.join('\n')}`;
       const da = S.stoerungen.find(x => x.kompId===c.id && x.auftragNr===A.nr && x.status==='offen');
-      if(da) da.text = [da.text, liste].filter(Boolean).join('\n\n');
-      else S.stoerungen.unshift({id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id,
+      if(da){ da.text = [da.text, liste].filter(Boolean).join('\n\n'); A.autoSt.push({id:da.id, zusatz:liste}); }
+      else { const neu = {id:uid(), nr:S.nextStoerung++, auftragNr:A.nr, kompId:c.id,
         titel: stoerTitel(punkte),
-        text:liste, schwere:'Mangel', status:'offen', datum:iso(TODAY), von:me().name});
+        text:liste, schwere:'Mangel', status:'offen', datum:iso(TODAY), von:me().name};
+        S.stoerungen.unshift(neu); A.autoSt.push({id:neu.id}); }
     }
-    c.letzte = iso(TODAY);
+    c.letzte = pruefTag;
   });
-  A.status = 'erledigt'; A.abgeschlossen = iso(TODAY);
+  A.status = 'erledigt'; A.abgeschlossen = pruefTag; A.erstGesendet = A.erstGesendet || iso(TODAY); A.korrekturFrei = false;
+  if(A.korrektur) A.verlauf = (A.verlauf||[]).concat(`${fmt(iso(TODAY))} ${nowTime()}: ${me().name} hat die korrigierte Fassung ${A.korrektur} abgeschickt`);
   berichtAblegen(A, true);
+  save();
+}
+
+/* Korrektur: Auftrag wieder öffnen, automatische Folgen des letzten Abschickens zurücknehmen */
+function korrekturStarten(A){
+  (A.autoSt||[]).forEach(x => {
+    const st = by(S.stoerungen, x.id); if(!st) return;
+    if(x.zusatz) st.text = st.text.replace('\n\n'+x.zusatz, '').replace(x.zusatz, '').trim();
+    else if(st.status==='offen') S.stoerungen = S.stoerungen.filter(y => y.id!==st.id);
+  });
+  A.autoSt = [];
+  Object.entries(A.letzteVorher||{}).forEach(([cid, v]) => { const c = by(S.komponenten, cid); if(c) c.letzte = v; });
+  A.korrektur = (A.korrektur||0) + 1; A.status = 'laeuft'; A.korrekturFrei = false;
+  A.verlauf = (A.verlauf||[]).concat(`${fmt(iso(TODAY))} ${nowTime()}: ${me().name} hat den Bericht zur Korrektur geöffnet`);
   save();
 }
 
@@ -2207,6 +2271,13 @@ const ACT = {
   luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
   kontaktedit: d => kontaktModal(d.a),
   ohneauf: () => { UI.ohneAuf = !UI.ohneAuf; render(); },
+  korrektur: () => { const A = curA(); if(!A || !korrekturMoeglich(A)) return;
+    openModal(`<h2>Bericht ${A.nr} korrigieren?</h2>
+      <p style="margin:0">Der Auftrag wird wieder geöffnet. Du kannst alle Prüfpunkte ändern und schickst danach eine korrigierte Fassung ans Büro. Der bisherige Bericht bleibt beim Büro, bis die neue Fassung kommt, und wird dann als „ersetzt“ markiert.</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="korrekturok">Korrigieren</button></div>`); },
+  korrekturok: () => { const A = curA(); if(!A || !korrekturMoeglich(A)) return closeModal(); korrekturStarten(A); closeModal(); UI.app.screen = 'auftrag'; render(); window.scrollTo(0,0); toast('Bericht zur Korrektur geöffnet'); },
+  korrfrei: () => { const A = curA(); if(!A) return; A.korrekturFrei = true;
+    A.verlauf = (A.verlauf||[]).concat(`${fmt(iso(TODAY))} ${nowTime()}: ${me().name} hat den Bericht zur Korrektur freigegeben`); save(); render(); toast(`${A.nr}: Techniker kann den Bericht jetzt korrigieren`); },
   appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
   pdf: () => pdfSpeichern(curA()),
   gstoer: () => { UI.view = 'stoerungen'; UI.sf = 'alle'; UI.menu = false; render(); window.scrollTo(0,0); },
@@ -2232,6 +2303,11 @@ const ACT = {
   af: d => { UI.af = d.v; render(); },
   sf: d => { UI.sf = d.v; render(); },
   at: d => { UI.at = d.v; render(); },
+  ideedel: d => { ideenSchreiben(ideenLesen().filter(x => x.id!==d.id)); render(); toast('Notiz gelöscht'); },
+  ideencopy: () => {
+    const text = ideenLesen().map(x => `- ${fmt(x.am)}: ${x.text}`).join(String.fromCharCode(10));
+    try{ navigator.clipboard.writeText(text).then(() => toast('Notizen kopiert'), () => toast('Kopieren nicht möglich, bitte Text markieren')); }catch(e){ toast('Kopieren nicht möglich, bitte Text markieren'); }
+  },
   mapf: d => { UI.mapF = d.v; render(); },
   minif: d => { UI.miniF = d.v; render(); },
   ksort: d => { UI.ks = d.v; render(); },
@@ -2351,7 +2427,7 @@ const ACT = {
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
-  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok','kdel','kdelok'].includes(t.dataset.act)) return;
+  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok','kdel','kdelok','korrekturok'].includes(t.dataset.act)) return;
   if(t.closest('.gres')){ document.querySelectorAll('[data-gq]').forEach(i => i.value = ''); document.querySelectorAll('.gres').forEach(g => g.hidden = true); UI.menu = false; e.preventDefault(); }
   ACT[t.dataset.act](t.dataset, t, e);
 });
@@ -2400,6 +2476,8 @@ app.addEventListener('change', e => {
 });
 app.addEventListener('submit', e => {
   e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
+  if(kind==='idee'){ const text = String(f.get('text')||'').trim(); if(!text) return;
+    ideenSchreiben(ideenLesen().concat({id:uid(), text, am:iso(TODAY), zeit:nowTime()})); render(); toast('Notiz gespeichert'); return; }
   if(kind==='login'){ anmelden(String(f.get('user')||''), String(f.get('pw')||'')); return; }
   if(kind==='notiz'){
     const a = by(S.anlagen, e.target.dataset.a), text = String(f.get('text')||'').trim(); if(!text) return;
