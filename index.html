@@ -400,6 +400,8 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .summary{padding:10px 14px;border:1.5px solid currentColor;border-radius:4px;font-weight:600}
 .doc .sigbox{border-top:1px solid var(--paper-ink);padding-top:6px;font-size:12px;color:var(--paper-muted)}
 .doc .sigspace{height:74px}
+.doc .sigs{grid-template-columns:minmax(0,300px)}
+.doc .sigs img{max-width:100%;object-fit:contain;object-position:left bottom}
 .doc .foot{font-size:11px;color:var(--paper-muted);border-top:1px solid var(--paper-line);padding-top:10px}
 .doc .fotos img{width:110px;height:82px;object-fit:cover;border:1px solid var(--paper-line)}
 .doc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -1720,9 +1722,8 @@ function vBericht(A){
       return zeilen.length ? `<section class="kblock"><div class="khead"><div class="kname"><b>${h(cl.name)}</b></div></div>${punkteHtml(zeilen, p.f, null)}</section>` : ''; }).join('')}
     ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
     <div class="sigs">
-      <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.abgeschlossen||A.datum)}</div></div>
+      <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.datum)}</div></div>
     </div>
-    <div class="foot">Dieser Bericht wurde digital erstellt.</div>
   </article>`;
 }
 
