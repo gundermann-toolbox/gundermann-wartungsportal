@@ -218,7 +218,9 @@ button.kpi:hover,.lueck:hover{transform:translateY(-2px);box-shadow:0 6px 16px r
 .btn.danger{color:var(--bad)}
 .btn.block{width:100%;min-height:48px;font-size:16px}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
-.back{border:0;background:none;color:var(--accent);font-weight:600;padding:0;cursor:pointer;justify-self:start}
+.back{display:inline-flex;align-items:center;gap:6px;justify-self:start;min-height:42px;padding:8px 16px 8px 12px;border:2px solid var(--line-strong);border-radius:999px;background:var(--surface);color:var(--brand);font:600 15px var(--f-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease}
+.back:hover{background:var(--sunk);border-color:var(--accent)}
+@media (max-width:640px){.back{min-height:46px;font-size:16px}}
 
 .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-weight:600;font-size:12.5px;white-space:nowrap;background:var(--sunk);color:var(--muted)}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
