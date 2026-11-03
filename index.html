@@ -73,7 +73,7 @@ a{color:var(--accent)}
 .who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 /* Suche im Kopf */
 .gsuche{position:relative;min-width:0}
-.gsuche input{min-height:36px;padding:6px 10px 6px 32px;width:260px;max-width:100%;background:var(--bg)}
+.gsuche input{min-height:36px;padding:6px 10px 6px 32px;width:220px;max-width:100%;background:var(--bg)}
 .gsuche .lupe{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex}
 .gres{position:absolute;left:0;top:calc(100% + 4px);width:min(420px,90vw);max-height:60vh;overflow:auto;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;box-shadow:0 10px 30px rgba(10,30,50,.18);z-index:40;padding:6px;display:grid;gap:2px}
 .gitem{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;align-items:center;text-align:left;border:0;background:none;padding:8px;border-radius:8px;cursor:pointer;color:var(--ink)}
@@ -90,6 +90,7 @@ a{color:var(--accent)}
 .navextra select{min-height:40px}
 .ico-i{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-3px}
 .nav button .ico-i{opacity:.85}
+@media (min-width:901px) and (max-width:1180px){ .nav button .ico-i{display:none} }
 button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
 .wgrid-wrap{overflow-x:auto}
 .wgrid{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;min-width:760px}
@@ -154,9 +155,10 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
 .modes button[disabled]{opacity:.4;cursor:not-allowed}
 
 .shell{max-width:1320px;margin:0 auto;display:grid;gap:18px;padding-block:22px 48px}
-.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;width:100%;justify-content:center}
-@media (max-width:1100px){.nav{justify-content:flex-start}}
-.nav button{border:0;background:none;padding:14px 14px 12px;font-weight:500;font-size:15.5px;letter-spacing:.03em;text-transform:uppercase;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:8px;cursor:pointer;border-bottom:3px solid transparent}
+.nav{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;width:100%;justify-content:flex-start}
+.nav > button:first-child{margin-left:auto}
+.nav > button:last-of-type{margin-right:auto}
+.nav button{border:0;background:none;padding:14px 10px 12px;font-weight:500;font-size:14.5px;letter-spacing:.02em;text-transform:uppercase;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:8px;cursor:pointer;border-bottom:3px solid transparent}
 .nav button:hover{border-bottom-color:rgba(255,255,255,.45)}
 .nav button.on{border-bottom-color:var(--mag);font-weight:600}
 .nav button:focus-visible{outline-color:#fff}
@@ -187,6 +189,25 @@ h2{font:700 20px/1.2 var(--f-display);margin:0;letter-spacing:.01em;color:var(--
 
 .btn{font-weight:600;font-size:14.5px;padding:8px 14px;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;text-decoration:none}
 .btn:hover{background:var(--sunk)}
+/* Übergänge: dezent, nur beim Wechsel der Ansicht */
+.btn,.chip,.kpi,.lueck,.gitem,.wjob,.nav button,.panel tr.click td{transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease,transform .15s ease}
+button.kpi:hover,.lueck:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(18,53,91,.10)}
+.btn:active,.chip:active,.kpi:active{transform:scale(.98)}
+@keyframes v-ein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes v-rechts{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes v-links{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes m-ein{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes blende{from{opacity:0}to{opacity:1}}
+@keyframes runter{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+#app.v-ein{animation:v-ein .22s ease-out}
+#app.v-rechts{animation:v-rechts .22s ease-out}
+#app.v-links{animation:v-links .22s ease-out}
+#modal:not([hidden]){animation:blende .15s ease-out}
+#modal:not([hidden]) .mbox{animation:m-ein .2s ease-out}
+#toast:not([hidden]){animation:m-ein .2s ease-out}
+.gres:not([hidden]){animation:runter .15s ease-out}
+@media (max-width:900px){ .band.open .band-in .nav{animation:runter .18s ease-out} }
+@media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.pri:hover{filter:brightness(1.08)}
 .btn.sm{min-height:32px;padding:4px 10px;font-size:13.5px}
@@ -286,6 +307,8 @@ input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--acce
 .cbx{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;min-height:44px;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);background:var(--surface)}
 .cbx.on{background:var(--ok);border-color:var(--ok);color:var(--surface)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.apptabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.apptabs .chip{text-align:center;padding:11px 4px;font-size:14.5px;border-width:2px;border-radius:10px;white-space:nowrap}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:13.5px;cursor:pointer;color:var(--muted)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .fotos{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -748,6 +771,7 @@ function initMaps(){
     else map.fitBounds(L.latLngBounds(pts.map(p => [p.lat,p.lng]).concat([TOWNS['hauenstein']])), {padding:[24,24], maxZoom:12});
     // Hatte das Kartenfeld beim Anlegen noch keine Größe, Ansicht neu berechnen, sobald es sichtbar ist
     let ohneGroesse = !el.clientWidth || !el.clientHeight, bewegt = false;
+    if(mini){ map.on('click focus', () => map.scrollWheelZoom.enable()); map.on('mouseout blur', () => map.scrollWheelZoom.disable()); }
     if(!mini) map.on('moveend', () => { if(ohneGroesse) return; const c = map.getCenter(); UI.mapView = {c:[c.lat,c.lng], z:map.getZoom()}; });
     map.on('dragstart zoomstart', () => { bewegt = true; });
     const pruefen = () => { if(!LMAPS.includes(map) || !el.clientWidth || !el.clientHeight) return; map.invalidateSize();
@@ -774,7 +798,7 @@ const ICONS = {
 const ico = n => `<svg class="ico-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 
 /* ---------- Kopfzeile & Navigation ---------- */
-const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['woche','Wochenplanung'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration'],['info','IT & Einrichtung']];
+const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['woche','Wochenplanung'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration']];
 function renderChrome(){
   const u = me();
   if(S.mode==='app' && !u.app) S.mode = 'web';
@@ -857,8 +881,7 @@ function vStart(){
     <section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
       ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
   </div>
-  ${lueckenPanel()}
-  ${rmStartPanel()}`;
+`;
 }
 function rmStartPanel(){
   const bis = TODAY.getFullYear() + 1;
@@ -1336,7 +1359,7 @@ function vStoerungen(){
 /* ---------- Administration ---------- */
 function vAdmin(){
   if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
-  const tabs = [['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail']];
+  const tabs = [['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['it','IT & Einrichtung']];
   let body = '';
   if(UI.at==='typen') body = `<section class="panel"><p class="muted" style="margin:0">Der Typ bestimmt Prüfintervall und Checkliste. Kürzel wie in Foxtag: [V] vierteljährlich, [H] halbjährlich, [J] jährlich, [Z] alle 2 Jahre.</p>
     <div class="tbl-wrap"><table><thead><tr><th>Typ</th><th>Intervall</th><th>Checkliste</th><th>Austausch</th><th>Anzahl</th></tr></thead><tbody>
@@ -1383,6 +1406,7 @@ function vAdmin(){
         <label class="f" for="ur">Rolle<select id="ur" name="rolle">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${v==='techniker'?'selected':''}>${l}</option>`).join('')}</select></label>
         <button class="btn pri" type="submit">Benutzer anlegen</button>
       </form></section>`;
+  if(UI.at==='it') body = vInfo(true);
   if(UI.at==='mail') body = `<section class="panel"><h2>Berichte per E-Mail</h2>
     <p class="muted" style="margin:0">Jeder zurückgeschickte Bericht wird als PDF im Kundenordner gespeichert und zusätzlich an diese Adresse geschickt, damit das Büro ihn weiterleiten kann.</p>
     <form class="fgrid inset" data-form="mail"><label class="f" for="bm">Empfänger im Büro<input id="bm" name="an" type="email" value="${h(S.settings.bueroMail)}" required></label><button class="btn pri" type="submit">Speichern</button></form></section>`;
@@ -1391,9 +1415,9 @@ function vAdmin(){
 }
 
 /* ---------- IT & Einrichtung ---------- */
-function vInfo(){
+function vInfo(eingebettet){
   const repo = 'https://github.com/gundermann-toolbox/gundermann-wartungsportal';
-  return `<div class="head"><div><h1>IT & Einrichtung</h1><p class="sub">Wie das Portal aufgebaut ist und was die IT für den Betrieb in der Firma tun muss.</p></div>
+  return `<div class="head"><div>${eingebettet ? '' : '<h1>IT & Einrichtung</h1>'}<p class="sub">Wie das Portal aufgebaut ist und was die IT für den Betrieb in der Firma tun muss.</p></div>
     <button class="btn pri" data-act="itcopy">Anleitung als Text kopieren</button></div>
   <section class="panel"><h2>So hängt alles zusammen</h2>
     <div class="tbl-wrap"><table><thead><tr><th>Teil</th><th>Wer nutzt es</th><th>Was passiert dort</th></tr></thead><tbody>
@@ -1606,7 +1630,7 @@ function vApp(){
     if(UI.app.tab==='erledigt') list.reverse();
     const cnt = k => jobs.filter(T[k]).length;
     return appShell(appBar('Meine Aufträge', h(u.name)+' · '+fmt(iso(TODAY))),
-      `<div class="chips">${[['heute','Heute'],['bald','Demnächst'],['erledigt','Erledigt']].map(([v,l]) => `<button class="chip ${UI.app.tab===v?'on':''}" data-act="apptab" data-v="${v}">${l} ${cnt(v)}</button>`).join('')}</div>
+      `<div class="chips apptabs">${[['heute','Heute'],['bald','Demnächst'],['erledigt','Erledigt']].map(([v,l]) => `<button class="chip ${UI.app.tab===v?'on':''}" data-act="apptab" data-v="${v}">${l} ${cnt(v)}</button>`).join('')}</div>
       ${u.eigen ? `<button class="btn block" data-act="appneu" style="border-style:dashed;border-width:2px">+ Auftrag vor Ort anlegen</button>` : ''}
       ${list.length ? list.map(a => { const {o} = ctx(a.anlageId); const ks = auftragKomps(a); const done = ks.filter(c => a.pr[c.id] && a.pr[c.id].done).length; return `
         <button class="jcard" data-act="appopen" data-id="${a.id}">
@@ -2503,11 +2527,28 @@ function render(){
   top.querySelector('.band').hidden = false; document.getElementById('modes').hidden = false; document.querySelector('.who').hidden = false;
   renderChrome();
   app.innerHTML = S.mode==='app' ? vApp() : (VIEWS[UI.view] || vStart)();
+  uebergang();
   app.querySelectorAll('canvas[data-sig]').forEach(initSig);
   tabellenBeschriften();
   initMaps();
   calc();
 }
+/* Weicher Übergang, wenn sich die Ansicht ändert (nicht bei jedem Tastendruck) */
+let letzteAnsicht = null;
+const APP_TIEFE = {liste:0, neu:1, auftrag:1, komp:2, abschluss:3, vorschau:4, gesendet:4};
+function uebergang(){
+  const key = S.mode==='app' ? 'app|'+UI.app.screen+'|'+(UI.app.komp||'') : 'web|'+UI.view+'|'+(UI.anlage||'')+'|'+(UI.auftrag||'')+'|'+(UI.kunde||'');
+  if(key===letzteAnsicht) return;
+  const vorher = letzteAnsicht; letzteAnsicht = key;
+  if(!vorher) return;
+  let art = 'v-ein';
+  if(S.mode==='app' && vorher.startsWith('app|')){
+    const a = APP_TIEFE[vorher.split('|')[1]] ?? 0, b = APP_TIEFE[UI.app.screen] ?? 0;
+    art = b > a ? 'v-rechts' : b < a ? 'v-links' : 'v-ein';
+  }
+  app.classList.remove('v-ein','v-rechts','v-links'); void app.offsetWidth; app.classList.add(art);
+}
+app.addEventListener('animationend', () => app.classList.remove('v-ein','v-rechts','v-links'));
 app.innerHTML = '<div class="empty">Daten werden geladen …</div>';
 /* App installieren und offline nutzen (nur auf der echten Seite, nicht in der Claude-Vorschau) */
 let installHinweis = null;
