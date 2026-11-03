@@ -119,6 +119,17 @@ button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
 @media (max-width:760px){ .wgrid-wrap{display:none} .wlist{display:grid} }
 .mvgl{font-size:12px;color:var(--muted);margin-top:2px}
 .mvgl.abw{color:var(--warn);font-weight:600}
+.startgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.startgrid .sb{min-width:0;display:grid}
+.startgrid .sb-breit{grid-column:1/-1}
+@media (max-width:1000px){ .startgrid{grid-template-columns:minmax(0,1fr)} }
+.sbliste{display:grid;gap:6px;margin:4px 0}
+.sbrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px;align-items:center;border:2px solid var(--line-strong);border-radius:8px;padding:6px 8px;background:var(--surface)}
+.sbrow.aus{opacity:.55;background:var(--sunk)}
+.sbname{display:flex;gap:8px;align-items:center;font-weight:600;min-width:0}
+.sbname input{width:20px;height:20px;flex:none}
+.sbrow .btn.on{border-color:var(--accent)}
+@media (max-width:1000px){ .sbrow{grid-template-columns:minmax(0,1fr) auto auto} .sbrow [data-act="sbbreit"]{display:none} .sbrow [data-act="sbmove"]{min-width:44px} }
 .luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
 .lueck:hover{border-color:var(--accent)}
@@ -901,43 +912,94 @@ function auftragTable(list, compact){
       ${compact ? '' : `<td>${h(techNames(a.techIds))}</td>`}
       <td>${statusPill(a.status)}${a.vorOrt && !a.geprueft ? ' <span class="pill warn">vor Ort angelegt</span>' : ''}${n ? ` <span class="pill bad">${n} Störung${n>1?'en':''}</span>` : ''}${compact ? `<span class="t2">${h(techNames(a.techIds))}</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
 }
-function vStart(){
-  const all = S.komponenten.filter(c => !c.entfernt).map(st);
-  const offen = S.auftraege.filter(isOpen).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
-  const ohneAuftrag = S.anlagen.filter(a => ['bad','warn'].includes(anlSt(a.id).cls) && !offenerAuftrag(a.id));
-  const pts = mapPoints(UI.miniF || 'alle');
-  const neu =S.berichte.slice().sort((a,b) => a.erstellt < b.erstellt ? 1 : -1).slice(0,4);
-  return `
-  <div class="head"><div><h1>Start</h1><p class="sub">Heute ${fmt(iso(TODAY))} · ${h(me().name)}</p></div>
-    <button class="btn pri" data-act="planen">${ico('plus')} Auftrag planen</button></div>
-  <div class="kpis">
+/* Startseite aus Bausteinen: je Konto ein- und ausblendbar, Reihenfolge und Breite einstellbar */
+const START_BAUSTEINE = [
+  {id:'kpis', name:'Kennzahlen', an:true, breit:true},
+  {id:'vorort', name:'Vor Ort angelegte Aufträge (nur wenn vorhanden)', an:true, breit:true},
+  {id:'offen', name:'Offene Aufträge', an:true, breit:false},
+  {id:'karte', name:'Karte', an:true, breit:false},
+  {id:'ohneauf', name:'Fällig, aber noch kein Auftrag', an:true, breit:false},
+  {id:'berichte', name:'Zuletzt eingegangene Berichte', an:true, breit:false},
+  {id:'woche', name:'Aufträge diese Woche', an:false, breit:false},
+  {id:'stoer', name:'Offene Störungen', an:false, breit:false},
+  {id:'rm', name:'Rauchmeldertausch', an:false, breit:true},
+  {id:'luecken', name:'Bitte ergänzen (fehlende Angaben)', an:false, breit:true}
+];
+function startCfg(u){
+  const eigene = (u && u.start) || [];
+  const liste = eigene.filter(x => START_BAUSTEINE.some(b => b.id===x.id)).map(x => ({...x}));
+  START_BAUSTEINE.forEach(b => { if(!liste.some(x => x.id===b.id)) liste.push({id:b.id, an:b.an, breit:b.breit}); });
+  return liste;
+}
+function startBaustein(id){
+  if(id==='kpis'){
+    const all = S.komponenten.filter(c => !c.entfernt).map(st), offen = S.auftraege.filter(isOpen);
+    return `<div class="kpis">
     <button class="kpi acc" data-act="kpi" data-v="offen"><div class="n">${offen.length}</div><div class="l">Aufträge offen</div></button>
     <button class="kpi bad" data-act="kpi" data-v="bad"><div class="n">${all.filter(x => x.cls==='bad').length}</div><div class="l">Komponenten überfällig</div></button>
     <button class="kpi warn" data-act="kpi" data-v="warn"><div class="n">${all.filter(x => x.cls==='warn').length}</div><div class="l">fällig in 30 Tagen</div></button>
     <button class="kpi" data-act="kpi" data-v="stoer"><div class="n">${offeneSt().length}</div><div class="l">offene Störungen</div></button>
-  </div>
-  ${(() => { const vo = S.auftraege.filter(a => a.vorOrt && !a.geprueft); return vo.length ? `<section class="panel" style="border-color:var(--warn)">
+  </div>`;
+  }
+  if(id==='vorort'){ const vo = S.auftraege.filter(a => a.vorOrt && !a.geprueft); return vo.length ? `<section class="panel" style="border-color:var(--warn)">
     <div class="panel-h"><h2>Vom Techniker vor Ort angelegt – bitte prüfen</h2><span class="pill warn">${vo.length}</span></div>
     <p class="muted small" style="margin:0">Diese Aufträge hat kein Büro geplant. Bitte Anlage und Umfang kontrollieren und als geprüft markieren.</p>
-    ${auftragTable(vo, true)}</section>` : ''; })()}
-  <div class="grid2 wide-l">
-    <section class="panel"><div class="panel-h"><h2>Offene Aufträge</h2><button class="btn ghost sm" data-act="go" data-v="auftraege">Alle Aufträge</button></div>${auftragTable(offen, true)}</section>
-    <section class="panel"><div class="panel-h"><h2>Karte</h2><div class="row">
+    ${auftragTable(vo, true)}</section>` : ''; }
+  if(id==='offen'){ const offen = S.auftraege.filter(isOpen).sort((x,y) => (x.datum+x.zeit) < (y.datum+y.zeit) ? -1 : 1);
+    return `<section class="panel"><div class="panel-h"><h2>Offene Aufträge</h2><button class="btn ghost sm" data-act="go" data-v="auftraege">Alle Aufträge</button></div>${auftragTable(offen, true)}</section>`; }
+  if(id==='karte'){ const pts = mapPoints(UI.miniF || 'alle');
+    return `<section class="panel"><div class="panel-h"><h2>Karte</h2><div class="row">
         <div class="chips">${[['alle','Alle'],['faellig','Fällig & überfällig']].map(([v,l]) => `<button class="chip ${(UI.miniF||'alle')===v?'on':''}" data-act="minif" data-v="${v}">${l}</button>`).join('')}</div>
         <button class="btn ghost sm" data-act="go" data-v="karte">Große Karte</button></div></div>
-      ${pts.length ? `<div class="mapbox lmap mini" data-lmap="mini"></div>${legend()}` : `<div class="empty">${(UI.miniF||'alle')==='alle' ? 'Keine Objekte mit Kartenposition.' : 'Nichts fällig.'}</div>`}</section>
-  </div>
-  <div class="grid2">
-    <section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2>${ohneAuftrag.length ? `<span class="muted small">${ohneAuftrag.length} Anlagen</span>` : ''}</div>
+      ${pts.length ? `<div class="mapbox lmap mini" data-lmap="mini"></div>${legend()}` : `<div class="empty">${(UI.miniF||'alle')==='alle' ? 'Keine Objekte mit Kartenposition.' : 'Nichts fällig.'}</div>`}</section>`; }
+  if(id==='ohneauf'){ const ohneAuftrag = S.anlagen.filter(a => ['bad','warn'].includes(anlSt(a.id).cls) && !offenerAuftrag(a.id));
+    return `<section class="panel"><div class="panel-h"><h2>Fällig, aber noch kein Auftrag</h2>${ohneAuftrag.length ? `<span class="muted small">${ohneAuftrag.length} Anlagen</span>` : ''}</div>
       ${ohneAuftrag.length ? `<div class="tbl-wrap"><table><tbody>${(UI.ohneAuf ? ohneAuftrag : ohneAuftrag.slice(0,3)).map(a => { const {o,k} = ctx(a.id); const s = anlSt(a.id); return `
         <tr class="click" data-act="anlage" data-id="${a.id}"><td><span class="code">${h(o.nr)}</span> ${h(o.name)}<span class="t2">${h(k.name)} · ${h(o.ort)}</span></td>
         <td>${pill(s.cls,s.label)}</td><td><button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button></td></tr>`; }).join('')}</tbody></table></div>
         ${ohneAuftrag.length > 3 ? `<button class="btn ghost sm" data-act="ohneauf" style="justify-self:start">${UI.ohneAuf ? 'Weniger anzeigen ▴' : `Alle ${ohneAuftrag.length} anzeigen ▾`}</button>` : ''}`
-        : `<div class="empty">Für alle fälligen Anlagen gibt es einen Auftrag.</div>`}</section>
-    <section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
-      ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>
-  </div>
-`;
+        : `<div class="empty">Für alle fälligen Anlagen gibt es einen Auftrag.</div>`}</section>`; }
+  if(id==='berichte'){ const neu = S.berichte.filter(b => !b.ersetzt).sort((a,b) => a.erstellt < b.erstellt ? 1 : -1).slice(0,4);
+    return `<section class="panel"><div class="panel-h"><h2>Zuletzt eingegangene Berichte</h2><button class="btn ghost sm" data-act="go" data-v="berichte">Alle Berichte</button></div>
+      ${neu.length ? `<div class="alist">${neu.map(pdfItem).join('')}</div>` : `<div class="empty">Noch keine Berichte.</div>`}</section>`; }
+  if(id==='woche'){ const mo = iso(montag(TODAY)), fr = plusTage(mo, 6);
+    const js = S.auftraege.filter(a => a.datum >= mo && a.datum <= fr).sort((x,y) => (x.datum+(x.zeit||'')) < (y.datum+(y.zeit||'')) ? -1 : 1);
+    return `<section class="panel"><div class="panel-h"><h2>Aufträge diese Woche</h2><button class="btn ghost sm" data-act="go" data-v="woche">Wochenplanung</button></div>
+      ${js.length ? `<div class="tbl-wrap"><table><tbody>${js.map(a => { const {o} = ctx(a.anlageId); return `<tr class="click" data-act="auftrag" data-id="${a.id}">
+        <td class="mono" style="white-space:nowrap">${TAGE[(new Date(a.datum+'T00:00:00').getDay()+6)%7]} ${fmt(a.datum).slice(0,6)}${a.zeit ? ' '+h(a.zeit) : ''}</td><td>${h(o.name)}<span class="t2">${h(techNames(a.techIds))}</span></td><td>${statusPill(a.status)}</td></tr>`; }).join('')}</tbody></table></div>`
+      : `<div class="empty">Diese Woche ist nichts geplant.</div>`}</section>`; }
+  if(id==='stoer'){ const l = offeneSt().slice().sort((a,b) => a.datum < b.datum ? 1 : -1);
+    return `<section class="panel"><div class="panel-h"><h2>Offene Störungen</h2><button class="btn ghost sm" data-act="go" data-v="stoerungen">Alle Störungen</button></div>
+      ${l.length ? `<div class="tbl-wrap"><table><tbody>${l.slice(0,5).map(x => { const c = by(S.komponenten, x.kompId); if(!c) return ''; const {o} = ctx(c.anlageId); return `<tr class="click" data-act="anlage" data-id="${c.anlageId}">
+        <td class="mono">#${x.nr}</td><td><b style="font-weight:600">${h(x.titel)}</b><span class="t2">${h(o.name)} · ${kNr(c)} · ${fmt(x.datum)}</span></td></tr>`; }).join('')}</tbody></table></div>
+        ${l.length > 5 ? `<span class="muted small">und ${l.length-5} weitere</span>` : ''}` : `<div class="empty">Keine offenen Störungen.</div>`}</section>`; }
+  if(id==='rm') return rmStartPanel();
+  if(id==='luecken') return lueckenPanel() || `<section class="panel"><div class="panel-h"><h2>Bitte ergänzen</h2></div><div class="empty">Es fehlen keine Angaben.</div></section>`;
+  return '';
+}
+function vStart(){
+  const cfg = startCfg(me()).filter(x => x.an);
+  const teile = cfg.map(x => { const html = startBaustein(x.id); return html ? `<div class="sb ${x.breit ? 'sb-breit' : ''}" data-sb="${x.id}">${html}</div>` : ''; }).join('');
+  return `
+  <div class="head"><div><h1>Start</h1><p class="sub">Heute ${fmt(iso(TODAY))} · ${h(me().name)}</p></div>
+    <div class="row"><button class="btn" data-act="startanpassen">${ico('admin')} Startseite anpassen</button><button class="btn pri" data-act="planen">${ico('plus')} Auftrag planen</button></div></div>
+  <div class="startgrid">${teile || `<div class="empty sb-breit">Alle Bereiche sind ausgeblendet. Über „Startseite anpassen“ kannst du sie wieder einblenden.</div>`}</div>`;
+}
+function startModal(nurAktualisieren){
+  const cfg = startCfg(me());
+  const html = (`<h2>Startseite anpassen</h2>
+    <p class="muted small" style="margin:0">Gilt nur für dein Konto (${h(me().name)}). Mit den Pfeilen änderst du die Reihenfolge.</p>
+    <div class="sbliste">${cfg.map((x,i) => { const b = START_BAUSTEINE.find(y => y.id===x.id); return `<div class="sbrow ${x.an ? '' : 'aus'}">
+      <label class="sbname"><input type="checkbox" data-act="sbtoggle" data-v="${x.id}" ${x.an ? 'checked' : ''}> ${h(b.name)}</label>
+      <button class="btn sm ${x.breit ? 'on' : ''}" data-act="sbbreit" data-v="${x.id}" title="Breite umschalten">${x.breit ? 'Ganze Breite' : 'Halbe Breite'}</button>
+      <button class="btn sm" data-act="sbmove" data-v="${x.id}" data-d="-1" ${i===0 ? 'disabled' : ''} aria-label="Nach oben">▲</button>
+      <button class="btn sm" data-act="sbmove" data-v="${x.id}" data-d="1" ${i===cfg.length-1 ? 'disabled' : ''} aria-label="Nach unten">▼</button></div>`; }).join('')}</div>
+    <div class="row" style="justify-content:space-between"><button class="btn ghost" data-act="sbreset">Standard wiederherstellen</button><button class="btn pri" data-close>Fertig</button></div>`);
+  const box = modal.querySelector('.mbox');
+  if(nurAktualisieren && !modal.hidden && box) box.innerHTML = html; else openModal(html);
+}
+function startAendern(fn){
+  const u = me(), cfg = startCfg(u); fn(cfg); u.start = cfg; save(); render(); startModal(true);
 }
 function rmStartPanel(){
   const bis = TODAY.getFullYear() + 1;
@@ -2329,6 +2391,11 @@ const ACT = {
   luecken: d => { UI.view = 'luecken'; UI.lf = d.v; UI.menu = false; render(); window.scrollTo(0,0); },
   kontaktedit: d => kontaktModal(d.a),
   ohneauf: () => { UI.ohneAuf = !UI.ohneAuf; render(); },
+  startanpassen: () => startModal(),
+  sbtoggle: d => startAendern(cfg => { const x = cfg.find(y => y.id===d.v); x.an = !x.an; }),
+  sbbreit: d => startAendern(cfg => { const x = cfg.find(y => y.id===d.v); x.breit = !x.breit; }),
+  sbmove: d => startAendern(cfg => { const i = cfg.findIndex(y => y.id===d.v), j = i + (+d.d); if(j < 0 || j >= cfg.length) return; [cfg[i], cfg[j]] = [cfg[j], cfg[i]]; }),
+  sbreset: () => { delete me().start; save(); render(); startModal(true); toast('Startseite auf Standard zurückgesetzt'); },
   korrektur: () => { const A = curA(); if(!A || !korrekturMoeglich(A)) return;
     openModal(`<h2>Bericht ${A.nr} korrigieren?</h2>
       <p style="margin:0">Der Auftrag wird wieder geöffnet. Du kannst alle Prüfpunkte ändern und schickst danach eine korrigierte Fassung ans Büro. Der bisherige Bericht bleibt beim Büro, bis die neue Fassung kommt, und wird dann als „ersetzt“ markiert.</p>
@@ -2486,7 +2553,7 @@ const ACT = {
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || !ACT[t.dataset.act] || t.disabled) return;
-  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok','kdel','kdelok','korrekturok'].includes(t.dataset.act)) return;
+  if(t.closest('#modal') && !['resetok','adelok','azurueckok','dokdelok','kdel','kdelok','korrekturok','sbtoggle','sbbreit','sbmove','sbreset'].includes(t.dataset.act)) return;
   if(t.closest('.gres')){ document.querySelectorAll('[data-gq]').forEach(i => i.value = ''); document.querySelectorAll('.gres').forEach(g => g.hidden = true); UI.menu = false; e.preventDefault(); }
   ACT[t.dataset.act](t.dataset, t, e);
 });
