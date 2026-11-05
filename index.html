@@ -85,7 +85,7 @@ a{color:var(--accent)}
 .navextra{display:none;gap:10px;padding:12px 0 6px;border-top:1px solid rgba(255,255,255,.2);margin-top:6px}
 .navextra .gsuche input{width:100%}
 .navextra .gres{width:100%}
-.navextra .modes{width:100%;display:grid;grid-template-columns:1fr 1fr}
+.navextra .modes{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}
 .navextra label{color:#fff;font-size:13px;display:grid;gap:4px}
 .navextra select{min-height:40px}
 .ico-i{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-3px}
@@ -130,6 +130,33 @@ button.kpi{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
 .sbname input{width:20px;height:20px;flex:none}
 .sbrow .btn.on{border-color:var(--accent)}
 @media (max-width:1000px){ .sbrow{grid-template-columns:minmax(0,1fr) auto auto} .sbrow [data-act="sbbreit"]{display:none} .sbrow [data-act="sbmove"]{min-width:44px} }
+/* ANNETTE_CSS: nur für die Gag-Ansicht */
+body.annette-body{background:#fbf1de}
+.annette-body .top-in .gsuche{display:none}
+.an{font:24px/1.45 Georgia,'Times New Roman',serif;color:#3b2a1a;display:grid;gap:20px;max-width:900px;margin:0 auto;width:100%}
+.an.gross{font-size:32px}
+.an-karte{position:relative;overflow:hidden;background:#fffdf7;border:4px dotted #c9a66b;outline:6px solid #fffdf7;border-radius:36px;padding:clamp(20px,5vw,48px);display:grid;gap:18px;box-shadow:0 10px 30px rgba(120,80,30,.18)}
+.an-mitte{text-align:center;justify-items:center}
+.an h1{font:700 1.9em/1.15 Georgia,'Times New Roman',serif;color:#7a2e4d;margin:0}
+.an p{margin:0}
+.an-blume{font-size:2.6em;line-height:1}
+.an-schritt{font-weight:700;color:#8a6a35;letter-spacing:.02em}
+.an-klein{font-size:.8em;color:#6d5a44}
+.an-satz{font-size:1.15em}
+.an-riesig{font:700 clamp(38px,7vw,68px)/1.1 Georgia,'Times New Roman',serif;color:#fff;background:#2e7d4f;border:0;border-bottom:10px solid #1d5a37;border-radius:32px;padding:.6em 1em;min-height:150px;width:100%;cursor:pointer}
+.an-riesig:hover{background:#34905b}
+.an-riesig:active{transform:translateY(5px);border-bottom-width:5px}
+.an-eingabe{font:inherit;width:100%;min-height:76px;padding:12px 20px;border:3px solid #c9a66b;border-radius:18px;background:#fff;color:inherit}
+.an-liste{display:grid;gap:12px}
+.an-wahl{font:inherit;display:grid;gap:2px;text-align:left;background:#fff6e3;border:3px solid #c9a66b;border-radius:20px;padding:16px 22px;min-height:84px;cursor:pointer;color:inherit}
+.an-wahl:hover{background:#ffeec9;border-color:#7a2e4d}
+.an-wahl span{font-size:.75em;color:#6d5a44}
+.an-zurueck{font:inherit;font-size:.85em;justify-self:start;background:none;border:0;color:#7a2e4d;text-decoration:underline;cursor:pointer;padding:10px 0}
+.an-fuss{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.an-mini{font:inherit;font-size:.72em;background:#fffdf7;border:2px solid #c9a66b;border-radius:999px;padding:10px 18px;cursor:pointer;color:inherit}
+.an-mini:hover{background:#ffeec9}
+@keyframes an-fall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(560px) rotate(300deg);opacity:0}}
+.an-regen{position:absolute;top:0;font-size:1.3em;opacity:0;pointer-events:none;animation:an-fall 3s ease-in 1 both}
 .luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
 .lueck:hover{border-color:var(--accent)}
@@ -701,7 +728,9 @@ addEventListener('pagehide', () => { if(S) saveNow(); });
 /* ---------- Abfragen ---------- */
 function by(arr,id){ return arr.find(x => x.id===id); }
 const ctx = aid => { const a = by(S.anlagen,aid); const o = a && by(S.objekte,a.objektId); const k = o && by(S.kunden,o.kundeId); return {a,o,k}; };
-let kIdx = null;
+let kIdx = null, stillSet = null;
+const istStill = aid => { if(!stillSet) stillSet = new Set(S.anlagen.filter(a => a.stillgelegt).map(a => a.id)); return stillSet.has(aid); };
+const objAktiv = o => { const l = S.anlagen.filter(a => a.objektId===o.id); return !l.length || l.some(a => !a.stillgelegt); };
 const kompsOf = aid => {
   if(!kIdx){ kIdx = {}; S.komponenten.forEach(c => !c.entfernt && (kIdx[c.anlageId] = kIdx[c.anlageId] || []).push(c)); Object.values(kIdx).forEach(l => l.sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0))); }
   return kIdx[aid] || [];
@@ -714,6 +743,7 @@ const gname = n => h((S.gruppen && S.gruppen[n]) || GRUPPEN[n] || 'Gruppe '+n);
 const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
 const nextDue = c => c.letzte ? addMonths(c.letzte, typOf(c).intervall) : null;
 function st(c){
+  if(istStill(c.anlageId)) return {cls:'', label:'Stillgelegt', d:null};
   if(!c.letzte) return {cls:'', label:'Fälligkeit unbekannt', d:null};
   const d = diffDays(nextDue(c));
   if(d < 0) return {cls:'bad', label:'Überfällig', d};
@@ -726,6 +756,7 @@ function ersatz(c){
 }
 /* Rauchmeldertausch: Austausch nach x Jahren ab Baujahr (Typ „ersatzJahre“), damit das Büro rechtzeitig ein Angebot schicken kann */
 function rmTausch(aid){
+  if(istStill(aid)) return null;
   const rm = kompsOf(aid).filter(c => typOf(c).ersatzJahre);
   if(!rm.length) return null;
   const mit = rm.filter(c => /^\d{4}$/.test(String(c.baujahr||'').trim())).map(c => ({c, jahr: +String(c.baujahr).trim() + typOf(c).ersatzJahre}));
@@ -745,6 +776,7 @@ function rmFakt(aid){
     : `<span class="muted">Baujahr bei ${r.anzahl} Rauchmeldern nicht erfasst</span>`}</div>`;
 }
 function anlSt(aid){
+  if(istStill(aid)) return {cls:'', label:'Stillgelegt'};
   const s = kompsOf(aid).map(st);
   if(!s.length) return {cls:'', label:'Keine Komponenten'};
   if(s.some(x => x.cls==='bad')) return {cls:'bad', label:'Überfällig'};
@@ -754,7 +786,8 @@ function anlSt(aid){
 }
 function objSt(oid){
   const rank = {bad:0, warn:1, '':2, ok:3};
-  return S.anlagen.filter(a => a.objektId===oid).map(a => anlSt(a.id)).sort((x,y) => rank[x.cls]-rank[y.cls])[0] || {cls:'', label:'–'};
+  const alle = S.anlagen.filter(a => a.objektId===oid), akt = alle.filter(a => !a.stillgelegt);
+  return (akt.length ? akt : alle).map(a => anlSt(a.id)).sort((x,y) => rank[x.cls]-rank[y.cls])[0] || {cls:'', label:'–'};
 }
 const pill = (cls,label) => `<span class="pill ${cls||''}">${h(label)}</span>`;
 const dueText = s => s.d==null ? '' : s.d < 0 ? `seit ${-s.d} Tagen` : s.d===0 ? 'heute' : `in ${s.d} Tagen`;
@@ -797,7 +830,7 @@ function km(a,b){
   return 2*R*Math.asin(Math.sqrt(q));
 }
 function mapPoints(filter){
-  return S.objekte.map(o => {
+  return S.objekte.filter(objAktiv).map(o => {
     const g = geo(o); if(!g) return null;
     const s = objSt(o.id), auftrag = S.auftraege.some(a => isOpen(a) && by(S.anlagen,a.anlageId)?.objektId===o.id);
     return {o, lat:g[0], lng:g[1], cls:s.cls || 'none', label:s.label, auftrag};
@@ -879,24 +912,91 @@ const ICONS = {
 };
 const ico = n => `<svg class="ico-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 
+/* ---------- GAG: Ansicht „Annette“. Zum Entfernen: diesen Block, ANNETTE_CSS und die Stellen mit „annette“ löschen ---------- */
+const AN_TAG = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const anTag = isoS => `${AN_TAG[new Date(isoS+'T00:00:00').getDay()]}, ${fmt(isoS)}`;
+function anListe(q){
+  q = (q||'').trim().toLowerCase();
+  const rows = S.anlagen.filter(a => !a.stillgelegt).map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k);
+  const treffer = q ? rows.filter(r => [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q))
+    : rows.filter(r => ['bad','warn'].includes(anlSt(r.a.id).cls) && !offenerAuftrag(r.a.id));
+  if(!treffer.length) return `<p class="an-klein">Dazu habe ich leider nichts gefunden. Vielleicht anders geschrieben? 🌸</p>`;
+  return treffer.slice(0,6).map(r => `<button class="an-wahl" data-act="anwahl" data-v="${r.a.id}"><b>${h(r.o.name)}</b><span>${h(r.o.ort)}${kName(r.k)!==r.o.name ? ' · '+h(kName(r.k)) : ''}</span></button>`).join('');
+}
+function vAnnette(){
+  const n = UI.an || (UI.an = {schritt:0, q:'', gross:false});
+  const zurueck = `<button class="an-zurueck" data-act="anzurueck">← Einen Schritt zurück</button>`;
+  const fuss = `<div class="an-fuss">
+    <button class="an-mini" data-act="anbrille">👓 ${n.gross ? 'Lesebrille absetzen' : 'Lesebrille aufsetzen'}</button>
+    <button class="an-mini" data-act="ankaffee">☕ Kaffeepause</button>
+    <button class="an-mini" data-act="anhilfe">🆘 Hilfe, der Marcel soll kommen!</button></div>`;
+  const rahmen = inhalt => `<div class="an ${n.gross ? 'gross' : ''}">${inhalt}${fuss}</div>`;
+  if(n.schritt===0) return rahmen(`<div class="an-karte an-mitte">
+      <div class="an-blume" aria-hidden="true">🌸</div>
+      <h1>Guten Tag, liebe Annette!</h1>
+      <p>Hier gibt es nur einen einzigen Knopf. Versprochen.</p>
+      <button class="an-riesig" data-act="anstart">Auftrag planen</button>
+      <p class="an-klein">Keine Sorge: Hier kann nichts kaputtgehen.</p></div>`);
+  if(n.schritt===1) return rahmen(`<div class="an-karte"><div class="an-schritt">Schritt 1 von 3</div><h1>Wo soll gewartet werden?</h1>
+      <input id="anq" class="an-eingabe" type="search" value="${h(n.q)}" placeholder="Einfach den Namen eintippen …" aria-label="Kunde oder Objekt suchen" autocomplete="off">
+      <p class="an-klein">${n.q.trim() ? 'Das habe ich gefunden:' : 'Das wäre gerade fällig:'}</p>
+      <div id="anlist" class="an-liste">${anListe(n.q)}</div>${zurueck}</div>`);
+  if(n.schritt===2){ const heute = iso(TODAY);
+    return rahmen(`<div class="an-karte"><div class="an-schritt">Schritt 2 von 3</div><h1>Wann soll es sein?</h1>
+      <div class="an-liste">${[['Heute',heute],['Morgen',plusTage(heute,1)],['Übermorgen',plusTage(heute,2)],['Nächsten Montag',plusTage(iso(montag(TODAY)),7)]].map(([l,d]) =>
+        `<button class="an-wahl" data-act="antag" data-v="${d}"><b>${l}</b><span>${anTag(d)}</span></button>`).join('')}</div>
+      <label class="an-klein" for="andat">Oder einen anderen Tag aussuchen:</label>
+      <input id="andat" class="an-eingabe" type="date" min="${heute}" aria-label="Anderer Tag">${zurueck}</div>`); }
+  if(n.schritt===3) return rahmen(`<div class="an-karte"><div class="an-schritt">Schritt 3 von 3</div><h1>Wer fährt hin?</h1>
+      <div class="an-liste">${appUsers().map(t => `<button class="an-wahl" data-act="antech" data-v="${t.id}"><b>${h(t.name)}</b></button>`).join('')}
+        <button class="an-wahl" data-act="antech" data-v=""><b>Weiß ich noch nicht</b><span>Das ist auch völlig in Ordnung.</span></button></div>${zurueck}</div>`);
+  if(n.schritt===4){ const {o} = ctx(n.anlage);
+    return rahmen(`<div class="an-karte an-mitte"><h1>Stimmt das so?</h1>
+      <p class="an-satz"><b>${anTag(n.datum)}</b><br>${h(o.name)}, ${h(o.ort)}<br>${n.tech ? `Es fährt: <b>${h(userName(n.tech))}</b>` : 'Der Techniker wird später festgelegt.'}</p>
+      <button class="an-riesig" data-act="anok">Ja, genau so!</button>${zurueck}</div>`); }
+  return rahmen(`<div class="an-karte an-mitte">${[...Array(14)].map((_,i) => `<span class="an-regen" style="left:${(i*7.3+3)%100}%;animation-delay:${(i%7)*.25}s" aria-hidden="true">🌸</span>`).join('')}
+      <div class="an-blume" aria-hidden="true">🎉</div><h1>Das haben Sie wunderbar gemacht!</h1>
+      <p class="an-satz">Auftrag <b>${h(n.nr)}</b> ist angelegt.<br>Mehr müssen Sie nicht tun.</p>
+      <button class="an-riesig" data-act="anneu">Noch einen planen</button></div>`);
+}
+const AN_ACT = {
+  anstart: () => { UI.an.schritt = 1; UI.an.q = ''; render(); window.scrollTo(0,0); },
+  anzurueck: () => { UI.an.schritt = Math.max(0, UI.an.schritt-1); render(); window.scrollTo(0,0); },
+  anwahl: d => { UI.an.anlage = d.v; UI.an.schritt = 2; render(); window.scrollTo(0,0); },
+  antag: d => { UI.an.datum = d.v; UI.an.schritt = 3; render(); window.scrollTo(0,0); },
+  antech: d => { UI.an.tech = d.v; UI.an.schritt = 4; render(); window.scrollTo(0,0); },
+  anok: () => { const n = UI.an, a = by(S.anlagen, n.anlage); if(!a) return; const kt = a.kontakt || {};
+    const A = auftragNeu({aid:a.id, datum:n.datum, zeit:'', techs:n.tech ? [n.tech] : [], frei:true, umfang:'ganz', ansp:kt.name||'', tel:kt.tel||''});
+    n.nr = A.nr; n.schritt = 5; save(); render(); window.scrollTo(0,0); },
+  anneu: () => { UI.an.schritt = 1; UI.an.q = ''; render(); window.scrollTo(0,0); },
+  anbrille: () => { UI.an.gross = !UI.an.gross; render(); },
+  ankaffee: () => openModal(`<h2>☕ Kaffeepause!</h2><p style="margin:0">Die Aufträge warten so lange. Ganz bestimmt.</p><div class="row" style="justify-content:flex-end"><button class="btn pri" data-close>Pause beendet</button></div>`),
+  anhilfe: () => openModal(`<h2>Keine Sorge, Annette!</h2><p style="margin:0">Der Marcel weiß Bescheid und kommt gleich rüber. Am besten schon mal Kekse hinstellen. 🍪</p><div class="row" style="justify-content:flex-end"><button class="btn pri" data-close>Alles klar</button></div>`)
+};
+document.addEventListener('input', e => { if(e.target.id!=='anq') return; UI.an.q = e.target.value; document.getElementById('anlist').innerHTML = anListe(e.target.value); });
+document.addEventListener('change', e => { if(e.target.id==='andat' && e.target.value) AN_ACT.antag({v:e.target.value}); });
+/* ---------- Ende GAG Annette ---------- */
+
 /* ---------- Kopfzeile & Navigation ---------- */
 const NAV = [['start','Start'],['karte','Karte'],['kunden','Kunden & Anlagen'],['auftraege','Aufträge'],['woche','Wochenplanung'],['berichte','Berichte'],['stoerungen','Störungen'],['admin','Administration']];
 function renderChrome(){
   const u = me();
   if(S.mode==='app' && !u.app) S.mode = 'web';
   if(S.mode==='web' && !u.web) S.mode = 'app';
-  document.getElementById('modes').innerHTML = [['web','Büro (Web)'],['app','Techniker (App)']].map(([m,l]) =>
-    `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='web'?u.web:u.app)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
+  if(S.mode==='annette' && !u.web) S.mode = 'app';
+  document.getElementById('modes').innerHTML = [['web','Büro (Web)'],['app','Techniker (App)'],['annette','🌸 Annette']].map(([m,l]) =>
+    `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='app'?u.app:u.web)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
   document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
   document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
   const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start', luecken:'start'}[UI.view] || UI.view;
   const band = document.querySelector('.band'), mb = document.getElementById('menubtn');
-  band.classList.toggle('appmode-band', S.mode==='app');
+  band.classList.toggle('appmode-band', S.mode!=='web');
+  document.body.classList.toggle('annette-body', S.mode==='annette');
   document.body.classList.toggle('appmode-body', S.mode==='app');
   const lupe = document.querySelector('.top-in .gsuche .lupe'); if(lupe && !lupe.innerHTML) lupe.innerHTML = ico('suche');
   // Am Handy stehen Suche, Ansicht und Benutzer im aufklappbaren Menü
   const extra = `<div class="navextra">
-    ${S.mode==='app' ? '' : `<div class="gsuche"><span class="lupe" aria-hidden="true">${ico('suche')}</span><input type="search" data-gq placeholder="Suchen: Kunde, Objekt, Auftrag …" aria-label="Suchen" autocomplete="off"><div class="gres" hidden></div></div>`}
+    ${S.mode!=='web' ? '' : `<div class="gsuche"><span class="lupe" aria-hidden="true">${ico('suche')}</span><input type="search" data-gq placeholder="Suchen: Kunde, Objekt, Auftrag …" aria-label="Suchen" autocomplete="off"><div class="gres" hidden></div></div>`}
     <div class="modes" role="group" aria-label="Ansicht">${document.getElementById('modes').innerHTML}</div>
     <label>Angemeldet als<select data-whosel>${document.getElementById('who').innerHTML}</select></label>
     <span class="demo" style="justify-self:start;color:#fff;border-color:rgba(255,255,255,.6)">Prototyp</span></div>`;
@@ -904,6 +1004,10 @@ function renderChrome(){
   if(S.mode==='app'){
     mb.innerHTML = `<span>Techniker-App · ${h(u.name)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
     document.getElementById('nav').innerHTML = `<span class="bandlabel">Techniker-App · ${h(u.name)}</span>` + extra; return;
+  }
+  if(S.mode==='annette'){
+    mb.innerHTML = `<span>🌸 Annette</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
+    document.getElementById('nav').innerHTML = `<span class="bandlabel">Annettes Ansicht</span>` + extra; return;
   }
   const aktuell = (NAV.find(([v]) => v===({anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start', luecken:'start'}[UI.view] || UI.view)) || NAV[0])[1];
   mb.innerHTML = `<span>${UI.menu ? 'Menü' : h(aktuell)}</span><span class="ico" aria-hidden="true">${UI.menu ? '✕' : '☰'}</span>`;
@@ -1045,7 +1149,7 @@ function vWoche(){
       <span class="wz">${a.zeit ? h(a.zeit) : ''} <b>${h(a.nr)}</b></span><span class="wo">${h(o.name)}</span><span class="t2">${h(o.ort)}</span></button>`; };
   const heute = iso(TODAY);
   // Fällig bis Wochenende und noch kein Auftrag
-  const offen = S.anlagen.filter(a => !offenerAuftrag(a.id)).map(a => ({a, ks:kompsOf(a.id).filter(c => { const d = nextDue(c); return d && d <= so; })})).filter(x => x.ks.length)
+  const offen = S.anlagen.filter(a => !a.stillgelegt && !offenerAuftrag(a.id)).map(a => ({a, ks:kompsOf(a.id).filter(c => { const d = nextDue(c); return d && d <= so; })})).filter(x => x.ks.length)
     .sort((x,y) => cmpDe(ctx(x.a.id).o.nr, ctx(y.a.id).o.nr));
   return `<div class="head"><div><h1>Wochenplanung</h1><p class="sub">KW ${kw(mo)} · ${fmt(mo)} bis ${fmt(tage[tage.length-1])} · ${imZeitraum.length} Aufträge</p></div>
     <div class="row"><button class="btn" data-act="woche" data-v="-7" aria-label="Vorherige Woche">‹ Woche</button><button class="btn" data-act="woche" data-v="0">Diese Woche</button><button class="btn" data-act="woche" data-v="7" aria-label="Nächste Woche">Woche ›</button></div></div>
@@ -1087,7 +1191,7 @@ document.addEventListener('drop', e => {
 /* ---------- Büro: Bitte ergänzen (fehlende Angaben) ---------- */
 function luecken(){
   const nrListe = cs => cs.slice(0,8).map(kNr).join(', ') + (cs.length > 8 ? ` und ${cs.length-8} weitere` : '');
-  const proAnlage = (fn) => S.anlagen.map(a => ({a, ...fn(a)})).filter(x => x.n);
+  const proAnlage = (fn) => S.anlagen.filter(a => !a.stillgelegt).map(a => ({a, ...fn(a)})).filter(x => x.n);
   return [
     {id:'rm', titel:'Rauchmelder ohne Baujahr', warum:'Ohne Baujahr lässt sich der Tausch nach 8 Jahren nicht berechnen und nicht anbieten.',
       rows:proAnlage(a => { const cs = kompsOf(a.id).filter(c => typOf(c).ersatzJahre && !/^\d{4}$/.test(String(c.baujahr||'').trim())); return {n:cs.length, was:cs.length+' Rauchmelder: '+nrListe(cs)}; })},
@@ -1145,7 +1249,7 @@ function vFaellig(){
 /* ---------- Büro: Karte ---------- */
 function vKarte(){
   const pts = mapPoints(UI.mapF);
-  const total = S.objekte.length, ohne = S.objekte.filter(o => !geo(o)).length;
+  const aktive = S.objekte.filter(objAktiv), total = aktive.length, ohne = aktive.filter(o => !geo(o)).length;
   const sel = UI.mapSel && by(S.objekte, UI.mapSel);
   let side;
   if(sel){
@@ -1178,11 +1282,11 @@ function vKarte(){
 /* ---------- Büro: Kunden & Anlagen ---------- */
 const kName = k => (k.name || k.nr || '').trim();
 const ersterBuchstabe = k => { const c = kName(k).charAt(0).toUpperCase().replace(/[ÄÖÜ]/, x => ({Ä:'A',Ö:'O',Ü:'U'}[x])); return /[A-Z]/.test(c) ? c : '#'; };
-function buchstaben(){ return [...new Set(S.kunden.filter(k => S.objekte.some(o => o.kundeId===k.id)).map(ersterBuchstabe))].sort(); }
+function buchstaben(){ return [...new Set(S.kunden.map(ersterBuchstabe))].sort(); }
 const cmpDe = (x,y) => String(x||'').localeCompare(String(y||''), 'de', {numeric:true, sensitivity:'base'});
 const rankSt = {bad:0, warn:1, '':2, ok:3};
 const anlagenVon = k => S.objekte.filter(o => o.kundeId===k.id).flatMap(o => S.anlagen.filter(a => a.objektId===o.id).map(a => ({o, a})));
-const naechsteVon = aids => aids.flatMap(id => kompsOf(id).map(nextDue)).filter(Boolean).sort()[0] || '';
+const naechsteVon = aids => aids.filter(id => !istStill(id)).flatMap(id => kompsOf(id).map(nextDue)).filter(Boolean).sort()[0] || '';
 function stVon(aids){
   const s = aids.map(anlSt).sort((a,b) => rankSt[a.cls]-rankSt[b.cls])[0];
   return s || {cls:'', label:'Keine Anlage'};
@@ -1193,7 +1297,7 @@ function vKunden(){
   if(!sorts.some(([v]) => v===UI.ks)) UI.ks = sorts[0][0];
   return `
   <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.filter(c => !c.entfernt).length} Komponenten</p></div>
-    <div class="row"><button class="btn" data-act="importieren">Foxtag-Export importieren</button><button class="btn pri" data-act="neuobjekt">Kunde / Objekt anlegen</button></div></div>
+    <div class="row"><button class="btn" data-act="importieren">Foxtag-Export importieren</button><button class="btn" data-act="neuobjekt">Objekt anlegen</button><button class="btn pri" data-act="neukunde">${ico('plus')} Kunde anlegen</button></div></div>
   <section class="panel">
     <div class="row" style="justify-content:space-between;gap:12px">
       <div class="modes" role="group" aria-label="Ansicht">${[['kunden','Kunden'],['objekte','Objekte']].map(([v,l]) => `<button data-act="kmodus" data-v="${v}" class="${modus===v?'on':''}" aria-pressed="${modus===v}">${l}</button>`).join('')}</div>
@@ -1211,7 +1315,7 @@ function kundenList(){
   const faelligSort = (x,y) => rankSt[x.s.cls]-rankSt[y.s.cls] || cmpDe(x.next||'9999', y.next||'9999');
   const faelligZelle = r => `<td>${pill(r.s.cls, r.s.label)}${r.next ? `<span class="t2">${fmt(r.next)}</span>` : ''}</td>`;
   if((UI.km || 'kunden')==='kunden'){
-    let rows = S.kunden.map(k => ({k, an:anlagenVon(k)})).filter(r => r.an.length);
+    let rows = S.kunden.map(k => ({k, an:anlagenVon(k)}));
     if(buch) rows = rows.filter(r => ersterBuchstabe(r.k)===buch);
     if(q) rows = rows.filter(r => [r.k.nr, r.k.name, r.k.adresse, r.k.ort, ...r.an.flatMap(x => [x.o.nr, x.o.name, x.o.ort])].join(' ').toLowerCase().includes(q));
     rows = rows.map(r => { const aids = r.an.map(x => x.a.id); return {...r, s:stVon(aids), n:aids.reduce((s,id) => s + kompsOf(id).length, 0), next:naechsteVon(aids)}; });
@@ -1273,7 +1377,8 @@ function vKunde(){
       <td>${h(o.adresse)}<span class="t2">${h(o.ort)}</span></td>
       <td class="mono" style="text-align:right">${kompsOf(a.id).length}</td>
       <td>${pill(s.cls, s.label)}${nx ? `<span class="t2">${fmt(nx)}</span>` : ''}</td>
-      <td>${oa ? statusPill(oa.status) : `<button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button>`}</td></tr>`; }).join('')}
+      <td>${oa ? statusPill(oa.status) : a.stillgelegt ? '' : `<button class="btn sm" data-act="planen" data-a="${a.id}">Planen</button>`}</td></tr>`; }).join('')}
+    ${an.length ? '' : `<tr><td colspan="6"><div class="empty">Noch kein Objekt. Über „Objekt anlegen“ das erste hinzufügen.</div></td></tr>`}
     </tbody></table></div></section>`;
 }
 function vAnlage(){
@@ -1281,7 +1386,7 @@ function vAnlage(){
   const ks = kompsOf(aid);
   const auftr = S.auftraege.filter(x => x.anlageId===aid).sort((x,y) => x.datum < y.datum ? 1 : -1);
   const ber = S.berichte.filter(b => auftr.some(x => x.id===b.auftragId)).sort((x,y) => x.erstellt < y.erstellt ? 1 : -1);
-  const next = ks.map(nextDue).filter(Boolean).sort()[0];
+  const next = a.stillgelegt ? null : ks.map(nextDue).filter(Boolean).sort()[0];
   const offen = offenerAuftrag(aid);
   const zaehl = c => ks.filter(x => st(x).cls===c).length;
   const kOffen = UI.kOpen !== false || UI.addK;
@@ -1289,7 +1394,11 @@ function vAnlage(){
   return `
   <button class="back" data-act="kunde" data-id="${k.id}">← ${h(kName(k))}</button>
   <div class="head"><div><div class="eyebrow">${h(kName(k))} · Anlage ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
-    <div class="row">${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}</div></div>
+    <div class="row">${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : a.stillgelegt ? '' : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}
+      ${a.stillgelegt ? '' : `<button class="btn danger" data-act="stilllegen" data-a="${aid}">Wartungsvertrag stilllegen</button>`}</div></div>
+  ${a.stillgelegt ? `<section class="panel" style="border-color:var(--warn)"><div class="panel-h"><h2>Wartungsvertrag stillgelegt</h2>${pill('warn','Stillgelegt')}</div>
+    <p style="margin:0">Seit ${fmt(a.stillgelegt.am)}${a.stillgelegt.grund ? ` · ${h(a.stillgelegt.grund)}` : ''} · eingetragen von ${h(a.stillgelegt.von)}. Die Anlage zählt nicht mehr bei Fälligkeiten, erscheint nicht auf der Karte und kann nicht geplant werden. Berichte, Dateien und Störungen bleiben erhalten.</p>
+    <div><button class="btn" data-act="stillauf" data-a="${aid}">Wieder aktivieren</button></div></section>` : ''}
   <section class="panel"><div class="facts">
     <div><span>Kunde</span><span class="code">${h(k.nr)}</span><br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</div>
     <div><span>Objekt</span>${h(o.adresse)}<br>${h(o.ort)}</div>
@@ -1433,7 +1542,7 @@ function vAuftrag(){
     <div><span>Termin</span>${aDatum(A)}</div>
     <div><span>Techniker</span>${h(techNames(A.techIds))}</div>
     <div><span>Ansprechpartner vor Ort</span>${kontaktText(A) || '<span class="muted">nicht angegeben</span>'}</div>
-    <div><span>Umfang</span>${A.umfang==='ganz' ? 'Ganze Anlage' : 'Nur fällige Komponenten'} (${ks.length})</div>
+    <div><span>Umfang</span>${umfangText(A)} (${ks.length})</div>
     ${A.vorOrt ? `<div><span>Angelegt</span>vor Ort von ${h(A.angelegtVon)}<br><span class="small muted">${h(A.angelegtAm)}</span><br>${A.geprueft ? pill('ok', 'vom Büro geprüft'+(A.geprueftVon ? ' ('+A.geprueftVon+')' : '')) : pill('warn','noch nicht geprüft')}</div>` : ''}
     ${(A.verlauf||[]).length ? `<div><span>Verlauf</span>${A.verlauf.map(v => `<span class="small" style="display:block">${h(v)}</span>`).join('')}</div>` : ''}
     <div><span>Kunde</span><span class="code">${h(k.nr)}</span> ${h(k.name)}</div>
@@ -1785,7 +1894,7 @@ function routeKnoepfe(o){
 function appNeuListe(){
   const q = (UI.app.nq || '').trim().toLowerCase();
   if(q.length < 2) return `<div class="empty">Mindestens 2 Zeichen eingeben, z. B. Objektnummer, Kunde oder Ort.</div>`;
-  const rows = S.anlagen.map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k && [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q)).slice(0, 30);
+  const rows = S.anlagen.filter(a => !a.stillgelegt).map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k && [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q)).slice(0, 30);
   if(!rows.length) return `<div class="empty">Keine Anlage gefunden.</div>`;
   return rows.map(({a,o,k}) => { const s = anlSt(a.id), oa = offenerAuftrag(a.id); return `
     <button class="krow" data-act="appneuwahl" data-id="${a.id}"><span><b><span class="code">${h(o.nr)}</span> ${h(o.name)}</b><span class="muted small" style="display:block">${h(kName(k))} · ${h(o.ort)}${oa ? ' · Auftrag '+h(oa.nr)+' offen' : ''}</span></span>${pill(s.cls, s.label)}</button>`; }).join('');
@@ -1831,7 +1940,7 @@ function vApp(){
           <span class="top2"><span class="mono">${a.nr} · ${aDatum(a)}</span>${statusPill(a.status)}</span>
           <b>${h(o.name)}</b>
           <span class="muted small">${h(o.adresse)}, ${h(o.ort)}</span>
-          <span class="muted small">${ks.length} Komponenten${a.status==='laeuft' ? ` · ${done} geprüft` : ''}${a.techIds.length > 1 ? ' · mit '+h(a.techIds.filter(x => x!==u.id).map(userName).join(', ')) : ''}</span>
+          <span class="muted small">${ks.length} Komponenten${a.status==='laeuft' ? ` · ${done} geprüft` : ''}${a.techIds.length > 1 ? ' · mit '+h(a.techIds.filter(x => x!==u.id).map(userName).join(', ')) : ''}${(by(S.anlagen,a.anlageId).dateien||[]).length ? ` · ${by(S.anlagen,a.anlageId).dateien.length} Dokumente` : ''}</span>
         </button>`; }).join('') : `<div class="empty">${UI.app.tab==='heute' ? 'Heute keine Aufträge. Neue Aufträge vom Büro erscheinen hier automatisch.' : 'Keine Aufträge.'}</div>`}
       ${UI.app.tab==='erledigt' ? `<div class="small muted" style="text-align:center">Hier stehen die letzten ${ERLEDIGT_TAGE} Tage. Ältere Berichte hat das Büro.</div>` : ''}`);
   }
@@ -1864,7 +1973,8 @@ function vApp(){
     const c = by(S.komponenten, UI.app.komp), t = typOf(c), p = prOf(A, c.id);
     const kst = stoerOffen(c.id);
     return appShell(appBar(`${kNr(c)} ${h(tname(t))}`, h(c.standort), 'auftrag'),
-      `${kst.length ? `<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">Offene Störungen an dieser Komponente</b>${kst.map(x => `<div class="small"><b>#${x.nr} ${h(x.titel)}</b> · ${h(x.schwere)}${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</div>`).join('')}</div>` : ''}
+      `${(a.dateien||[]).length ? `<details class="card"><summary style="font-weight:600;cursor:pointer">Dokumente zur Anlage (${a.dateien.length})</summary>${dokList(a, true)}</details>` : ''}
+      ${kst.length ? `<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">Offene Störungen an dieser Komponente</b>${kst.map(x => `<div class="small"><b>#${x.nr} ${h(x.titel)}</b> · ${h(x.schwere)}${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</div>`).join('')}</div>` : ''}
       <div class="card clist">${clFor(A,c).map(x => feldRow(A,c,x)).join('')}</div>
       <div class="card"><b>Fotos</b><div class="fotos">${p.fotos.map((f,i) => `<div class="foto"><img src="${f}" alt="Foto ${i+1}"><button data-act="fotodel" data-c="${c.id}" data-i="${i}" aria-label="Foto entfernen">×</button></div>`).join('')}
         <label class="btn sm upl">Foto aufnehmen<input type="file" accept="image/*" capture="environment" data-foto="${c.id}"></label></div></div>`,
@@ -2101,26 +2211,51 @@ function editModal(A){
     </form>`);
 }
 function planenModal(aid, datum, techId){
-  const opts = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id); if(!os.length) return '';
-    return `<optgroup label="${h(k.nr+' '+k.name)}">${os.map(o => S.anlagen.filter(x => x.objektId===o.id).map(a => `<option value="${a.id}" ${a.id===aid?'selected':''}>${h(o.nr+' '+o.name)}</option>`).join('')).join('')}</optgroup>`; }).join('');
+  const opts = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id && S.anlagen.some(a => a.objektId===o.id && !a.stillgelegt)); if(!os.length) return '';
+    return `<optgroup label="${h(k.nr+' '+k.name)}">${os.map(o => S.anlagen.filter(x => x.objektId===o.id && !x.stillgelegt).map(a => `<option value="${a.id}" ${a.id===aid?'selected':''}>${h(o.nr+' '+o.name)}</option>`).join('')).join('')}</optgroup>`; }).join('');
   openModal(`<h2>Auftrag planen</h2>
     <form data-form="planen" style="display:grid;gap:12px">
       <label class="f" for="pa">Objekt / Anlage<select id="pa" name="anlage">${opts}</select></label>
       <div class="fgrid"><label class="f" for="pd">Datum<input id="pd" name="datum" type="date" value="${datum || iso(TODAY)}" required></label><label class="f" for="pz">Uhrzeit<input id="pz" name="zeit" type="time"></label></div>
       ${kontaktFelder(...(() => { const a0 = by(S.anlagen, aid); const kt = (a0 && a0.kontakt) || {}; return [kt.name, kt.tel]; })())}
       <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}" ${t.id===techId?'checked':''}>${h(t.name)}</label>`).join('')}</div></div>
-      <label class="f" for="pu">Umfang<select id="pu" name="umfang"><option value="ganz">Ganze Anlage</option><option value="faellig">Nur fällige Komponenten</option></select></label>
+      <label class="f" for="pu">Umfang<select id="pu" name="umfang"><option value="ganz">Ganze Anlage</option><option value="faellig">Nur fällige Komponenten</option><option value="gruppen">Gruppen auswählen</option></select></label>
+      <div class="f" id="pgw" hidden></div>
       <div class="checks"><label><input type="checkbox" name="frei" checked>Direkt an die Techniker freigeben</label></div>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Auftrag anlegen</button></div>
+    </form>`, pgwFuellen);
+}
+/* Bei Umfang „Gruppen auswählen“: Gruppen der gewählten Anlage zum Anhaken */
+function pgwFuellen(){
+  const box = document.getElementById('pgw'), pa = document.getElementById('pa'), pu = document.getElementById('pu'); if(!box || !pa || !pu) return;
+  box.hidden = pu.value!=='gruppen';
+  if(box.hidden) return;
+  const ks = kompsOf(pa.value), gruppen = [...new Set(ks.map(c => c.gruppe))].sort((x,y) => x-y);
+  box.innerHTML = gruppen.length ? `Gruppen<div class="checks">${gruppen.map(g => { const l = ks.filter(c => c.gruppe===g), fl = l.filter(c => ['bad','warn'].includes(st(c).cls)).length;
+    return `<label><input type="checkbox" name="gruppe" value="${g}">${g} ${gname(g)} (${l.length}${fl ? `, davon ${fl} fällig` : ''})</label>`; }).join('')}</div>` : `<span class="muted small">Diese Anlage hat noch keine Komponenten.</span>`;
+}
+function auftragNeu({aid, datum, zeit, techs, frei, umfang, gruppen, ansp, tel}){
+  const ks = kompsOf(aid).filter(c => umfang==='ganz' || (umfang==='gruppen' ? gruppen.includes(c.gruppe) : (['bad','warn'].includes(st(c).cls) || !c.letzte)));
+  const A = {id:uid(), nr:'A-'+(S.nextAuftrag++), anlageId:aid, datum, zeit:zeit||'', techIds:techs, status: techs.length && frei ? 'geplant' : 'planung', umfang, gruppen:umfang==='gruppen' ? gruppen : undefined, kompIds:ks.map(c => c.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null, ansp:ansp||'', tel:tel||''};
+  kontaktMerken(A); S.auftraege.push(A);
+  return A;
+}
+const umfangText = A => A.umfang==='ganz' ? 'Ganze Anlage' : A.umfang==='gruppen' ? 'Gruppen '+(A.gruppen||[]).join(', ') : 'Nur fällige Komponenten';
+function neuKundeModal(){
+  openModal(`<h2>Kunde anlegen</h2>
+    <form data-form="neukunde" style="display:grid;gap:12px">
+      <div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required placeholder="z. B. MUSTER2" autocomplete="off"></label>
+        <label class="f" for="mkname">Name<input id="mkname" name="kname" required autocomplete="off"></label>
+        <label class="f" for="mka">Adresse<input id="mka" name="kadr" autocomplete="off"></label>
+        <label class="f" for="mko">PLZ / Ort<input id="mko" name="kort" placeholder="z. B. 76846 Hauenstein" autocomplete="off"></label></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Kunde anlegen</button></div>
     </form>`);
 }
-function neuObjektModal(neuKunde, kid){
+function neuObjektModal(kid){
   if(kid) UI.neuK = kid;
-  openModal(`<h2>Kunde / Objekt anlegen</h2>
+  openModal(`<h2>Objekt anlegen</h2>
     <form data-form="neuobjekt" style="display:grid;gap:12px">
-      <label class="f" for="mk">Kunde<select id="mk" name="k" data-m="k">${S.kunden.slice().sort((x,y) => cmpDe(kName(x), kName(y))).map(k => `<option value="${k.id}" ${!neuKunde && UI.neuK===k.id ? 'selected' : ''}>${h(k.nr+' '+k.name)}</option>`).join('')}<option value="neu" ${neuKunde?'selected':''}>+ Neuer Kunde</option></select></label>
-      ${neuKunde ? `<div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required placeholder="z. B. MUSTER2"></label><label class="f" for="mkname">Name<input id="mkname" name="kname" required></label>
-        <label class="f" for="mka">Adresse<input id="mka" name="kadr"></label><label class="f" for="mko">PLZ / Ort<input id="mko" name="kort"></label></div>` : ''}
+      <label class="f" for="mk">Kunde<select id="mk" name="k">${S.kunden.slice().sort((x,y) => cmpDe(kName(x), kName(y))).map(k => `<option value="${k.id}" ${UI.neuK===k.id ? 'selected' : ''}>${h(k.nr+' '+k.name)}</option>`).join('')}</select></label>
       <div class="fgrid"><label class="f" for="mon">Objektnummer<input id="mon" name="onr" required value="W${String(TODAY.getFullYear()).slice(2)}-${String(500+S.objekte.length+1).padStart(4,'0')}"></label>
         <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="z. B. Musterschuh, Lager"></label>
         <label class="f" for="moa">Adresse<input id="moa" name="oadr"></label><label class="f" for="moo">PLZ / Ort<input id="moo" name="oort" placeholder="z. B. 76846 Hauenstein"></label></div>
@@ -2332,7 +2467,7 @@ function importModal(){
     </form>`);
 }
 modal.addEventListener('change', e => {
-  if(e.target.dataset.m==='k'){ if(e.target.value!=='neu') UI.neuK = e.target.value; neuObjektModal(e.target.value==='neu'); }
+  if(e.target.id==='pu' || e.target.id==='pa') pgwFuellen();
   if(e.target.id==='pa'){ const kt = (by(S.anlagen, e.target.value)||{}).kontakt || {}; document.getElementById('kpn').value = kt.name || ''; document.getElementById('kpt').value = kt.tel || ''; }
 });
 modal.addEventListener('submit', e => {
@@ -2360,12 +2495,11 @@ modal.addEventListener('submit', e => {
     })();
   }
   if(kind==='planen'){
-    const aid = f.get('anlage'), umfang = f.get('umfang');
-    const ks = kompsOf(aid).filter(c => umfang==='ganz' || ['bad','warn'].includes(st(c).cls) || !c.letzte);
+    const aid = f.get('anlage'), umfang = f.get('umfang'), gruppen = f.getAll('gruppe').map(Number);
+    if(umfang==='gruppen' && !gruppen.length){ toast('Bitte mindestens eine Gruppe auswählen'); return; }
     const techs = f.getAll('tech');
-    const A = {id:uid(), nr:'A-'+(S.nextAuftrag++), anlageId:aid, datum:f.get('datum'), zeit:f.get('zeit')||'', techIds:techs, status: techs.length && f.get('frei') ? 'geplant' : 'planung', umfang, kompIds:ks.map(c => c.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null, ansp:(f.get('ansp')||'').trim(), tel:(f.get('tel')||'').trim()};
-    kontaktMerken(A);
-    S.auftraege.push(A); save(); closeModal(); UI.view = 'auftrag'; UI.auftrag = A.id; render(); window.scrollTo(0,0);
+    const A = auftragNeu({aid, datum:f.get('datum'), zeit:f.get('zeit'), techs, frei:!!f.get('frei'), umfang, gruppen, ansp:(f.get('ansp')||'').trim(), tel:(f.get('tel')||'').trim()});
+    save(); closeModal(); UI.view = 'auftrag'; UI.auftrag = A.id; render(); window.scrollTo(0,0);
     toast(A.status==='geplant' ? `Auftrag ${A.nr} liegt jetzt in der App bei ${techNames(techs)}` : `Auftrag ${A.nr} angelegt, noch nicht freigegeben`);
   }
   if(kind==='stoer'){
@@ -2400,10 +2534,19 @@ modal.addEventListener('submit', e => {
     save(); closeModal(); render();
     toast(techs.length ? `Auftrag ${A.nr} gespeichert` : `Auftrag ${A.nr} ohne Techniker, zurück auf „In Planung“`);
   }
+  if(kind==='neukunde'){
+    const nr = String(f.get('knr')||'').trim(), name = String(f.get('kname')||'').trim(); if(!nr || !name) return;
+    if(S.kunden.some(k => k.nr===nr)){ toast(`Kundennummer ${nr} gibt es schon`); return; }
+    const kid = 'k'+uid(); S.kunden.push({id:kid, nr, name, adresse:f.get('kadr')||'', ort:f.get('kort')||''});
+    save(); closeModal(); UI.view = 'kunde'; UI.kunde = kid; render(); window.scrollTo(0,0); toast('Kunde angelegt. Jetzt ein Objekt anlegen.');
+  }
+  if(kind==='still'){
+    const a = by(S.anlagen, UI.stillA); if(!a) return closeModal();
+    a.stillgelegt = {am:f.get('am') || iso(TODAY), grund:String(f.get('grund')||'').trim(), von:me().name};
+    save(); closeModal(); render(); toast('Wartungsvertrag stillgelegt');
+  }
   if(kind==='neuobjekt'){
-    let kid = f.get('k');
-    if(kid==='neu'){ kid = 'k'+uid(); S.kunden.push({id:kid, nr:f.get('knr'), name:f.get('kname'), adresse:f.get('kadr')||'', ort:f.get('kort')||''}); }
-    const k = by(S.kunden,kid);
+    const kid = f.get('k'), k = by(S.kunden,kid);
     const oid = 'o'+uid(); S.objekte.push({id:oid, kundeId:kid, nr:f.get('onr'), name:f.get('oname'), adresse:f.get('oadr')||k.adresse, ort:f.get('oort')||k.ort});
     const aid = 'a'+uid(); S.anlagen.push({id:aid, objektId:oid, name:'Wartung', hinweis:''});
     save(); closeModal(); UI.view = 'anlage'; UI.anlage = aid; UI.addK = true; render(); toast('Objekt angelegt. Jetzt Komponenten hinzufügen.');
@@ -2412,6 +2555,7 @@ modal.addEventListener('submit', e => {
 
 /* ---------- Ereignisse ---------- */
 const ACT = {
+  ...AN_ACT,
   mode: d => { S.mode = d.v; save(); render(); window.scrollTo(0,0); },
   go: d => { UI.view = d.v; UI.err = ''; UI.addK = false; UI.menu = false; render(); window.scrollTo(0,0); },
   menu: () => { UI.menu = !UI.menu; renderChrome(); },
@@ -2456,7 +2600,16 @@ const ACT = {
   anlage: (d,t,e) => { e.stopPropagation(); UI.view = 'anlage'; UI.anlage = d.id; UI.addK = false; render(); window.scrollTo(0,0); },
   auftrag: (d,t,e) => { e.stopPropagation(); UI.view = 'auftrag'; UI.auftrag = d.id; UI.err = ''; render(); window.scrollTo(0,0); },
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
-  neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(false, d.k); },
+  neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(d.k); },
+  neukunde: () => neuKundeModal(),
+  stilllegen: d => { const oa = offenerAuftrag(d.a);
+    if(oa){ openModal(`<h2>Noch nicht möglich</h2><p style="margin:0">Für diese Anlage ist Auftrag ${h(oa.nr)} noch offen. Bitte zuerst abschließen oder löschen.</p><div class="row" style="justify-content:flex-end"><button class="btn pri" data-close>Verstanden</button></div>`); return; }
+    UI.stillA = d.a;
+    openModal(`<h2>Wartungsvertrag stilllegen?</h2><p style="margin:0">Die Anlage zählt dann nicht mehr bei Fälligkeiten, erscheint nicht auf der Karte und kann nicht geplant werden. Alle Daten und Berichte bleiben erhalten, und du kannst sie jederzeit wieder aktivieren.</p>
+      <form data-form="still" style="display:grid;gap:12px"><div class="fgrid"><label class="f" for="stam">Gekündigt zum<input id="stam" name="am" type="date" value="${iso(TODAY)}" required></label>
+      <label class="f" for="stgr">Grund (optional)<input id="stgr" name="grund" placeholder="z. B. Kündigung durch Kunde" autocomplete="off"></label></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit" style="background:var(--bad);border-color:var(--bad)">Stilllegen</button></div></form>`); },
+  stillauf: d => { const a = by(S.anlagen, d.a); if(!a) return; delete a.stillgelegt; save(); render(); toast('Wartungsvertrag wieder aktiv'); },
   importieren: () => importModal(),
   togglek: () => { UI.addK = !UI.addK; render(); },
   af: d => { UI.af = d.v; render(); },
@@ -2737,7 +2890,7 @@ function gSuche(q){
   q = q.trim().toLowerCase();
   if(q.length < 2) return '';
   const treffer = [];
-  S.kunden.filter(k => [k.nr, k.name, k.ort].join(' ').toLowerCase().includes(q) && S.objekte.some(o => o.kundeId===k.id)).slice(0,5)
+  S.kunden.filter(k => [k.nr, k.name, k.ort].join(' ').toLowerCase().includes(q)).slice(0,5)
     .forEach(k => treffer.push(`<button class="gitem" data-act="kunde" data-id="${k.id}"><span class="art">Kunde</span><b>${h(kName(k))}</b><small>${h(k.nr)} · ${h(k.ort)}</small></button>`));
   S.objekte.filter(o => [o.nr, o.name, o.adresse, o.ort].join(' ').toLowerCase().includes(q)).slice(0,6).forEach(o => {
     const a = S.anlagen.find(x => x.objektId===o.id); if(!a) return;
@@ -2788,7 +2941,7 @@ function tabellenBeschriften(root){
 
 const VIEWS = {woche:vWoche, luecken:vLuecken, faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
 function render(){
-  kIdx = null;
+  kIdx = null; stillSet = null;
   const top = document.querySelector('.top');
   if(brauchtAnmeldung()){
     top.querySelector('.band').hidden = true; document.getElementById('modes').hidden = true; document.querySelector('.who').hidden = true;
@@ -2796,7 +2949,7 @@ function render(){
   }
   top.querySelector('.band').hidden = false; document.getElementById('modes').hidden = false; document.querySelector('.who').hidden = false;
   renderChrome();
-  app.innerHTML = S.mode==='app' ? vApp() : (VIEWS[UI.view] || vStart)();
+  app.innerHTML = S.mode==='app' ? vApp() : S.mode==='annette' ? vAnnette() : (VIEWS[UI.view] || vStart)();
   uebergang();
   app.querySelectorAll('canvas[data-sig]').forEach(initSig);
   tabellenBeschriften();
@@ -2807,7 +2960,7 @@ function render(){
 let letzteAnsicht = null;
 const APP_TIEFE = {liste:0, neu:1, auftrag:1, komp:2, abschluss:3, vorschau:4, gesendet:4};
 function uebergang(){
-  const key = S.mode==='app' ? 'app|'+UI.app.screen+'|'+(UI.app.komp||'') : 'web|'+UI.view+'|'+(UI.anlage||'')+'|'+(UI.auftrag||'')+'|'+(UI.kunde||'');
+  const key = S.mode==='annette' ? 'annette|'+UI.an.schritt : S.mode==='app' ? 'app|'+UI.app.screen+'|'+(UI.app.komp||'') : 'web|'+UI.view+'|'+(UI.anlage||'')+'|'+(UI.auftrag||'')+'|'+(UI.kunde||'');
   if(key===letzteAnsicht) return;
   const vorher = letzteAnsicht; letzteAnsicht = key;
   if(!vorher) return;
