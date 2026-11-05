@@ -762,8 +762,8 @@ function alleGruppen(){
 }
 const gruppenOptionen = wert => alleGruppen().map(g => `<option value="${g}" ${g===wert ? 'selected' : ''}>${g} ${gname(g)}</option>`).join('');
 /* Eigene Angaben je Komponente statt allem im Standort-Text (aus Foxtag). Ohne Angaben wird der alte Standort-Text gezeigt. */
-const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Brandschutzklappen-Bezeichnung'],['zulassung','Zulassungsnummer']];
-const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.einbauort, c.bezeichnung, c.bskNr && 'BSK '+c.bskNr, c.zulassung && 'Zul. '+c.zulassung].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
+const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Brandschutzklappen-Bezeichnung'],['zulassung','Zulassungsnummer']];
+const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : 'BSK '+c.bskNr), c.zulassung && 'Zul. '+c.zulassung].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
 const kFelderHtml = (c, pre) => `<div class="fgrid">${KFELDER.map(([k,l]) => `<label class="f" for="${pre}${k}">${l}<input id="${pre}${k}" name="${k}" value="${h((c||{})[k]||'')}" ${k==='luftart' ? 'list="luftarten"' : ''} autocomplete="off"></label>`).join('')}</div><datalist id="luftarten"><option value="Zuluft"><option value="Abluft"><option value="Zu- und Abluft"><option value="Außenluft"><option value="Fortluft"></datalist>`;
 const kFelderLesen = f => Object.fromEntries(KFELDER.map(([k]) => [k, String(f.get(k)||'').trim()]));
 const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
@@ -1752,62 +1752,96 @@ function xiPlan(x){
   });
   return plan;
 }
-/* Standort-Text aus Foxtag aufteilen: Hersteller | Typ | ZA/Z/A | Luftmenge | Ort. Vorschläge werden erst nach Bestätigung übernommen, der Text bleibt erhalten. */
-const SP_LUFT = {za:'Zu- und Abluft', z:'Zuluft', zu:'Zuluft', zul:'Zuluft', a:'Abluft', ab:'Abluft', abl:'Abluft', au:'Außenluft', aul:'Außenluft', fo:'Fortluft', fol:'Fortluft'};
-const SP_ORT = /raum|flur|technik|zentrale|keller|\bog\b|\beg\b|\bug\b|\d\.?\s*og|küche|halle|dach|schacht|gebäude|werkstatt|lager|büro|schaltschrank/i;
-const spWort = t => String(t||'').trim().split(/\s+/)[0].toLowerCase();
-function spHersteller(ks){
-  const n = {}; ks.forEach(c => { const w = spWort(String(c.standort||'').split('|')[0]); if(w && String(c.standort).includes('|') && !SP_ORT.test(w) && !/^\d/.test(w) && !SP_LUFT[w]) n[w] = (n[w]||0)+1; });
-  return new Set(Object.keys(n).filter(w => n[w] >= 3));
+/* Foxtag-Angaben einheitlich einordnen: Standort-Text und S/N in die Felder aufteilen. Vorschläge werden erst nach Bestätigung übernommen, die alten Werte bleiben erhalten. */
+const SP_LUFT = {za:'Zu- und Abluft', 'zu/ab':'Zu- und Abluft', 'zu+ab':'Zu- und Abluft', z:'Zuluft', zu:'Zuluft', zul:'Zuluft', zuluft:'Zuluft', a:'Abluft', ab:'Abluft', abl:'Abluft', abluft:'Abluft', au:'Außenluft', aul:'Außenluft', al:'Außenluft', 'außenluft':'Außenluft', fo:'Fortluft', fol:'Fortluft', fl:'Fortluft', fortluft:'Fortluft'};
+const SP_MARKEN = Object.fromEntries(['Wolf','Robatherm','Klimatec','Trox','AL-KO','Helios','Systemair','Fläkt','Nova','Vallox','GEA','Exhausto','Swegon','Rosenberg','Howatherm','Hansa','Airflow','Limodor','Maico','Gebhardt','Funken','Lunos','Samsung','Panasonic','Daikin','Fujitsu','Mitsubishi','Toshiba','York','Danfoss','OP-Air','Bösch','Wildeboer','Schako','Strulik','Lindab','GEBA','Oppermann','Hekatron','Calectro','Belimo','Aerotechnik','Uden','Hygromatik','Munters','Buderus','Stulz','Perleberg','Villavent','Kampmann','Nicotra','Kammer','Priva','Wolter','Zehnder','Aerex','Hürner','Schobel','Norfi','Happel','SK-Elektronik','Pötter','Eichelberger','Vortice','Ruck','Ziehl-Abegg','Kessler'].map(m => [m.toLowerCase(), m]));
+Object.assign(SP_MARKEN, {'soler&palau':'Soler & Palau', 'alko-therm':'AL-KO', 'fläktgroup':'Fläkt', 'air-motion':'Air Motion', 'berliner-luft':'Berliner Luft', alko:'AL-KO', flaekt:'Fläkt', hekatraon:'Hekatron', opperman:'Oppermann', 'op':'OP-Air', 'op-air':'OP-Air'});
+const SP_ORT = /\b(eg|ug|og|dg|kg|sg)\b|\d\.?\s*(og|ug|o\.g)|raum|räume|flur|wand|decke|schacht|achse|technik|zentrale|keller|dach|speicher|halle|etage|ebene|gebäude|\bbau\b|treppenh|garage|\b\d+\.\d+\b/i;
+const SP_TECHORT = /\b(eg|ug|og|dg|kg|sg)\b|\d\.?\s*(og|ug|o\.g)|technik|zentrale|keller|dach|speicher|schacht/i, SP_RAUM = /\bwc\b|umkleide|dusche|küche|\bbad\b/i;
+const SP_LUFTWORT = /^(zuluft|abluft|fortluft|außenluft)\b/i, SP_STROEM = /^(nachström|überström)/i;
+const spErstes = t => String(t||'').trim().split(/\s+/)[0].toLowerCase();
+function spLernen(ks){
+  const paare = {};
+  ks.forEach(c => { const t = String(c.standort||'').split('|').map(x => x.trim()).filter(Boolean); if(t.length < 2) return;
+    const p = (spErstes(t[0])+'|'+t[1]).toLowerCase(); paare[p] = (paare[p]||0)+1; });
+  return {paare};
 }
-function spTeilen(text, hersteller){
-  const teile = String(text||'').split('|').map(x => x.trim()).filter(Boolean), v = {};
-  if(!teile.length) return null;
-  const istMenge = t => /\d.*(m³\/h|m3\/h|cbm)/i.test(t), istLuft = t => !!SP_LUFT[t.toLowerCase()];
-  const marken = teile.map((t,i) => istMenge(t) || istLuft(t) ? i : -1).filter(i => i>=0);
-  teile.forEach(t => { if(istMenge(t) && !v.luftmenge){ const m = t.match(/^(za|zu|ab|z|a)\s+(?=\d)/i); if(m && !v.luftart) v.luftart = SP_LUFT[m[1].toLowerCase()];
-      v.luftmenge = t.replace(/^(za|zu|ab|z|a)\s+(?=\d)/i, '').replace(/\s*(m³\/h|m3\/h|cbm).*$/i, ' m³/h'); }
-    else if(istLuft(t) && !v.luftart) v.luftart = SP_LUFT[t.toLowerCase()]; });
-  let vorn, hinten;
-  if(marken.length){ vorn = teile.slice(0, marken[0]); hinten = teile.filter((t,i) => i > marken[0] && !marken.includes(i)); }
-  else if(teile.length >= 3){ vorn = teile.slice(0,2); hinten = teile.slice(2); }
-  else { vorn = teile.slice(); hinten = []; }
-  const bekannt = vorn.length && hersteller.has(spWort(vorn[0])) && !SP_ORT.test(vorn[0]);
-  let sicher = bekannt && String(text).includes('|');
-  const mitte = !bekannt && vorn.findIndex((t,i) => i > 0 && hersteller.has(spWort(t)));
-  if(mitte > 0){ // Hersteller steht weiter hinten, z. B. „EG Flur | Schako | BSK“
-    v.hersteller = vorn[mitte]; if(vorn[mitte+1]) v.modell = vorn[mitte+1];
-    hinten = [...vorn.slice(0, mitte), ...vorn.slice(mitte+2), ...hinten]; sicher = false;
-  } else if(!bekannt && marken.length && vorn.length === 2 && !SP_ORT.test(vorn[0])){ // Schema trotz seltenem Hersteller: vor ZA/Z/A stehen Hersteller und Typ
-    v.hersteller = vorn[0]; v.modell = vorn[1]; sicher = false;
-  } else if(bekannt){
-    if(vorn.length === 1){ const w = vorn[0].split(/\s+/); v.hersteller = w[0]; if(w.length > 1) v.modell = w.slice(1).join(' '); }
-    else { v.hersteller = vorn[0]; v.modell = vorn[1]; hinten = [...vorn.slice(2), ...hinten]; if(vorn.length > 2) sicher = false; }
-    if(!marken.length && teile.length < 3 && String(v.modell||'').split(/\s+/).length > 2) sicher = false;
-  } else { hinten = [...vorn, ...hinten]; sicher = false; }
-  if(hinten.length) v.einbauort = hinten.join(', ');
+const spMarke = w => SP_MARKEN[w] || '';
+const spModell = m => String(m||'').trim().replace(/^(FK|FR|BV)[\s-]*(\d{2})\s*(K?)(?=$|[\s/])/i, (x,a,b,k) => a.toUpperCase()+b+k.toUpperCase());
+function spMenge(t){ const m = t.match(/(\d[\d.,]*)\s*(?:m\s*³|m3|cbm|³)/i); if(!m) return ''; const n = parseInt(m[1].replace(/[.,]/g,''), 10); return n ? n.toLocaleString('de-DE')+' m³/h' : ''; }
+function spTeilen(c, L){
+  const roh = String(c.standort||'').replace(/\bOP[\s-]+Air\b/ig,'OP-Air').replace(/Soler\s*&\s*Palau/ig,'Soler&Palau').replace(/\bAir\s+Motion\b/ig,'Air-Motion').replace(/\bBerliner\s+Luft\b/ig,'Berliner-Luft').replace(/^Airflow\s+Duplex\b/i,'Airflow | Duplex').replace(/^Duplex\s*\|\s*Airflow\b/i,'Airflow | Duplex');
+  const teile = roh.split('|').map(x => x.trim()).filter(Boolean), v = {}, rest = [], bez = [], ort = [];
+  const luft = w => { if(!v.luftart) v.luftart = w; };
+  teile.forEach((t,i) => { const low = t.toLowerCase();
+    const menge = spMenge(t);
+    if(menge && !v.luftmenge){ const m = t.match(/^(za|zu|ab|z|a)\s+(?=\d)/i); if(m) luft(SP_LUFT[m[1].toLowerCase()]); v.luftmenge = menge; return; }
+    if(/^\d[\d.,]*\s*kw$/i.test(t) && !v.leistung){ v.leistung = t.replace(/\s*kw$/i,'').replace('.',',')+' kW'; return; }
+    if(SP_LUFT[low]){ luft(SP_LUFT[low]); return; }
+    if(/^(inneneinheit|klima\s*ie|ie)$/i.test(t)){ bez.push('Inneneinheit'); return; }
+    if(/^(au(ß|ss)eneinheit|klima\s*ae|ae)$/i.test(t)){ bez.push('Außeneinheit'); return; }
+    const eh = t.match(/^(inneneinheit|au(ß|ss)eneinheit)\s+(.+)$/i); if(eh){ bez.push(/^i/i.test(eh[1]) ? 'Inneneinheit' : 'Außeneinheit'); rest.push({t:eh[3], i}); return; }
+    if(low==='klima') return;
+    rest.push({t,i}); });
+  // Hersteller suchen, auch weiter hinten oder zusammen mit dem Typ in einem Teil
+  let sicher = teile.length > 1, mi = rest.findIndex(x => spMarke(spErstes(x.t)));
+  if(mi >= 0){ const x = rest[mi], w = x.t.split(/\s+/), tail = w.slice(1).join(' ');
+    v.hersteller = spMarke(w[0].toLowerCase());
+    if(mi > 1 || (mi===1 && x.i!==1)) sicher = false; // „Ort | Hersteller | Typ“ ist ein klares Muster
+    rest.splice(mi, 1);
+    const nach = rest[mi];
+    if(tail && (SP_ORT.test(tail) || SP_RAUM.test(tail))){ rest.splice(mi, 0, {t:tail, i:x.i}); sicher = false; }
+    else if(tail){ v.modell = spModell(tail); }
+    else if(nach && nach.i===x.i+1 && (!SP_ORT.test(nach.t) || /^UG-\d/i.test(nach.t)) && !SP_RAUM.test(nach.t) && nach.t.split(/\s+/).length <= 3){ v.modell = spModell(nach.t); rest.splice(mi, 1);
+      if(!/\d|[A-Z]{2}|-/.test(nach.t) && !(L.paare[(spErstes(x.t)+'|'+nach.t).toLowerCase()] >= 3)) sicher = false; }
+  } else { const k = rest.find(x => /^(krm|ors)\b|^krm-/i.test(x.t)); sicher = false;
+    if(k){ v.hersteller = /^ors/i.test(k.t) ? 'Hekatron' : 'Oppermann'; v.modell = k.t; rest.splice(rest.indexOf(k), 1); }
+    else { // Unbekannter Hersteller im Schema: Hersteller | Typ | ZA/Z/A ...
+      const erste = teile.findIndex(t => spMenge(t) || SP_LUFT[t.toLowerCase()]);
+      if(erste===2 && rest[0] && rest[1] && rest[0].i===0 && rest[1].i===1 && !SP_ORT.test(rest[0].t) && !SP_RAUM.test(rest[0].t)){ v.hersteller = rest[0].t; v.modell = spModell(rest[1].t); rest.splice(0,2); } } }
+  const dn = rest.findIndex(x => /^DN\s*\d+$/i.test(x.t)); if(dn>=0 && v.modell){ v.modell += ' '+rest[dn].t; rest.splice(dn,1); }
+  // Was übrig bleibt: Ort oder Bezeichnung (wofür die Anlage zuständig ist)
+  // Zentrale Anlagen: der letzte Teil sagt, wofür sie zuständig sind, außer es ist ein Technikstandort. Sonst ist es der Einbauort.
+  const zentral = +c.gruppe===1;
+  rest.forEach(({t}) => { const lw = t.match(SP_LUFTWORT); if(lw) luft(SP_LUFT[lw[1].toLowerCase()]);
+    if(lw || SP_STROEM.test(t)) bez.push(t); else if(!zentral || SP_TECHORT.test(t)) ort.push(t); else bez.push(t); });
+  // S/N war oft zweckentfremdet
+  const sn = String(c.sn||'').trim();
+  if(sn){ const w = spErstes(sn);
+    if(+c.gruppe===4 || /^(bsk|btv)\b/i.test(sn)){ v.bskNr = sn; v.sn = ''; }
+    else if(/vorhanden/i.test(sn)){ const lw = sn.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); if(/\?/.test(sn)){ bez.push(sn); sicher = false; } v.sn = ''; }
+    else if(spMarke(w)){ if(!v.hersteller){ const t = sn.split(/\s+/); v.hersteller = spMarke(w); if(t.length > 1 && !v.modell) v.modell = t.slice(1).join(' '); } v.sn = ''; }
+    else if(!(/\d/.test(sn) && !/\s/.test(sn) && sn.length >= 6)){ ort.push(sn); v.sn = ''; }
+  }
+  if(ort.length) v.einbauort = ort.join(', ');
+  if(bez.length) v.bezeichnung = bez.join(', ');
+  if(!v.hersteller) sicher = false;
   return {v, sicher};
 }
-const SP_HAT = c => KFELDER.some(([k]) => c[k]);
+const SP_HAT = c => c.spAus || KFELDER.some(([k]) => c[k]);
 function spListe(){
-  const ks = S.komponenten.filter(c => !c.entfernt), hersteller = spHersteller(ks);
-  const offen = ks.filter(c => String(c.standort||'').trim() && !SP_HAT(c) && !c.spWeg).map(c => ({c, ...spTeilen(c.standort, hersteller)}));
+  const ks = S.komponenten.filter(c => !c.entfernt), L = spLernen(ks);
+  const offen = ks.filter(c => (String(c.standort||'').trim() || String(c.sn||'').trim()) && !SP_HAT(c) && !c.spWeg).map(c => ({c, ...spTeilen(c, L)}));
   return {sicher:offen.filter(x => x.sicher), pruefen:offen.filter(x => !x.sicher), fertig:ks.filter(c => c.spAus).length, weg:ks.filter(c => c.spWeg).length};
 }
-const SP_SPALTEN = [['hersteller','Hersteller'],['modell','Typ'],['luftart','Zu-/Abluft'],['luftmenge','Luftmenge'],['einbauort','Ort']];
+const SP_SPALTEN = [['hersteller','Hersteller'],['modell','Typ'],['luftart','Zu-/Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Ort'],['bezeichnung','Bezeichnung'],['bskNr','BSK-Bez.']];
 function spPanel(){
-  const L = spListe(), art = UI.spArt || (L.pruefen.length && !L.sicher.length ? 'pruefen' : 'sicher'), liste = art==='sicher' ? L.sicher : L.pruefen, seite = liste.slice(0, 40);
-  return `<section class="panel"><h2>Standort-Text aufteilen</h2>
-    <p class="muted" style="margin:0">Teilt Texte wie „Fläkt | X1K | ZA | 12.760 m³/h | Zentrale“ in die einzelnen Felder auf. ZA wird zu Zu- und Abluft, Z zu Zuluft, A zu Abluft. Der alte Text bleibt gespeichert.</p>
-    <div class="chips"><button class="chip ${art==='sicher' ? 'on' : ''}" data-act="spart" data-v="sicher">Eindeutig ${L.sicher.length}</button><button class="chip ${art==='pruefen' ? 'on' : ''}" data-act="spart" data-v="pruefen">Bitte prüfen ${L.pruefen.length}</button><span class="muted small" style="align-self:center">${L.fertig} schon aufgeteilt${L.weg ? ` · ${L.weg} übersprungen` : ''}</span></div>
-    ${seite.length ? `<div class="tbl-wrap"><table class="sptbl"><thead><tr><th>Nr.</th><th>Standort-Text</th>${SP_SPALTEN.map(([,l]) => `<th>${l}</th>`).join('')}<th></th></tr></thead><tbody>
-      ${seite.map(x => `<tr data-spc="${x.c.id}"><td class="mono">${kNr(x.c)}<span class="t2">${h(ctx(x.c.anlageId).o.nr)}</span></td><td class="small">${h(x.c.standort)}</td>
+  const L = spListe(), art = UI.spArt || (L.pruefen.length && !L.sicher.length ? 'pruefen' : 'sicher'), gr = UI.spG || '';
+  const nachGr = l => gr==='' ? l : l.filter(x => x.c.gruppe===+gr);
+  const liste = nachGr(art==='sicher' ? L.sicher : L.pruefen), seite = liste.slice(0, UI.spN || 40);
+  return `<section class="panel"><h2>Foxtag-Angaben einheitlich einordnen</h2>
+    <p class="muted" style="margin:0">Teilt Standort-Text und S/N in die einzelnen Felder auf: Hersteller, Typ, Zu-/Abluft, Luftmenge, Ort, Bezeichnung und Brandschutzklappen-Bezeichnung. Die alten Werte bleiben gespeichert.</p>
+    <div class="row" style="justify-content:space-between"><div class="chips"><button class="chip ${art==='sicher' ? 'on' : ''}" data-act="spart" data-v="sicher">Eindeutig ${nachGr(L.sicher).length}</button><button class="chip ${art==='pruefen' ? 'on' : ''}" data-act="spart" data-v="pruefen">Bitte prüfen ${nachGr(L.pruefen).length}</button><span class="muted small" style="align-self:center">${L.fertig} schon eingeordnet${L.weg ? ` · ${L.weg} übersprungen` : ''}</span></div>
+      <label class="f" style="min-width:220px">Gruppe<select data-spgruppe><option value="">Alle Gruppen</option>${gruppenOptionen(gr==='' ? null : +gr)}</select></label></div>
+    ${seite.length ? `<div class="tbl-wrap"><table class="sptbl"><thead><tr><th>Nr.</th><th>Standort-Text und S/N</th>${SP_SPALTEN.map(([,l]) => `<th>${l}</th>`).join('')}<th></th></tr></thead><tbody>
+      ${seite.map(x => `<tr data-spc="${x.c.id}"><td class="mono">${kNr(x.c)}<span class="t2">${h(ctx(x.c.anlageId).o.nr)}</span></td><td class="small">${h(x.c.standort)}${x.c.sn ? `<span class="t2">S/N ${h(x.c.sn)}</span>` : ''}</td>
         ${SP_SPALTEN.map(([k,l]) => art==='pruefen' ? `<td><input data-spf="${k}" value="${h(x.v[k]||'')}" aria-label="${l}"></td>` : `<td>${h(x.v[k]||'')}</td>`).join('')}
         <td style="white-space:nowrap">${art==='pruefen' ? `<button class="btn sm pri" data-act="spok" data-id="${x.c.id}">Übernehmen</button> <button class="btn sm ghost" data-act="spweg" data-id="${x.c.id}">Überspringen</button>` : ''}</td></tr>`).join('')}
-    </tbody></table></div>${liste.length > 40 ? `<div class="muted small">Die ersten 40 von ${liste.length}.</div>` : ''}` : `<div class="empty">Hier ist nichts mehr offen.</div>`}
-    <div class="row">${art==='sicher' && L.sicher.length ? `<button class="btn pri" data-act="spalle">Alle ${L.sicher.length} eindeutigen übernehmen</button>` : ''}
-      ${L.fertig ? `<button class="btn" data-act="spzurueck">Aufteilung zurücknehmen (${L.fertig})</button>` : ''}${L.weg ? `<button class="btn ghost" data-act="spwegauf">Übersprungene wieder anzeigen</button>` : ''}</div></section>`;
+    </tbody></table></div>${liste.length > seite.length ? `<div class="row"><span class="muted small">${seite.length} von ${liste.length}</span><button class="btn sm" data-act="spmehr">100 weitere anzeigen</button></div>` : ''}` : `<div class="empty">Hier ist nichts mehr offen.</div>`}
+    <div class="row">${art==='sicher' && liste.length ? `<button class="btn pri" data-act="spalle">Alle ${liste.length} eindeutigen übernehmen</button>` : ''}
+      ${L.fertig ? `<button class="btn" data-act="spzurueck">Einordnung zurücknehmen (${L.fertig})</button>` : ''}${L.weg ? `<button class="btn ghost" data-act="spwegauf">Übersprungene wieder anzeigen</button>` : ''}</div></section>`;
 }
+function spAnwenden(c, v){ c.snAlt = c.sn; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
 function vImport(){
   const x = UI.xi;
   let excel = `<label class="btn pri upl" style="justify-self:start">Excel- oder CSV-Datei auswählen<input type="file" accept=".xlsx,.csv" data-xifile></label>`;
@@ -2578,6 +2612,9 @@ async function anmelden(user, pw){
 function importBundle(B, replace){
   if(!B || B.format!=='gm-foxtag-bundle') throw new Error('Das ist keine Foxtag-Gesamtdatei.');
   if(replace){ S.kunden = []; S.objekte = []; S.anlagen = []; S.komponenten = []; S.auftraege = []; S.stoerungen = []; S.berichte = []; S.mails = []; }
+  const gnZahl = {}, gnMehr = {};
+  (B.komponenten||[]).forEach(r => { if(!r.gruppeName) return; const g = gnZahl[r.gruppe] = gnZahl[r.gruppe] || {}; g[r.gruppeName] = (g[r.gruppeName]||0)+1; });
+  Object.entries(gnZahl).forEach(([g,z]) => { gnMehr[g] = Object.keys(z).sort((a,b) => z[b]-z[a])[0]; });
   const kByNr = {}; S.kunden.forEach(k => kByNr[k.nr] = k);
   const kunde = (nr, name) => {
     nr = nr || 'OHNE-KUNDE';
@@ -2593,7 +2630,7 @@ function importBundle(B, replace){
   B.komponenten.forEach(r => {
     const a = aByKey[r.anlageKey]; if(!a) return;
     const g = +r.gruppe || 6;
-    if(r.gruppeName && r.gruppeName!==GRUPPEN[g]) S.gruppen[g] = r.gruppeName;
+    if(gnMehr[r.gruppe] && gnMehr[r.gruppe]!==GRUPPEN[g]) S.gruppen[g] = gnMehr[r.gruppe];
     const name = r.typName || r.gruppeName || 'Komponente', code = r.code || '';
     let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
     if(!t){
@@ -2766,13 +2803,16 @@ const ACT = {
   neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(d.k); },
   neukunde: () => neuKundeModal(),
   spart: d => { UI.spArt = d.v; render(); },
-  spalle: () => { const L = spListe(); L.sicher.forEach(x => Object.assign(x.c, x.v, {spAus:true})); save(); UI.spArt = 'pruefen'; render(); toast(`${L.sicher.length} Komponenten aufgeteilt`); },
-  spok: d => { const c = by(S.komponenten, d.id), tr = document.querySelector(`[data-spc="${d.id}"]`); if(!c || !tr) return; let n = 0;
-    tr.querySelectorAll('[data-spf]').forEach(i => { const w = i.value.trim(); if(w){ c[i.dataset.spf] = w; n++; } });
-    if(!n){ toast('Bitte mindestens ein Feld ausfüllen'); return; } c.spAus = true; save(); render(); toast(`${kNr(c)} übernommen`); },
+  spmehr: () => { UI.spN = (UI.spN||40) + 100; render(); },
+  spalle: () => { const gr = UI.spG || '', l = spListe().sicher.filter(x => gr==='' || x.c.gruppe===+gr); l.forEach(x => spAnwenden(x.c, x.v)); save(); UI.spArt = 'pruefen'; UI.spN = 40; render(); toast(`${l.length} Komponenten eingeordnet`); },
+  spok: d => { const c = by(S.komponenten, d.id), tr = document.querySelector(`[data-spc="${d.id}"]`); if(!c || !tr) return; const v = {}; let n = 0;
+    tr.querySelectorAll('[data-spf]').forEach(i => { const w = i.value.trim(); if(w){ v[i.dataset.spf] = w; n++; } });
+    if(!n){ toast('Bitte mindestens ein Feld ausfüllen'); return; }
+    const L = spLernen(S.komponenten.filter(x => !x.entfernt)), vs = spTeilen(c, L).v; if('sn' in vs) v.sn = vs.sn;
+    spAnwenden(c, v); save(); render(); toast(`${kNr(c)} übernommen`); },
   spweg: d => { const c = by(S.komponenten, d.id); if(c){ c.spWeg = true; save(); render(); } },
   spwegauf: () => { S.komponenten.forEach(c => delete c.spWeg); save(); render(); },
-  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); delete c.spAus; n++; } }); save(); render(); toast(`Aufteilung bei ${n} Komponenten zurückgenommen`); },
+  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } delete c.spAus; n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
   xiweg: () => { UI.xi = null; render(); },
   xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = 0;
     plan.upd.forEach(p => Object.assign(p.c, p.w));
@@ -3174,6 +3214,7 @@ document.addEventListener('change', async e => {
   else x[k] = t.value;
   render();
 });
+document.addEventListener('change', e => { if(e.target.matches && e.target.matches('[data-spgruppe]')){ UI.spG = e.target.value; UI.spN = 40; render(); } });
 /* Weicher Übergang, wenn sich die Ansicht ändert (nicht bei jedem Tastendruck) */
 let letzteAnsicht = null;
 const APP_TIEFE = {liste:0, neu:1, auftrag:1, komp:2, abschluss:3, vorschau:4, gesendet:4};
