@@ -168,6 +168,7 @@ body.annette-body{background:#fbf1de}
 @keyframes an-fall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(560px) rotate(300deg);opacity:0}}
 .an-regen{position:absolute;top:0;font-size:1.3em;opacity:0;pointer-events:none;animation:an-fall 3s ease-in 1 both}
 .sptbl input{width:100%;min-width:70px;min-height:32px;padding:3px 6px;font-size:13px}
+.imwarn{display:grid;gap:8px;border:2px solid var(--bad);border-radius:8px;padding:10px 12px;background:rgba(180,51,42,.05)}
 .luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
 .lueck:hover{border-color:var(--accent)}
@@ -2608,12 +2609,19 @@ function importBundle(B, replace){
   return {kunden:S.kunden.length, objekte:S.objekte.length, anlagen:S.anlagen.length, komponenten:S.komponenten.length};
 }
 function importModal(){
+  const nDat = S.anlagen.reduce((n,a) => n + (a.dateien||[]).length + (a.notizen||[]).length, 0);
+  const wichtig = [[S.auftraege.length,S.auftraege.length===1 ? 'Auftrag' : 'Aufträge'],[S.berichte.length,S.berichte.length===1 ? 'Bericht' : 'Berichte'],[S.stoerungen.length,S.stoerungen.length===1 ? 'Störung' : 'Störungen'],[nDat,'Dateien und Notizen'],[S.komponenten.filter(c => c.spAus || KFELDER.some(([k]) => c[k])).length,'Komponenten mit eigenen Angaben']].filter(x => x[0]);
   openModal(`<h2>Foxtag-Daten importieren</h2>
     <p style="margin:0">Entweder die <b>Foxtag-Gesamtdatei (.json)</b> mit Kunden, Objekten, Anlagen und allen Komponenten, oder die Excel-Exporte aus Foxtag: <b>Anlagen → Import/Export → Anlagen exportieren</b> und <b>Kunden → Import/Export → Kunden exportieren</b>.</p>
     <form data-form="import" style="display:grid;gap:12px">
       <label class="f" for="imA">Gesamtdatei (.json) oder Anlagen-Export (.xlsx)<input id="imA" name="anl" type="file" required></label>
       <label class="f" for="imK">Kunden-Export (optional, ergänzt die Kundenadressen)<input id="imK" name="kun" type="file" accept=".xlsx,.csv"></label>
-      <div class="checks"><label><input type="checkbox" name="replace" checked>Beispieldaten vorher löschen</label></div>
+      <div class="imwarn">
+        <div class="checks"><label><input type="checkbox" name="replace" checked><b>Alle bisherigen Daten in diesem Browser löschen und ersetzen</b></label></div>
+        <p style="margin:0">Gelöscht werden ${S.kunden.length} Kunden, ${S.objekte.length} Objekte und ${S.komponenten.filter(c => !c.entfernt).length} Komponenten${wichtig.length ? ', außerdem '+wichtig.map(([n,l]) => n+' '+l).join(', ') : ''}. Das lässt sich nicht rückgängig machen.</p>
+        <p class="small" style="margin:0">Ohne Haken kommen die neuen Daten dazu. Objekte und Komponenten können dann doppelt erscheinen.</p>
+        ${wichtig.length ? `<div class="checks"><label><input type="checkbox" name="sicher">Ja, auch ${h(wichtig.map(([n,l]) => n+' '+l).join(', '))} löschen</label></div>` : ''}
+      </div>
       <p class="muted small" style="margin:0">Die Dateien werden nur in diesem Browser gelesen und gespeichert, nicht hochgeladen. Komponenten importierst du danach je Anlage über „Aus Foxtag importieren“.</p>
       <div class="err" id="imErr" aria-live="polite"></div>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Importieren</button></div>
@@ -2626,7 +2634,9 @@ modal.addEventListener('change', e => {
 modal.addEventListener('submit', e => {
   e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
   if(kind==='import'){
-    const err = document.getElementById('imErr'); err.textContent = 'Wird eingelesen …';
+    const err = document.getElementById('imErr');
+    if(f.get('replace') && e.target.querySelector('[name=sicher]') && !f.get('sicher')){ err.textContent = 'Bitte das Löschen bestätigen oder den Haken bei „löschen und ersetzen“ entfernen.'; return; }
+    err.textContent = 'Wird eingelesen …';
     (async () => {
       try{
         const file = f.get('anl'); let r;
