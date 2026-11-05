@@ -1811,14 +1811,13 @@ function spTeilen(c, L){
     if(lw || SP_STROEM.test(t)) bez.push(t); else if(!zentral || SP_TECHORT.test(t)) ort.push(t); else bez.push(t); });
   // S/N war oft zweckentfremdet
   const sn = String(c.sn||'').trim();
-  if(sn){ const w = spErstes(sn), luftNr = sn.match(/außenluft|fortluft|zuluft|abluft/i), kurz = sn.match(/\b(ZL|AB|AL|FL|AU|FO)\b|^ZL(?=\d)/i);
-    if(/vorhanden/i.test(sn)){ const lw = sn.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); hinw.push(sn); v.sn = ''; }
+  if(sn){ const w = spErstes(sn), datum = sn.match(/^\d{1,2}[-/]((?:19|20)\d{2})$/);
+    if(rm && datum && (!c.baujahr || String(c.baujahr).trim()===datum[1])){ if(!c.baujahr) v.baujahr = datum[1]; v.sn = ''; } // Monat-Jahr in der S/N ist das Baujahr des Melders
+    else if(/vorhanden/i.test(sn)){ const lw = sn.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); hinw.push(sn); v.sn = ''; }
     else if(rm && SP_MATERIAL.test(sn)){ hinw.push(sn); v.sn = ''; }
     else if(spMarke(w) && +c.gruppe!==4){ if(!v.hersteller){ const t = sn.split(/\s+/); v.hersteller = spMarke(w); if(t.length > 1 && !v.modell) v.modell = t.slice(1).join(' '); } v.sn = ''; }
     else if(+c.gruppe===4 || !(/\d/.test(sn) && !/\s/.test(sn) && sn.length >= 6 && !/^[a-z]{1,3}\d{1,2}\b/i.test(sn))){ // Fast immer eine Bezeichnungsnummer, z. B. „1.OG - 2“, „01 AL“ oder „ZL 58“
-      v.bskNr = sn; v.sn = '';
-      if(luftNr) luft(SP_LUFT[luftNr[0].toLowerCase()]);
-      else if(kurz){ const m = kurz[0].toUpperCase(); luft({ZL:'Zuluft', AB:'Abluft', AL:'Außenluft', AU:'Außenluft', FL:'Fortluft', FO:'Fortluft'}[m]); }
+      v.bskNr = sn; v.sn = ''; // bleibt buchstabengenau wie auf dem Schild und im Plan, daraus wird nichts abgeleitet
     }
   }
   if(ort.length) v.einbauort = ort.join(', ');
@@ -1851,7 +1850,7 @@ function spPanel(){
     <div class="row">${art==='sicher' && liste.length ? `<button class="btn pri" data-act="spalle">Alle ${liste.length} eindeutigen übernehmen</button>` : ''}
       ${L.fertig ? `<button class="btn" data-act="spzurueck">Einordnung zurücknehmen (${L.fertig})</button>` : ''}${L.weg ? `<button class="btn ghost" data-act="spwegauf">Übersprungene wieder anzeigen</button>` : ''}</div></section>`;
 }
-function spAnwenden(c, v){ c.snAlt = c.sn; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
+function spAnwenden(c, v){ c.snAlt = c.sn; if(v.baujahr && !c.baujahr) c.spBj = true; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
 function vImport(){
   const x = UI.xi;
   let excel = `<label class="btn pri upl" style="justify-self:start">Excel- oder CSV-Datei auswählen<input type="file" accept=".xlsx,.csv" data-xifile></label>`;
@@ -2819,11 +2818,11 @@ const ACT = {
   spok: d => { const c = by(S.komponenten, d.id), tr = document.querySelector(`[data-spc="${d.id}"]`); if(!c || !tr) return; const v = {}; let n = 0;
     tr.querySelectorAll('[data-spf]').forEach(i => { const w = i.value.trim(); if(w){ v[i.dataset.spf] = w; n++; } });
     if(!n){ toast('Bitte mindestens ein Feld ausfüllen'); return; }
-    const L = spLernen(S.komponenten.filter(x => !x.entfernt)), vs = spTeilen(c, L).v; if('sn' in vs) v.sn = vs.sn;
+    const L = spLernen(S.komponenten.filter(x => !x.entfernt)), vs = spTeilen(c, L).v; if('sn' in vs) v.sn = vs.sn; if(vs.baujahr) v.baujahr = vs.baujahr;
     spAnwenden(c, v); save(); render(); toast(`${kNr(c)} übernommen`); },
   spweg: d => { const c = by(S.komponenten, d.id); if(c){ c.spWeg = true; save(); render(); } },
   spwegauf: () => { S.komponenten.forEach(c => delete c.spWeg); save(); render(); },
-  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } delete c.spAus; n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
+  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } if(c.spBj){ delete c.baujahr; delete c.spBj; } delete c.spAus; n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
   xiweg: () => { UI.xi = null; render(); },
   xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = 0;
     plan.upd.forEach(p => Object.assign(p.c, p.w));
