@@ -762,8 +762,8 @@ function alleGruppen(){
 }
 const gruppenOptionen = wert => alleGruppen().map(g => `<option value="${g}" ${g===wert ? 'selected' : ''}>${g} ${gname(g)}</option>`).join('');
 /* Eigene Angaben je Komponente statt allem im Standort-Text (aus Foxtag). Ohne Angaben wird der alte Standort-Text gezeigt. */
-const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Brandschutzklappen-Bezeichnung'],['zulassung','Zulassungsnummer']];
-const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : 'BSK '+c.bskNr), c.zulassung && 'Zul. '+c.zulassung].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
+const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Bezeichnungsnummer (z. B. BSK)'],['zulassung','Zulassungsnummer'],['hinweis','Hinweis für den Techniker']];
+const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : (+c.gruppe===4 ? 'BSK ' : 'Nr. ')+c.bskNr), c.zulassung && 'Zul. '+c.zulassung].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
 const kFelderHtml = (c, pre) => `<div class="fgrid">${KFELDER.map(([k,l]) => `<label class="f" for="${pre}${k}">${l}<input id="${pre}${k}" name="${k}" value="${h((c||{})[k]||'')}" ${k==='luftart' ? 'list="luftarten"' : ''} autocomplete="off"></label>`).join('')}</div><datalist id="luftarten"><option value="Zuluft"><option value="Abluft"><option value="Zu- und Abluft"><option value="Außenluft"><option value="Fortluft"></datalist>`;
 const kFelderLesen = f => Object.fromEntries(KFELDER.map(([k]) => [k, String(f.get(k)||'').trim()]));
 const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
@@ -1470,7 +1470,7 @@ function vAnlage(){
         return grp + `<tr>
         <td class="mono">${kNr(c)}</td>
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
-        <td>${h(kText(c))}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
+        <td>${h(kText(c))}${c.hinweis ? `<span class="t2" style="color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
         <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${so ? `<span class="t2"><span class="pill bad">${so} Störung${so>1?'en':''}</span></span>` : ''}</td>
         <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
       </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
@@ -1758,6 +1758,7 @@ const SP_MARKEN = Object.fromEntries(['Wolf','Robatherm','Klimatec','Trox','AL-K
 Object.assign(SP_MARKEN, {'soler&palau':'Soler & Palau', 'alko-therm':'AL-KO', 'fläktgroup':'Fläkt', 'air-motion':'Air Motion', 'berliner-luft':'Berliner Luft', alko:'AL-KO', flaekt:'Fläkt', hekatraon:'Hekatron', opperman:'Oppermann', 'op':'OP-Air', 'op-air':'OP-Air'});
 const SP_ORT = /\b(eg|ug|og|dg|kg|sg)\b|\d\.?\s*(og|ug|o\.g)|raum|räume|flur|wand|decke|schacht|achse|technik|zentrale|keller|dach|speicher|halle|etage|ebene|gebäude|\bbau\b|treppenh|garage|\b\d+\.\d+\b/i;
 const SP_TECHORT = /\b(eg|ug|og|dg|kg|sg)\b|\d\.?\s*(og|ug|o\.g)|technik|zentrale|keller|dach|speicher|schacht/i, SP_RAUM = /\bwc\b|umkleide|dusche|küche|\bbad\b/i;
+const SP_MATERIAL = /\b\d+\s*(v|volt)\b|kabel|\b\d+\s*(m|meter)\b(?!\s*³)/i;
 const SP_LUFTWORT = /^(zuluft|abluft|fortluft|außenluft)\b/i, SP_STROEM = /^(nachström|überström)/i;
 const spErstes = t => String(t||'').trim().split(/\s+/)[0].toLowerCase();
 function spLernen(ks){
@@ -1771,7 +1772,8 @@ const spModell = m => String(m||'').trim().replace(/^(FK|FR|BV)[\s-]*(\d{2})\s*(
 function spMenge(t){ const m = t.match(/(\d[\d.,]*)\s*(?:m\s*³|m3|cbm|³)/i); if(!m) return ''; const n = parseInt(m[1].replace(/[.,]/g,''), 10); return n ? n.toLocaleString('de-DE')+' m³/h' : ''; }
 function spTeilen(c, L){
   const roh = String(c.standort||'').replace(/\bOP[\s-]+Air\b/ig,'OP-Air').replace(/Soler\s*&\s*Palau/ig,'Soler&Palau').replace(/\bAir\s+Motion\b/ig,'Air-Motion').replace(/\bBerliner\s+Luft\b/ig,'Berliner-Luft').replace(/^Airflow\s+Duplex\b/i,'Airflow | Duplex').replace(/^Duplex\s*\|\s*Airflow\b/i,'Airflow | Duplex');
-  const teile = roh.split('|').map(x => x.trim()).filter(Boolean), v = {}, rest = [], bez = [], ort = [];
+  const teile = roh.split('|').map(x => x.trim()).filter(Boolean), v = {}, rest = [], bez = [], ort = [], hinw = [];
+  const ty = by(S.typen, c.typId), rm = +c.gruppe===5 || /rauchmelder/i.test(c.typName || (ty && ty.name) || '');
   const luft = w => { if(!v.luftart) v.luftart = w; };
   teile.forEach((t,i) => { const low = t.toLowerCase();
     const menge = spMenge(t);
@@ -1782,6 +1784,8 @@ function spTeilen(c, L){
     if(/^(au(ß|ss)eneinheit|klima\s*ae|ae)$/i.test(t)){ bez.push('Außeneinheit'); return; }
     const eh = t.match(/^(inneneinheit|au(ß|ss)eneinheit)\s+(.+)$/i); if(eh){ bez.push(/^i/i.test(eh[1]) ? 'Inneneinheit' : 'Außeneinheit'); rest.push({t:eh[3], i}); return; }
     if(low==='klima') return;
+    if(/vorhanden/i.test(t)){ const lw = t.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); hinw.push(t); return; }
+    if(rm && SP_MATERIAL.test(t) && !/^(krm|ors)/i.test(t) && !spMarke(spErstes(t))){ hinw.push(t); return; }
     rest.push({t,i}); });
   // Hersteller suchen, auch weiter hinten oder zusammen mit dem Typ in einem Teil
   let sicher = teile.length > 1, mi = rest.findIndex(x => spMarke(spErstes(x.t)));
@@ -1794,8 +1798,8 @@ function spTeilen(c, L){
     else if(tail){ v.modell = spModell(tail); }
     else if(nach && nach.i===x.i+1 && (!SP_ORT.test(nach.t) || /^UG-\d/i.test(nach.t)) && !SP_RAUM.test(nach.t) && nach.t.split(/\s+/).length <= 3){ v.modell = spModell(nach.t); rest.splice(mi, 1);
       if(!/\d|[A-Z]{2}|-/.test(nach.t) && !(L.paare[(spErstes(x.t)+'|'+nach.t).toLowerCase()] >= 3)) sicher = false; }
-  } else { const k = rest.find(x => /^(krm|ors)\b|^krm-/i.test(x.t)); sicher = false;
-    if(k){ v.hersteller = /^ors/i.test(k.t) ? 'Hekatron' : 'Oppermann'; v.modell = k.t; rest.splice(rest.indexOf(k), 1); }
+  } else { const k = rest.find(x => /^krm\b|^krm-|^ors\s*\d/i.test(x.t)); sicher = false;
+    if(k){ v.hersteller = /^ors/i.test(k.t) ? 'Hekatron' : 'Oppermann'; v.modell = k.t; rest.splice(rest.indexOf(k), 1); sicher = true; } // KRM ist immer Oppermann, ORS immer Hekatron
     else { // Unbekannter Hersteller im Schema: Hersteller | Typ | ZA/Z/A ...
       const erste = teile.findIndex(t => spMenge(t) || SP_LUFT[t.toLowerCase()]);
       if(erste===2 && rest[0] && rest[1] && rest[0].i===0 && rest[1].i===1 && !SP_ORT.test(rest[0].t) && !SP_RAUM.test(rest[0].t)){ v.hersteller = rest[0].t; v.modell = spModell(rest[1].t); rest.splice(0,2); } } }
@@ -1807,15 +1811,21 @@ function spTeilen(c, L){
     if(lw || SP_STROEM.test(t)) bez.push(t); else if(!zentral || SP_TECHORT.test(t)) ort.push(t); else bez.push(t); });
   // S/N war oft zweckentfremdet
   const sn = String(c.sn||'').trim();
-  if(sn){ const w = spErstes(sn);
-    if(+c.gruppe===4 || /^(bsk|btv)\b/i.test(sn)){ v.bskNr = sn; v.sn = ''; }
-    else if(/vorhanden/i.test(sn)){ const lw = sn.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); if(/\?/.test(sn)){ bez.push(sn); sicher = false; } v.sn = ''; }
-    else if(spMarke(w)){ if(!v.hersteller){ const t = sn.split(/\s+/); v.hersteller = spMarke(w); if(t.length > 1 && !v.modell) v.modell = t.slice(1).join(' '); } v.sn = ''; }
-    else if(!(/\d/.test(sn) && !/\s/.test(sn) && sn.length >= 6)){ ort.push(sn); v.sn = ''; }
+  if(sn){ const w = spErstes(sn), luftNr = sn.match(/außenluft|fortluft|zuluft|abluft/i), kurz = sn.match(/\b(ZL|AL|FL|AU|FO)\b|^ZL(?=\d)/i);
+    if(/vorhanden/i.test(sn)){ const lw = sn.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); hinw.push(sn); v.sn = ''; }
+    else if(rm && SP_MATERIAL.test(sn)){ hinw.push(sn); v.sn = ''; }
+    else if(spMarke(w) && +c.gruppe!==4){ if(!v.hersteller){ const t = sn.split(/\s+/); v.hersteller = spMarke(w); if(t.length > 1 && !v.modell) v.modell = t.slice(1).join(' '); } v.sn = ''; }
+    else if(+c.gruppe===4 || !(/\d/.test(sn) && !/\s/.test(sn) && sn.length >= 6 && !/^[a-z]{1,3}\d{1,2}\b/i.test(sn))){ // Fast immer eine Bezeichnungsnummer, z. B. „1.OG - 2“, „01 AL“ oder „ZL 58“
+      v.bskNr = sn; v.sn = '';
+      if(luftNr) luft(SP_LUFT[luftNr[0].toLowerCase()]);
+      else if(kurz){ const m = kurz[0].toUpperCase(); luft({ZL:'Zuluft', AL:'Außenluft', AU:'Außenluft', FL:'Fortluft', FO:'Fortluft'}[m]); }
+    }
   }
   if(ort.length) v.einbauort = ort.join(', ');
   if(bez.length) v.bezeichnung = bez.join(', ');
+  if(hinw.length) v.hinweis = hinw.join(', ');
   if(!v.hersteller) sicher = false;
+  if(!teile.length) sicher = true; // nur die S/N war gefüllt, im Standort gibt es nichts zu deuten
   return {v, sicher};
 }
 const SP_HAT = c => c.spAus || KFELDER.some(([k]) => c[k]);
@@ -1824,13 +1834,13 @@ function spListe(){
   const offen = ks.filter(c => (String(c.standort||'').trim() || String(c.sn||'').trim()) && !SP_HAT(c) && !c.spWeg).map(c => ({c, ...spTeilen(c, L)}));
   return {sicher:offen.filter(x => x.sicher), pruefen:offen.filter(x => !x.sicher), fertig:ks.filter(c => c.spAus).length, weg:ks.filter(c => c.spWeg).length};
 }
-const SP_SPALTEN = [['hersteller','Hersteller'],['modell','Typ'],['luftart','Zu-/Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Ort'],['bezeichnung','Bezeichnung'],['bskNr','BSK-Bez.']];
+const SP_SPALTEN = [['hersteller','Hersteller'],['modell','Typ'],['luftart','Zu-/Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Ort'],['bezeichnung','Bezeichnung'],['bskNr','Nummer'],['hinweis','Hinweis']];
 function spPanel(){
   const L = spListe(), art = UI.spArt || (L.pruefen.length && !L.sicher.length ? 'pruefen' : 'sicher'), gr = UI.spG || '';
   const nachGr = l => gr==='' ? l : l.filter(x => x.c.gruppe===+gr);
   const liste = nachGr(art==='sicher' ? L.sicher : L.pruefen), seite = liste.slice(0, UI.spN || 40);
   return `<section class="panel"><h2>Foxtag-Angaben einheitlich einordnen</h2>
-    <p class="muted" style="margin:0">Teilt Standort-Text und S/N in die einzelnen Felder auf: Hersteller, Typ, Zu-/Abluft, Luftmenge, Ort, Bezeichnung und Brandschutzklappen-Bezeichnung. Die alten Werte bleiben gespeichert.</p>
+    <p class="muted" style="margin:0">Teilt Standort-Text und S/N in die einzelnen Felder auf: Hersteller, Typ, Zu-/Abluft, Luftmenge, Ort, Bezeichnung und Bezeichnungsnummer. Die alten Werte bleiben gespeichert.</p>
     <div class="row" style="justify-content:space-between"><div class="chips"><button class="chip ${art==='sicher' ? 'on' : ''}" data-act="spart" data-v="sicher">Eindeutig ${nachGr(L.sicher).length}</button><button class="chip ${art==='pruefen' ? 'on' : ''}" data-act="spart" data-v="pruefen">Bitte prüfen ${nachGr(L.pruefen).length}</button><span class="muted small" style="align-self:center">${L.fertig} schon eingeordnet${L.weg ? ` · ${L.weg} übersprungen` : ''}</span></div>
       <label class="f" style="min-width:220px">Gruppe<select data-spgruppe><option value="">Alle Gruppen</option>${gruppenOptionen(gr==='' ? null : +gr)}</select></label></div>
     ${seite.length ? `<div class="tbl-wrap"><table class="sptbl"><thead><tr><th>Nr.</th><th>Standort-Text und S/N</th>${SP_SPALTEN.map(([,l]) => `<th>${l}</th>`).join('')}<th></th></tr></thead><tbody>
@@ -1862,7 +1872,7 @@ function vImport(){
       <div class="tbl-wrap"><table class="xitbl"><thead><tr><th>Feld im Portal</th><th>Spalte aus der Tabelle</th><th>Beispiel</th></tr></thead><tbody>
       ${XI_FELDER.map(([k,l]) => `<tr><td><b style="font-weight:600">${l}</b></td><td><select data-xi="map:${k}" aria-label="Spalte für ${l}"><option value="">Nicht übernehmen</option>${spalten.replace(`value="${x.map[k]}"`, `value="${x.map[k]}" selected`)}</select></td><td class="muted small">${x.map[k]!=null ? h(bsp(x.map[k])) : ''}</td></tr>`).join('')}
       </tbody></table></div>
-      <div class="checks"><label><input type="checkbox" data-xi="abgleich" ${x.abgleich ? 'checked' : ''}>Vorhandene Komponenten ergänzen, wenn die Brandschutzklappen-Bezeichnung mit Bezeichnung, S/N oder Zulassungsnummer übereinstimmt</label></div>
+      <div class="checks"><label><input type="checkbox" data-xi="abgleich" ${x.abgleich ? 'checked' : ''}>Vorhandene Komponenten ergänzen, wenn die Bezeichnungsnummer mit Bezeichnung, S/N oder Zulassungsnummer übereinstimmt</label></div>
       ${x.anlage && felder.length ? `<div class="summary" style="padding:10px 14px;border:2px solid var(--line-strong);border-radius:8px"><b>${plan.upd.length}</b> vorhandene werden ergänzt · <b>${plan.neu.length}</b> werden neu angelegt${plan.leer ? ` · ${plan.leer} leere Zeilen übersprungen` : ''}</div>
         ${vorschau.length ? `<div class="tbl-wrap"><table><thead><tr><th>Aktion</th>${felder.map(k => `<th>${h(XI_FELDER.find(f => f[0]===k)[1])}</th>`).join('')}</tr></thead><tbody>
         ${vorschau.map(p => `<tr><td>${p.c ? pill('ok','Ergänzen '+kNr(p.c)) : pill('','Neu')}</td>${felder.map(k => `<td>${h(p.w[k]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="muted small">Vorschau der ersten ${vorschau.length} Zeilen.</div>` : ''}
@@ -2161,6 +2171,7 @@ function vApp(){
     const kst = stoerOffen(c.id);
     return appShell(appBar(`${kNr(c)} ${h(tname(t))}`, h(kText(c)), 'auftrag'),
       `${(a.dateien||[]).length ? `<details class="card"><summary style="font-weight:600;cursor:pointer">Dokumente zur Anlage (${a.dateien.length})</summary>${dokList(a, true)}</details>` : ''}
+      ${c.hinweis ? `<div class="card" style="border-color:var(--warn)"><b style="color:var(--warn)">Hinweis</b><div class="small">${h(c.hinweis)}</div></div>` : ''}
       ${kst.length ? `<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">Offene Störungen an dieser Komponente</b>${kst.map(x => `<div class="small"><b>#${x.nr} ${h(x.titel)}</b> · ${h(x.schwere)}${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</div>`).join('')}</div>` : ''}
       <div class="card clist">${clFor(A,c).map(x => feldRow(A,c,x)).join('')}</div>
       <div class="card"><b>Fotos</b><div class="fotos">${p.fotos.map((f,i) => `<div class="foto"><img src="${f}" alt="Foto ${i+1}"><button data-act="fotodel" data-c="${c.id}" data-i="${i}" aria-label="Foto entfernen">×</button></div>`).join('')}
@@ -2202,7 +2213,7 @@ function appKompList(A){
     const offen = q || !zu[g];
     return `<button class="gtoggle" data-act="appgrp" data-v="${g}" aria-expanded="${!!offen}">
         <span>${offen ? '▾' : '▸'} Gruppe ${g} · ${gname(g)}</span><span class="small">${gd}/${gk.length} geprüft</span></button>
-      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}</span></span>${kompState(A,c)}</button>`; }).join('') : ''}`;
+      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}</span>${c.hinweis ? `<span class="small" style="display:block;color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}</span>${kompState(A,c)}</button>`; }).join('') : ''}`;
   }).join('');
 }
 function kompState(A,c){
