@@ -1753,7 +1753,7 @@ function xiPlan(x){
   return plan;
 }
 /* Foxtag-Angaben einheitlich einordnen: Standort-Text und S/N in die Felder aufteilen. Vorschläge werden erst nach Bestätigung übernommen, die alten Werte bleiben erhalten. */
-const SP_LUFT = {za:'Zu- und Abluft', 'zu/ab':'Zu- und Abluft', 'zu+ab':'Zu- und Abluft', z:'Zuluft', zu:'Zuluft', zul:'Zuluft', zuluft:'Zuluft', a:'Abluft', ab:'Abluft', abl:'Abluft', abluft:'Abluft', au:'Außenluft', aul:'Außenluft', al:'Außenluft', 'außenluft':'Außenluft', fo:'Fortluft', fol:'Fortluft', fl:'Fortluft', fortluft:'Fortluft'};
+const SP_LUFT = {za:'Zu- und Abluft', 'zu/ab':'Zu- und Abluft', 'zu+ab':'Zu- und Abluft', z:'Zuluft', zu:'Zuluft', zul:'Zuluft', zuluft:'Zuluft', a:'Abluft', ab:'Abluft', abl:'Abluft', abluft:'Abluft', au:'Außenluft', aul:'Außenluft', al:'Außenluft', 'außenluft':'Außenluft', f:'Fortluft', fo:'Fortluft', fol:'Fortluft', fl:'Fortluft', fortluft:'Fortluft'};
 const SP_MARKEN = Object.fromEntries(['Wolf','Robatherm','Klimatec','Trox','AL-KO','Helios','Systemair','Fläkt','Nova','Vallox','GEA','Exhausto','Swegon','Rosenberg','Howatherm','Hansa','Airflow','Limodor','Maico','Gebhardt','Funken','Lunos','Samsung','Panasonic','Daikin','Fujitsu','Mitsubishi','Toshiba','York','Danfoss','OP-Air','Bösch','Wildeboer','Schako','Strulik','Lindab','GEBA','Oppermann','Hekatron','Calectro','Belimo','Aerotechnik','Uden','Hygromatik','Munters','Buderus','Stulz','Perleberg','Villavent','Kampmann','Nicotra','Kammer','Priva','Wolter','Zehnder','Aerex','Hürner','Schobel','Norfi','Happel','SK-Elektronik','Pötter','Eichelberger','Vortice','Ruck','Ziehl-Abegg','Kessler'].map(m => [m.toLowerCase(), m]));
 Object.assign(SP_MARKEN, {'soler&palau':'Soler & Palau', 'alko-therm':'AL-KO', 'fläktgroup':'Fläkt', 'air-motion':'Air Motion', 'berliner-luft':'Berliner Luft', alko:'AL-KO', flaekt:'Fläkt', hekatraon:'Hekatron', opperman:'Oppermann', 'op':'OP-Air', 'op-air':'OP-Air'});
 const SP_ORT = /\b(eg|ug|og|dg|kg|sg)\b|\d\.?\s*(og|ug|o\.g)|raum|räume|flur|wand|decke|schacht|achse|technik|zentrale|keller|dach|speicher|halle|etage|ebene|gebäude|\bbau\b|treppenh|garage|\b\d+\.\d+\b/i;
@@ -1811,14 +1811,14 @@ function spTeilen(c, L){
     if(lw || SP_STROEM.test(t)) bez.push(t); else if(!zentral || SP_TECHORT.test(t)) ort.push(t); else bez.push(t); });
   // S/N war oft zweckentfremdet
   const sn = String(c.sn||'').trim();
-  if(sn){ const w = spErstes(sn), luftNr = sn.match(/außenluft|fortluft|zuluft|abluft/i), kurz = sn.match(/\b(ZL|AL|FL|AU|FO)\b|^ZL(?=\d)/i);
+  if(sn){ const w = spErstes(sn), luftNr = sn.match(/außenluft|fortluft|zuluft|abluft/i), kurz = sn.match(/\b(ZL|AB|AL|FL|AU|FO)\b|^ZL(?=\d)/i);
     if(/vorhanden/i.test(sn)){ const lw = sn.match(/zuluft|abluft/i); if(lw) luft(SP_LUFT[lw[0].toLowerCase()]); hinw.push(sn); v.sn = ''; }
     else if(rm && SP_MATERIAL.test(sn)){ hinw.push(sn); v.sn = ''; }
     else if(spMarke(w) && +c.gruppe!==4){ if(!v.hersteller){ const t = sn.split(/\s+/); v.hersteller = spMarke(w); if(t.length > 1 && !v.modell) v.modell = t.slice(1).join(' '); } v.sn = ''; }
     else if(+c.gruppe===4 || !(/\d/.test(sn) && !/\s/.test(sn) && sn.length >= 6 && !/^[a-z]{1,3}\d{1,2}\b/i.test(sn))){ // Fast immer eine Bezeichnungsnummer, z. B. „1.OG - 2“, „01 AL“ oder „ZL 58“
       v.bskNr = sn; v.sn = '';
       if(luftNr) luft(SP_LUFT[luftNr[0].toLowerCase()]);
-      else if(kurz){ const m = kurz[0].toUpperCase(); luft({ZL:'Zuluft', AL:'Außenluft', AU:'Außenluft', FL:'Fortluft', FO:'Fortluft'}[m]); }
+      else if(kurz){ const m = kurz[0].toUpperCase(); luft({ZL:'Zuluft', AB:'Abluft', AL:'Außenluft', AU:'Außenluft', FL:'Fortluft', FO:'Fortluft'}[m]); }
     }
   }
   if(ort.length) v.einbauort = ort.join(', ');
