@@ -944,8 +944,8 @@ const anTag = isoS => `${AN_TAG[new Date(isoS+'T00:00:00').getDay()]}, ${fmt(iso
 function anListe(q){
   q = (q||'').trim().toLowerCase();
   const rows = S.anlagen.filter(a => !a.stillgelegt).map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k);
-  const treffer = q ? rows.filter(r => [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q))
-    : rows.filter(r => ['bad','warn'].includes(anlSt(r.a.id).cls) && !offenerAuftrag(r.a.id));
+  if(!q) return '';
+  const treffer = rows.filter(r => [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q));
   if(!treffer.length) return `<p class="an-klein">Dazu habe ich leider nichts gefunden. Vielleicht anders geschrieben? 🌸</p>`;
   return treffer.slice(0,6).map(r => `<button class="an-wahl" data-act="anwahl" data-v="${r.a.id}"><b>${h(r.o.name)}</b><span>${h(r.o.ort)}${kName(r.k)!==r.o.name ? ' · '+h(kName(r.k)) : ''}</span></button>`).join('');
 }
@@ -964,8 +964,7 @@ function vAnnette(){
       <button class="an-riesig" data-act="anstart">Auftrag planen</button>
       <p class="an-klein">Keine Sorge: Hier kann nichts kaputtgehen.</p></div>`);
   if(n.schritt===1) return rahmen(`<div class="an-karte"><div class="an-schritt">Schritt 1 von 3</div><h1>Wo soll gewartet werden?</h1>
-      <input id="anq" class="an-eingabe" type="search" value="${h(n.q)}" placeholder="Einfach den Namen eintippen …" aria-label="Kunde oder Objekt suchen" autocomplete="off">
-      <p class="an-klein">${n.q.trim() ? 'Das habe ich gefunden:' : 'Das wäre gerade fällig:'}</p>
+      <input id="anq" class="an-eingabe" type="search" value="${h(n.q)}" placeholder="Name oder Wartungsnummer eingeben" aria-label="Name oder Wartungsnummer" autocomplete="off" autofocus>
       <div id="anlist" class="an-liste">${anListe(n.q)}</div>${zurueck}</div>`);
   if(n.schritt===2){ const heute = iso(TODAY);
     return rahmen(`<div class="an-karte"><div class="an-schritt">Schritt 2 von 3</div><h1>Wann soll es sein?</h1>
