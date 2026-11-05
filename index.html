@@ -1293,7 +1293,7 @@ function stVon(aids){
 }
 function vKunden(){
   const modus = UI.km || 'kunden';
-  const sorts = modus==='kunden' ? [['name','Name'],['nummer','Kundennummer'],['faellig','Fälligkeit']] : [['nummer','Objektnummer'],['name','Name'],['faellig','Fälligkeit']];
+  const sorts = modus==='kunden' ? [['name','Name'],['nummer','Kundennummer'],['faellig','Fälligkeit']] : [['nummer','Wartungsnummer'],['name','Name'],['faellig','Fälligkeit']];
   if(!sorts.some(([v]) => v===UI.ks)) UI.ks = sorts[0][0];
   return `
   <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.filter(c => !c.entfernt).length} Komponenten</p></div>
@@ -1301,7 +1301,7 @@ function vKunden(){
   <section class="panel">
     <div class="row" style="justify-content:space-between;gap:12px">
       <div class="modes" role="group" aria-label="Ansicht">${[['kunden','Kunden'],['objekte','Objekte']].map(([v,l]) => `<button data-act="kmodus" data-v="${v}" class="${modus===v?'on':''}" aria-pressed="${modus===v}">${l}</button>`).join('')}</div>
-      <input id="q" type="search" placeholder="${modus==='kunden' ? 'Suchen: Kundennummer, Name oder Ort' : 'Suchen: Objektnummer (z. B. W26-0603), Name oder Ort'}" value="${h(UI.q)}" data-in="q" style="flex:1 1 280px">
+      <input id="q" type="search" placeholder="${modus==='kunden' ? 'Suchen: Kundennummer, Name oder Ort' : 'Suchen: Wartungsnummer (z. B. W26-0603), Name oder Ort'}" value="${h(UI.q)}" data-in="q" style="flex:1 1 280px">
     </div>
     <div class="row" style="justify-content:space-between;gap:8px">
       <div class="chips" aria-label="Anfangsbuchstabe">${['', ...buchstaben()].map(b => `<button class="chip ${(UI.kb||'')===b?'on':''}" data-act="kbuch" data-v="${b}" style="min-width:34px;padding-inline:8px">${b || 'Alle'}</button>`).join('')}</div>
@@ -1342,7 +1342,7 @@ function kundenList(){
   if(!rows.length) return `<div class="empty">Keine Objekte${UI.q ? ` für „${h(UI.q)}“` : ''}.</div>`;
   rows.sort(sort==='name' ? (x,y) => cmpDe(x.o.name, y.o.name) : sort==='faellig' ? faelligSort : (x,y) => cmpDe(x.o.nr||'~', y.o.nr||'~'));
   return `<div class="muted small">${rows.length} ${rows.length===1 ? 'Objekt' : 'Objekte'}</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Objekt-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>Wartungs-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>
     ${rows.map(r => `<tr class="click" data-act="anlage" data-id="${r.a.id}">
       <td class="mono" style="white-space:nowrap">${h(r.o.nr || '–')}</td>
       <td><b style="font-weight:600">${h(r.o.name)}</b><span class="t2">${h(kName(r.k))}</span></td>
@@ -1370,7 +1370,7 @@ function vKunde(){
     <div><span>Offene Störungen</span>${offeneSt ? `<span class="pill bad">${offeneSt}</span>` : '–'}</div>
   </div></section>
   <section class="panel"><h2>Objekte</h2>
-    <div class="tbl-wrap"><table><thead><tr><th>Objekt-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th><th></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>Wartungs-Nr.</th><th>Objekt</th><th>Adresse</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th><th></th></tr></thead><tbody>
     ${an.sort((x,y) => cmpDe(x.o.nr, y.o.nr)).map(({o,a}) => { const s = anlSt(a.id), oa = offenerAuftrag(a.id), nx = naechsteVon([a.id]); return `<tr class="click" data-act="anlage" data-id="${a.id}">
       <td class="mono" style="white-space:nowrap">${h(o.nr || '–')}</td>
       <td><b style="font-weight:600">${h(o.name)}</b>${an.filter(x => x.o===o).length > 1 ? `<span class="t2">${h(a.name)}</span>` : ''}</td>
@@ -1893,7 +1893,7 @@ function routeKnoepfe(o){
 /* Auftrag vor Ort: Techniker legt selbst einen Auftrag an, wenn das Büro keinen geplant hat */
 function appNeuListe(){
   const q = (UI.app.nq || '').trim().toLowerCase();
-  if(q.length < 2) return `<div class="empty">Mindestens 2 Zeichen eingeben, z. B. Objektnummer, Kunde oder Ort.</div>`;
+  if(q.length < 2) return `<div class="empty">Mindestens 2 Zeichen eingeben, z. B. Wartungsnummer, Kunde oder Ort.</div>`;
   const rows = S.anlagen.filter(a => !a.stillgelegt).map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k && [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q)).slice(0, 30);
   if(!rows.length) return `<div class="empty">Keine Anlage gefunden.</div>`;
   return rows.map(({a,o,k}) => { const s = anlSt(a.id), oa = offenerAuftrag(a.id); return `
@@ -1902,7 +1902,7 @@ function appNeuListe(){
 function vAppNeu(){
   const u = me();
   if(!UI.app.neuAnlage) return appShell(appBar('Auftrag vor Ort', 'Anlage suchen', 'liste'),
-    `<div class="card"><input type="search" id="appneuq" data-in="appneuq" value="${h(UI.app.nq||'')}" placeholder="Objektnummer, Kunde oder Ort" aria-label="Anlage suchen" autofocus>
+    `<div class="card"><input type="search" id="appneuq" data-in="appneuq" value="${h(UI.app.nq||'')}" placeholder="Wartungsnummer, Kunde oder Ort" aria-label="Anlage suchen" autofocus>
       <span class="small muted">Nur nutzen, wenn das Büro keinen Auftrag geplant hat. Das Büro bekommt einen Hinweis zum Prüfen.</span></div>
      <div id="neulist" style="display:grid;gap:8px">${appNeuListe()}</div>`);
   const {a,o,k} = ctx(UI.app.neuAnlage), oa = offenerAuftrag(a.id), ks = kompsOf(a.id);
@@ -2251,12 +2251,18 @@ function neuKundeModal(){
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Kunde anlegen</button></div>
     </form>`);
 }
+/* Wartungsnummer: W + Jahr + fortlaufende Nummer, z. B. W26-0603 */
+function naechsteWartungsnr(){
+  const vor = 'W'+String(TODAY.getFullYear()).slice(2)+'-';
+  const hoechste = Math.max(0, ...S.objekte.filter(o => String(o.nr||'').startsWith(vor)).map(o => parseInt(String(o.nr).slice(vor.length), 10) || 0));
+  return vor + String(hoechste+1).padStart(4,'0');
+}
 function neuObjektModal(kid){
   if(kid) UI.neuK = kid;
   openModal(`<h2>Objekt anlegen</h2>
     <form data-form="neuobjekt" style="display:grid;gap:12px">
       <label class="f" for="mk">Kunde<select id="mk" name="k">${S.kunden.slice().sort((x,y) => cmpDe(kName(x), kName(y))).map(k => `<option value="${k.id}" ${UI.neuK===k.id ? 'selected' : ''}>${h(k.nr+' '+k.name)}</option>`).join('')}</select></label>
-      <div class="fgrid"><label class="f" for="mon">Objektnummer<input id="mon" name="onr" required value="W${String(TODAY.getFullYear()).slice(2)}-${String(500+S.objekte.length+1).padStart(4,'0')}"></label>
+      <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required value="${naechsteWartungsnr()}"></label>
         <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="z. B. Musterschuh, Lager"></label>
         <label class="f" for="moa">Adresse<input id="moa" name="oadr"></label><label class="f" for="moo">PLZ / Ort<input id="moo" name="oort" placeholder="z. B. 76846 Hauenstein"></label></div>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Anlegen</button></div>
