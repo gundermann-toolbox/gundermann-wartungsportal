@@ -783,6 +783,11 @@ function migrate(){
   }
   if((S.v||0) < 8){ if(S.gruppen) delete S.gruppen[6]; S.v = 8; } // Gruppe 6 heißt fest Schaltschrank
   if((S.v||0) < 9){ spAlleEinordnen(); S.v = 9; } // Standort-Texte vorhandener Daten aufteilen
+  if((S.v||0) < 10){ // Alte Foxtag-Namen haben die festen Gruppennamen überschrieben, z. B. Gruppe 5 „Sonstige“ statt Rauchmelder
+    const alt = {1:'Zentrale Lüftunngsanlage', 4:'Brandschutzklappe', 5:'Sonstige'};
+    if(S.gruppen) Object.entries(alt).forEach(([g,n]) => { if(S.gruppen[g]===n) delete S.gruppen[g]; });
+    S.v = 10;
+  }
   // Recht „Aufträge vor Ort anlegen“: standardmäßig für alle mit App-Zugang
   S.users.forEach(u => { if(u.eigen===undefined) u.eigen = !!u.app; });
   S.auftraege.filter(A => ['erledigt','abgerechnet'].includes(A.status) && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
@@ -2792,7 +2797,7 @@ function importKomponenten(aid, rows){
   S.gruppen = S.gruppen || {};
   rows.forEach(r => {
     const g = parseInt(r['GRUPPE.NUMMER'],10) || 7;
-    if(g!==6 && r['GRUPPE.NAME'] && r['GRUPPE.NAME']!==GRUPPEN[g]) S.gruppen[g] = r['GRUPPE.NAME'];
+    if(!GRUPPEN[g] && r['GRUPPE.NAME']) S.gruppen[g] = r['GRUPPE.NAME']; // Gruppen 1 bis 7 heißen fest
     const name = r['TYP.NAME'] || r['GRUPPE.NAME'] || 'Komponente';
     const code = ((r['TYP.HERSTELLER']+' '+r['TYP.MODELL']).match(/\[([VHJZ])\]/)||[])[1] || '';
     let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
@@ -2872,7 +2877,7 @@ function importBundle(B, replace){
   B.komponenten.forEach(r => {
     const a = aByKey[r.anlageKey]; if(!a) return;
     const g = +r.gruppe || 7;
-    if(g!==6 && gnMehr[r.gruppe] && gnMehr[r.gruppe]!==GRUPPEN[g]) S.gruppen[g] = gnMehr[r.gruppe]; // Gruppe 6 heißt immer Schaltschrank
+    if(!GRUPPEN[g] && gnMehr[r.gruppe]) S.gruppen[g] = gnMehr[r.gruppe]; // Gruppen 1 bis 7 heißen fest
     const name = r.typName || r.gruppeName || 'Komponente', code = r.code || '';
     let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
     if(!t){
