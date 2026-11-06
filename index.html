@@ -173,6 +173,10 @@ section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
 @media (max-width:640px){ table.kt tr.kform td,table.kt tr.kleer td{display:block;text-align:left} table.kt tr.kform,table.kt tr.kleer{border:0;background:none;padding:2px 0;margin:2px 0} }
 .spkarte{display:grid;gap:12px;border:2px solid var(--line-strong);border-radius:10px;padding:14px;max-width:820px}
 .spk-wo{display:grid;gap:2px}
+.spk-obj{font-size:18px;font-weight:700;color:var(--brand);overflow-wrap:anywhere}
+.spk-nb summary{cursor:pointer;font-weight:600}
+.spk-nb ul{margin:6px 0 0;padding-left:18px;display:grid;gap:3px;font-size:14px;max-height:240px;overflow:auto}
+.spobj{min-width:170px}
 .spk-text{display:grid;gap:2px;background:var(--sunk);border-left:4px solid var(--mag);border-radius:6px;padding:10px 12px;font-size:16px;overflow-wrap:anywhere}
 .spk-knoepfe{display:flex;flex-wrap:wrap;gap:8px}
 @media (max-width:480px){ .spk-knoepfe .btn.pri{flex:1 1 100%} .spkarte{padding:10px} }
@@ -2007,9 +2011,9 @@ function spPanel(){
     <p class="muted" style="margin:0">Standort-Text und S/N werden beim Foxtag-Import automatisch in die einzelnen Felder aufgeteilt: Hersteller, Typ, Zu-/Abluft, Luftmenge, Ort, Bezeichnung und Bezeichnungsnummer. Die alten Werte bleiben gespeichert.</p>
     <div class="row" style="justify-content:space-between"><div class="chips"><span class="muted small" style="align-self:center">${L.fertig} eingeordnet${L.weg ? ` · ${L.weg} nicht aufgeteilt` : ''}</span>${L.pruefen.length ? `<button class="chip" data-act="at" data-v="pruefen">${L.pruefen.length} prüfen</button>` : ''}</div>
       ${liste.length || gr ? `<label class="f" style="min-width:220px">Gruppe<select data-spgruppe><option value="">Alle Gruppen</option>${gruppenOptionen(gr==='' ? null : +gr)}</select></label>` : ''}</div>
-    ${seite.length ? `<div class="tbl-wrap"><table class="sptbl"><thead><tr><th>Nr.</th><th>Standort-Text und S/N</th>${SP_SPALTEN.map(([,l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>
-      ${seite.map(x => `<tr><td class="mono">${kNr(x.c)}<span class="t2">${h(ctx(x.c.anlageId).o.nr)}</span></td><td class="small">${h(x.c.standort)}${x.c.sn ? `<span class="t2">S/N ${h(x.c.sn)}</span>` : ''}</td>
-        ${SP_SPALTEN.map(([k]) => `<td>${h(x.v[k]||'')}</td>`).join('')}</tr>`).join('')}
+    ${seite.length ? `<div class="tbl-wrap"><table class="sptbl"><thead><tr><th>Objekt</th><th>Nr.</th><th>Standort-Text und S/N</th>${SP_SPALTEN.map(([,l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>
+      ${seite.map(x => { const {o, k} = ctx(x.c.anlageId); return `<tr><td class="spobj"><b class="mono">${h(o.nr)}</b><span class="t2">${h(o.name)}</span>${kName(k)!==o.name ? `<span class="t2">${h(kName(k))}</span>` : ''}</td><td class="mono">${kNr(x.c)}</td><td class="small">${h(x.c.standort)}${x.c.sn ? `<span class="t2">S/N ${h(x.c.sn)}</span>` : ''}</td>
+        ${SP_SPALTEN.map(([f]) => `<td>${h(x.v[f]||'')}</td>`).join('')}</tr>`; }).join('')}
     </tbody></table></div>${liste.length > seite.length ? `<div class="row"><span class="muted small">${seite.length} von ${liste.length}</span><button class="btn sm" data-act="spmehr">100 weitere anzeigen</button></div>` : ''}` : ''}
     <div class="row">${liste.length ? `<button class="btn pri" data-act="spalle">Alle ${liste.length} eindeutigen übernehmen</button>` : ''}
       ${L.fertig + L.nachsehen ? `<button class="btn" data-act="spzurueck">Einordnung zurücknehmen (${L.fertig + L.nachsehen})</button>` : ''}</div></section>`;
@@ -2025,12 +2029,16 @@ function vSpKarte(){
   if(!x) return `<section class="panel">${kopf}${weg}</section>`;
   const c = x.c, {o, k} = ctx(c.anlageId), snRoh = c.spAus ? c.snAlt : c.sn, feldListe = K_GRUPPE[c.gruppe] || SP_SPALTEN.map(([f]) => f);
   const felder = SP_SPALTEN.filter(([f]) => feldListe.includes(f) || String(x.v[f]||'').trim());
+  const nachbarn = kompsOf(c.anlageId).filter(n => n.gruppe===c.gruppe && n.id!==c.id);
   return `<section class="panel">${kopf}
     <div class="spkarte" data-spc="${c.id}">
-      <div class="spk-wo"><b><span class="mono">${kNr(c)}</span> ${h(gname(c.gruppe))}${tname(typOf(c))!==gname(c.gruppe) ? ' · '+h(tname(typOf(c))) : ''}</b><span class="muted small"><span class="mono">${h(o.nr)}</span> ${h(o.name)}${kName(k)!==o.name ? ' · '+h(kName(k)) : ''}</span></div>
+      <div class="spk-wo"><div class="spk-obj"><span class="mono">${h(o.nr)}</span> ${h(o.name)}</div>
+        <span class="muted small">${h([kName(k)!==o.name ? kName(k) : '', [o.adresse, o.ort].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</span>
+        <b style="margin-top:4px"><span class="mono">${kNr(c)}</span> ${h(gname(c.gruppe))}${tname(typOf(c))!==gname(c.gruppe) ? ' · '+h(tname(typOf(c))) : ''}</b></div>
       <div class="spk-text"><span class="muted small">Text aus Foxtag</span><b>${h(c.standort) || '(kein Standort-Text)'}</b>${snRoh ? `<span class="small">S/N: ${h(snRoh)}</span>` : ''}</div>
       <div class="fgrid">${felder.map(([f,l]) => `<label class="f">${l}<input data-spf="${f}" value="${h(x.v[f]||'')}" ${f==='luftart' ? 'list="spluft"' : ''} autocomplete="off"></label>`).join('')}</div>
       <datalist id="spluft"><option value="Zuluft"><option value="Abluft"><option value="Zu- und Abluft"><option value="Außenluft"><option value="Fortluft"></datalist>
+      ${nachbarn.length ? `<details class="spk-nb" ${UI.spNb ? 'open' : ''}><summary>Andere in dieser Gruppe im Objekt (${nachbarn.length})</summary><ul>${nachbarn.slice(0,30).map(n => `<li><span class="mono">${kNr(n)}</span> ${h(kText(n) || '–')}</li>`).join('')}</ul>${nachbarn.length > 30 ? `<span class="muted small">Die ersten 30 von ${nachbarn.length}</span>` : ''}</details>` : ''}
       <div class="spk-knoepfe"><button class="btn pri" data-act="spok" data-id="${c.id}">Speichern und weiter</button>
         <button class="btn" data-act="spspaeter" data-v="1" ${n < 2 ? 'disabled' : ''}>Später</button>
         <button class="btn ghost" data-act="spspaeter" data-v="-1" ${n < 2 ? 'disabled' : ''}>Vorherige</button>
@@ -3517,6 +3525,7 @@ document.addEventListener('change', async e => {
   render();
 });
 document.addEventListener('change', e => { if(e.target.matches && e.target.matches('[data-spgruppe]')){ UI.spG = e.target.value; UI.spN = 40; UI.spI = 0; render(); } });
+document.addEventListener('toggle', e => { if(e.target.matches && e.target.matches('.spk-nb')) UI.spNb = e.target.open; }, true);
 document.addEventListener('keydown', e => { if(e.key==='Enter' && e.target.matches && e.target.matches('.spkarte [data-spf]')){ e.preventDefault(); ACT.spok({id:e.target.closest('[data-spc]').dataset.spc}); } });
 /* Weicher Übergang, wenn sich die Ansicht ändert (nicht bei jedem Tastendruck) */
 let letzteAnsicht = null;
