@@ -169,6 +169,17 @@ body.annette-body{background:#fbf1de}
 .an-regen{position:absolute;top:0;font-size:1.3em;opacity:0;pointer-events:none;animation:an-fall 3s ease-in 1 both}
 .sptbl input{width:100%;min-width:70px;min-height:32px;padding:3px 6px;font-size:13px}
 .imwarn{display:grid;gap:8px;border:2px solid var(--bad);border-radius:8px;padding:10px 12px;background:rgba(180,51,42,.05)}
+section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
+.impk-kopf{display:flex;align-items:center;gap:12px;margin:0 -16px;padding:12px 16px;color:#fff}
+.impk-kopf h2{color:#fff;margin:0}
+.impk-sub{font-size:13px;opacity:.9}
+.impk-nr{flex:none;width:34px;height:34px;border-radius:50%;background:#fff;display:grid;place-items:center;font:800 18px var(--f-display)}
+section.panel.impk-kwp{border-color:var(--brand)}
+.impk-kwp .impk-kopf{background:var(--brand)}
+.impk-kwp .impk-nr{color:var(--brand)}
+section.panel.impk-bsk{border-color:var(--mag);margin-top:14px}
+.impk-bsk .impk-kopf{background:var(--mag)}
+.impk-bsk .impk-nr{color:var(--mag)}
 .kwtbl select{min-width:150px;width:100%}
 .kwtbl tr.kwoffen td{background:rgba(201,138,0,.07)}
 .kwspalten summary{cursor:pointer;font-weight:600}
@@ -1805,7 +1816,7 @@ function kwErkennen(x){ const kopf = xiKopf(x); x.map = {}; KW_FELDER.forEach(([
 const kwTypen = g => { const l = S.typen.filter(t => t.gruppe===g); return l.length ? l : S.typen; };
 function kwHtml(aid){
   const x = UI.kw;
-  if(!x || x.aid!==aid) return `<label class="btn pri upl" style="justify-self:start">KWP-Liste auswählen (Excel oder CSV)<input type="file" accept=".xlsx,.csv" data-kwfile="${aid}"></label>`;
+  if(!x || x.aid!==aid) return `<label class="btn pri upl" style="justify-self:start">Tabelle Wartungswesen auswählen (Excel oder CSV)<input type="file" accept=".xlsx,.csv" data-kwfile="${aid}"></label>`;
   const kopf = xiKopf(x), spalten = kopf.map((v,i) => `<option value="${i}">${xiSpalte(i)}: ${h(v || '(leer)')}</option>`).join('');
   const offen = x.zeilen.filter(z => z.g==='').length, summe = x.zeilen.filter(z => z.g && z.g!=='x').reduce((s,z) => s+z.n, 0), markiert = x.zeilen.filter(z => z.an).length;
   const hat = kompsOf(aid).length;
@@ -1829,7 +1840,7 @@ function kwHtml(aid){
 }
 function xiHtml(aid){
   const x = UI.xi;
-  if(!x) return `<label class="btn pri upl" style="justify-self:start">Brandschutz-Liste auswählen (Excel oder CSV)<input type="file" accept=".xlsx,.csv" data-xifile="${aid}"></label>`;
+  if(!x) return `<label class="btn pri upl" style="justify-self:start">Tabelle Brandschutzklappen auswählen (Excel oder CSV)<input type="file" accept=".xlsx,.csv" data-xifile="${aid}"></label>`;
   x.anlage = aid;
   const kopf = xiKopf(x), spalten = kopf.map((v,i) => `<option value="${i}">${xiSpalte(i)}: ${h(v || '(leer)')}</option>`).join('');
   const bsp = i => { const r = x.grid.slice(x.kopf+1).find(r => String(r[i]??'').trim() && r.filter(v => String(v??'').trim()).length > 1); return r ? String(r[i]).trim() : ''; };
@@ -1853,10 +1864,10 @@ function xiHtml(aid){
       <div><button class="btn pri" data-act="xistart">${zeilen} Zeilen übernehmen</button></div>` : `<div class="empty">Bitte mindestens eine Spalte zuordnen.</div>`}`;
 }
 function impPanel(aid){
-  return `<section class="panel"><h2>Schritt 1: Komponenten aus der KWP-Liste</h2>
+  return `<section class="panel impk impk-kwp"><div class="impk-kopf"><span class="impk-nr">1</span><div><h2>Excel-Tabelle Wartungswesen (KWP)</h2><div class="impk-sub">Legt alle Komponenten des Objekts an</div></div></div>
       <p class="muted" style="margin:0">Excel-Liste aus dem KWP-Wartungswesen auswählen und für jede Zeile die Gruppe festlegen. Steht bei einer Zeile zum Beispiel Anzahl 72, entstehen 72 einzelne Komponenten.</p>${kwHtml(aid)}</section>
-    <section class="panel"><h2>Schritt 2: Brandschutzklappen-Liste</h2>
-      <p class="muted" style="margin:0">Ergänzt die Klappen aus Schritt 1 Zeile für Zeile um Hersteller, Typ, Einbauort und Bezeichnung. Du wählst dafür aus, in welcher Spalte diese Angaben stehen. Zwischenzeilen wie „EG“ werden erkannt und beim Einbauort vorangestellt.</p>${xiHtml(aid)}</section>`;
+    <section class="panel impk impk-bsk"><div class="impk-kopf"><span class="impk-nr">2</span><div><h2>Excel-Tabelle Brandschutzklappen</h2><div class="impk-sub">Ergänzt die Klappen aus Schritt 1</div></div></div>
+      <p class="muted" style="margin:0">Ergänzt die Klappen Zeile für Zeile um Hersteller, Typ, Einbauort und Bezeichnung. Du wählst dafür aus, in welcher Spalte diese Angaben stehen. Zwischenzeilen wie „EG“ werden erkannt und beim Einbauort vorangestellt.</p>${xiHtml(aid)}</section>`;
 }
 /* Foxtag-Angaben einheitlich einordnen: Standort-Text und S/N in die Felder aufteilen. Vorschläge werden erst nach Bestätigung übernommen, die alten Werte bleiben erhalten. */
 const SP_LUFT = {za:'Zu- und Abluft', 'zu/ab':'Zu- und Abluft', 'zu+ab':'Zu- und Abluft', z:'Zuluft', zu:'Zuluft', zul:'Zuluft', zuluft:'Zuluft', a:'Abluft', ab:'Abluft', abl:'Abluft', abluft:'Abluft', au:'Außenluft', aul:'Außenluft', al:'Außenluft', 'außenluft':'Außenluft', f:'Fortluft', fo:'Fortluft', fol:'Fortluft', fl:'Fortluft', fortluft:'Fortluft'};
