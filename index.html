@@ -839,7 +839,7 @@ const K_STANDARD = [...KFELDER.map(([k]) => k), 'sn', 'baujahr', 'letzte'];
 const kfCfg = () => S.feldCfg || {};
 const kfEigene = () => kfCfg().eigene || [];
 const kAlle = () => [...K_STANDARD.slice(0,-3), ...kfEigene().map(f => f.k), ...K_STANDARD.slice(-3)];
-const KF_OPT = {bauart:['Einzelraumlüfter','Rohrventilator'], luftart:['Zuluft','Abluft','Zu- und Abluft','Außenluft','Fortluft']};
+const KF_OPT = {bauart:['Einzelraumlüfter','Rohrventilator','Dachventilator'], luftart:['Zuluft','Abluft','Zu- und Abluft','Außenluft','Fortluft']};
 const kOptionen = k => { if(k==='gehoertZu' || k==='letzte') return []; const o = (kfCfg().optionen||{})[k]; return o !== undefined ? o : (KF_OPT[k]||[]); };
 const K_LUEFTUNG = ['hersteller','modell','luftart','luftmenge','einbauort','bezeichnung'];
 const K_GRUPPE = {1:K_LUEFTUNG, 2:['hersteller','modell','bauart','luftart','luftmenge','einbauort','bezeichnung'], 3:['hersteller','modell','leistung','einbauort','bezeichnung'], 4:['hersteller','modell','einbauort','bskNr'], 5:['hersteller','modell','baujahr','einbauort','gehoertZu'], 6:['hersteller','steuerung','baujahr','einbauort','bezeichnung']};
