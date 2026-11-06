@@ -173,6 +173,11 @@ section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
 @media (max-width:640px){ table.kt tr.kform td,table.kt tr.kleer td{display:block;text-align:left} table.kt tr.kform,table.kt tr.kleer{border:0;background:none;padding:2px 0;margin:2px 0} }
 .spkarte{display:grid;gap:12px;border:2px solid var(--line-strong);border-radius:10px;padding:14px;max-width:820px}
 .spk-wo{display:grid;gap:2px}
+@media (min-width:641px){tr.ksub td:first-child{padding-left:26px}
+tr.ksub td:first-child::before{content:"↳ ";color:var(--muted)}}
+@media (max-width:640px){table.kt tr.ksub{margin-left:18px}}
+.ksubk{margin-left:18px}
+.krow.ksubk{width:calc(100% - 18px)}
 .kfliste{display:grid;gap:10px}
 .kfzeile{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:10px;align-items:end;padding-bottom:10px;border-bottom:1px solid var(--line)}
 form.kfzeile{border-bottom:0;padding-bottom:0}
@@ -848,7 +853,7 @@ const kLabel = (k, g) => (kfCfg().namen||{})[k] || (kfEigene().find(f => f.k===k
 const kLabelStandard = (k, g) => k==='baujahr' ? (g===5 ? 'Einbaujahr' : 'Baujahr') : k==='sn' ? 'Seriennummer' : k==='letzte' ? 'Letzte Prüfung' : (KFELDER.find(f => f[0]===k)||[])[1];
 function kFormFelder(c, g, aid, pre){
   const basis = kfListe(g), liste = [...basis, ...kAlle().filter(k => !basis.includes(k) && k!=='letzte' && c && String(c[k]||'').trim())];
-  const anlagen = g===5 ? kompsOf(aid).filter(x => x.gruppe===1 || x.gruppe===2).map(x => `${kNr(x)} ${x.bezeichnung || [x.hersteller, x.modell].filter(Boolean).join(' ') || tname(typOf(x))}`) : [];
+  const anlagen = g===5 ? kompsOf(aid).filter(x => !x.sub && (x.gruppe===1 || x.gruppe===2)).map(x => `${kNr(x)} ${x.bezeichnung || [x.hersteller, x.modell].filter(Boolean).join(' ') || tname(typOf(x))}`) : [];
   return `<div class="fgrid">${liste.map(k => { const id = pre+k, roh = String((c||{})[k]||''), w = h(roh), opt = kOptionen(k);
     const feld = k==='letzte' ? `<input id="${id}" name="${k}" type="date" value="${w}">` : opt.length ? `<select id="${id}" name="${k}"><option value=""></option>${[...opt, ...(roh && !opt.includes(roh) ? [roh] : [])].map(o => `<option value="${h(o)}" ${o===roh ? 'selected' : ''}>${h(o)}</option>`).join('')}</select>` : `<input id="${id}" name="${k}" value="${w}" ${k==='gehoertZu' ? `list="kanlagen" placeholder="z. B. 1.1 Küche"` : ''} ${k==='baujahr' ? 'inputmode="numeric"' : ''} autocomplete="off">`;
     return `<label class="f" for="${id}">${kLabel(k, g)}${feld}</label>`; }).join('')}</div>
@@ -856,6 +861,10 @@ function kFormFelder(c, g, aid, pre){
 }
 const kFelderLesen = f => Object.fromEntries(kAlle().filter(k => f.has(k)).map(k => [k, k==='letzte' ? (f.get(k)||null) : String(f.get(k)||'').trim()]));
 const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
+/* Unterkomponenten (in Foxtag: Subkomponenten) hängen über Gruppe und Nummer an ihrer Hauptanlage, z. B. 1.1.1 an 1.1 */
+const kSub = c => c.sub ? 'ksub' : '';
+const kSubsVon = c => c.sub ? [] : S.komponenten.filter(x => !x.entfernt && x.sub && x.anlageId===c.anlageId && x.gruppe===c.gruppe && x.nr===c.nr);
+const kMsrTyp = g => { let t = S.typen.find(x => x.checklisteId==='cl-msr'); if(!t){ t = {id:'t'+uid(), gruppe:g, name:'MSR', code:'', intervall:12, checklisteId:by(S.checklisten,'cl-msr') ? 'cl-msr' : 'cl-sonst'}; S.typen.push(t); } return t; };
 const nextDue = c => c.letzte ? addMonths(c.letzte, typOf(c).intervall) : null;
 function st(c){
   if(istStill(c.anlageId)) return {cls:'', label:'Stillgelegt', d:null};
@@ -1362,7 +1371,7 @@ function vFaellig(){
     ${gruppen.map(({a,ks}) => { const {o,k} = ctx(a.id), oa = offenerAuftrag(a.id); return `<tr class="grp"><td colspan="4"><div class="row" style="justify-content:space-between">
         <span><span class="code">${h(o.nr)}</span> <a href="#" data-act="anlage" data-id="${a.id}" style="font-weight:600">${h(o.name)}</a> <span class="muted small" style="font-weight:400">· ${h(kName(k))} · ${h(o.ort)}</span></span>
         ${oa ? `<button class="btn sm" data-act="auftrag" data-id="${oa.id}">Auftrag ${oa.nr}</button>` : `<button class="btn sm pri" data-act="planen" data-a="${a.id}">Planen</button>`}</div></td></tr>`
-      + ks.map(c => { const s = st(c), t = typOf(c); return `<tr><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(kText(c))}</td><td>${pill(s.cls, s.label)}<span class="t2">${fmt(nextDue(c))} · ${dueText(s)}</span></td></tr>`; }).join(''); }).join('')}
+      + ks.map(c => { const s = st(c), t = typOf(c); return `<tr class="${kSub(c)}"><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(kText(c))}</td><td>${pill(s.cls, s.label)}<span class="t2">${fmt(nextDue(c))} · ${dueText(s)}</span></td></tr>`; }).join(''); }).join('')}
   </tbody></table></div>` : `<div class="empty">Keine Komponenten in dieser Ansicht.</div>`}</section>`;
 }
 
@@ -1554,12 +1563,12 @@ function vAnlage(){
             <label class="f" for="nkt">Komponenten-Typ<select id="nkt" name="typ">${kwTypen(g).map(t => `<option value="${t.id}">${h(typLabel(t))}</option>`).join('')}</select></label>
             <div style="grid-column:1/-1">${kFormFelder(null, g, aid, 'nk_')}</div>
             <button class="btn pri" type="submit">Komponente anlegen</button></form></td></tr>` : ''}
-          ${inG.length ? inG.map(c => { const s = st(c), t = typOf(c), e = ersatz(c), so = stoerOffen(c.id).length; return `<tr>
+          ${inG.length ? inG.map(c => { const s = st(c), t = typOf(c), e = ersatz(c), so = stoerOffen(c.id).length; return `<tr class="${kSub(c)}">
         <td class="mono">${kNr(c)}</td>
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
         <td>${h(kText(c))}${c.hinweis ? `<span class="t2" style="color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
         <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${so ? `<span class="t2"><span class="pill bad">${so} Störung${so>1?'en':''}</span></span>` : ''}</td>
-        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button>${c.sub ? '' : `<button class="btn sm" data-act="ksubneu" data-c="${c.id}" aria-label="Unterkomponente zu ${kNr(c)} hinzufügen" title="Unterkomponente hinzufügen">${ico('plus')} Unter</button>`}<button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
       </tr>`; }).join('') : (offen ? '' : `<tr class="kleer"><td colspan="5" class="muted small">Noch keine Komponenten in dieser Gruppe.</td></tr>`)}`; }).join('')}</tbody></table></div>
     </div>
   </details>`;
@@ -1688,7 +1697,7 @@ function vAuftrag(){
     <p class="muted small" style="margin:0">Im Druckfenster „Als PDF speichern“ wählen. Die E-Mail ans Büro ist im Prototyp nachgestellt.</p></section>${vBericht(A)}` : ''}
   ${['planung','geplant'].includes(A.status) ? `<section class="panel"><h2>Geplante Prüfungen</h2>
     <div class="tbl-wrap"><table><thead><tr><th>Nummer</th><th>Typ</th><th>Details</th><th>Fälligkeit</th></tr></thead><tbody>
-    ${ks.map(c => { const s = st(c), t = typOf(c); return `<tr><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(kText(c))}</td><td>${pill(s.cls,s.label)}</td></tr>`; }).join('')}
+    ${ks.map(c => { const s = st(c), t = typOf(c); return `<tr class="${kSub(c)}"><td class="mono">${kNr(c)}</td><td>${h(tname(t))}${tcode(t)}</td><td>${h(kText(c))}</td><td>${pill(s.cls,s.label)}</td></tr>`; }).join('')}
     </tbody></table></div></section>` : ''}`;
 }
 
@@ -1862,7 +1871,7 @@ function xiErkennen(x){ const kopf = xiKopf(x); x.map = {}; XI_FELDER.forEach(([
 const xiNorm = v => String(v||'').toLowerCase().replace(/[\s._\-\/]/g,'');
 function xiPlan(x){
   const plan = {neu:[], upd:[], leer:0, klappen:0, ohne:0}, felder = Object.keys(x.map); if(!x.anlage || !felder.length) return plan;
-  const vorhanden = kompsOf(x.anlage).filter(c => c.gruppe===x.gruppe), frei = new Set(vorhanden);
+  const vorhanden = kompsOf(x.anlage).filter(c => c.gruppe===x.gruppe && !c.sub), frei = new Set(vorhanden);
   plan.klappen = vorhanden.length;
   const zeilen = [];
   let stock = '';
@@ -2282,7 +2291,7 @@ function vBericht(A){
     ${(() => {
       // Kompakt: Komponenten ohne Befund als Tabellenzeile, sonst nur Mängel, Messwerte und Bemerkungen
       const wichtig = (x, d) => d && (d.v==='nio' || d.over || (['wert','text'].includes(x.typ) && String(d.v||'').trim()));
-      const kopf = (c, mangel) => `<div class="khead"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(typOf(c)))}</b><small>${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
+      const kopf = (c, mangel) => `<div class="khead ${c.sub ? 'ksubk' : ''}"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(typOf(c)))}</b><small>${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
         <span class="kres ${mangel ? 'nio' : 'io'}">${mangel ? 'Mangel' : 'i.O.'}</span></div>`;
       const fotos = (c, p) => p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : '';
       const istMangel = c => kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id);
@@ -2401,7 +2410,7 @@ function vApp(){
       + ((a.notizen||[]).length ? `<div class="card"><b>Notizen</b>${notizList(a, true)}</div>` : '')
       + ((a.dateien||[]).length ? `<div class="card"><b>Dokumente zur Anlage</b>${dokList(a, true)}</div>` : '');
     if(A.status==='geplant') return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
-      info + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small">${kNr(c)} ${h(tname(typOf(c)))} · ${h(kText(c))}</div>`).join('')}</div>`,
+      info + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small ${c.sub ? 'ksubk' : ''}">${kNr(c)} ${h(tname(typOf(c)))} · ${h(kText(c))}</div>`).join('')}</div>`,
       `<button class="btn pri block" data-act="appstart">Auftrag starten</button>`);
     if(['erledigt','abgerechnet'].includes(A.status)) return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
       info + `<div class="card">${pill('ok','Bericht übermittelt')}<div class="small">Am ${fmt(A.erstGesendet || A.abgeschlossen)} ans Büro geschickt${A.korrektur ? `, korrigierte Fassung ${A.korrektur}` : ''}. Das Büro hat den Bericht als PDF.</div>
@@ -2464,7 +2473,7 @@ function appKompList(A){
     const offen = q || !zu[g];
     return `<button class="gtoggle" data-act="appgrp" data-v="${g}" aria-expanded="${!!offen}">
         <span>${offen ? '▾' : '▸'} Gruppe ${g} · ${gname(g)}</span><span class="small">${gd}/${gk.length} geprüft</span></button>
-      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}</span>${c.hinweis ? `<span class="small" style="display:block;color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}</span>${kompState(A,c)}</button>`; }).join('') : ''}`;
+      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow ${c.sub ? 'ksubk' : ''}" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}</span>${c.hinweis ? `<span class="small" style="display:block;color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}</span>${kompState(A,c)}</button>`; }).join('') : ''}`;
   }).join('');
 }
 function kompState(A,c){
@@ -3022,12 +3031,22 @@ modal.addEventListener('submit', e => {
     a.kontakt = (name || tel) ? {name, tel} : null;
     save(); closeModal(); render(); toast('Ansprechpartner gespeichert');
   }
+  if(kind==='ksub'){
+    const m = by(S.komponenten, UI.kSubVon); if(!m) return closeModal();
+    const sub = Math.max(0, ...kSubsVon(m).map(x => x.sub)) + 1;
+    const c = {id:'c'+uid(), anlageId:m.anlageId, gruppe:m.gruppe, nr:m.nr, sub, typId:kMsrTyp(m.gruppe).id, standort:'', sn:'', baujahr:'', letzte:null, ...kFelderLesen(f)};
+    S.komponenten.push(c); save(); closeModal(); render(); toast(`Unterkomponente ${kNr(c)} angelegt`);
+  }
   if(kind==='kedit'){
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
     const g = parseInt(f.get('gruppe'),10) || c.gruppe, nr = parseInt(f.get('nr'),10) || c.nr, sub = parseInt(f.get('sub'),10) || 0;
     if(S.komponenten.some(x => x!==c && !x.entfernt && x.anlageId===c.anlageId && x.gruppe===g && x.nr===nr && (x.sub||0)===sub)){ toast(`Nummer ${g}.${nr}${sub ? '.'+sub : ''} ist in dieser Anlage schon vergeben`); return; }
+    const unter = kSubsVon(c);
+    if(sub && unter.length){ toast(`${kNr(c)} hat Unterkomponenten und kann deshalb selbst keine werden`); return; }
+    if(sub && !S.komponenten.some(x => x!==c && !x.entfernt && x.anlageId===c.anlageId && x.gruppe===g && x.nr===nr && !x.sub)){ toast(`Zu ${g}.${nr}.${sub} gibt es keine Hauptanlage ${g}.${nr}`); return; }
     delete c.spAuto; delete c.spPruefen; Object.assign(c, {typId:f.get('typ'), gruppe:g, nr, sub}, f.has('standort') ? {standort:f.get('standort')||''} : {}, kFelderLesen(f));
-    save(); closeModal(); render(); toast(`Komponente ${kNr(c)} gespeichert`);
+    unter.forEach(x => { x.gruppe = g; x.nr = nr; });
+    save(); closeModal(); render(); toast(`Komponente ${kNr(c)} gespeichert` + (unter.length ? `, ${unter.length} Unterkomponente${unter.length>1 ? 'n' : ''} mit angepasst` : ''));
   }
   if(kind==='aedit'){
     const A = curA(), techs = f.getAll('tech');
@@ -3181,6 +3200,12 @@ const ACT = {
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit" style="background:var(--bad);border-color:var(--bad)">Stilllegen</button></div></form>`); },
   stillauf: d => { const a = by(S.anlagen, d.a); if(!a) return; delete a.stillgelegt; save(); render(); toast('Wartungsvertrag wieder aktiv'); },
   importieren: () => importModal(),
+  ksubneu: d => { const c = by(S.komponenten, d.c); if(!c) return; UI.kSubVon = c.id;
+    const nr = `${kNr(c)}.${Math.max(0, ...kSubsVon(c).map(x => x.sub)) + 1}`, cl = by(S.checklisten, kMsrTyp(c.gruppe).checklisteId);
+    openModal(`<h2>Unterkomponente ${nr} hinzufügen</h2>
+      <p class="muted" style="margin:0">Zu ${kNr(c)} ${h(kText(c) || tname(typOf(c)))}. Typ ${h(tname(kMsrTyp(c.gruppe)))}, geprüft mit der Checkliste ${h((cl||{}).name||'')}. Sie bleibt ein eigener Prüfpunkt.</p>
+      <form data-form="ksub" style="display:grid;gap:12px">${kFormFelder(null, c.gruppe, c.anlageId, 'ks_')}
+        <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Unterkomponente anlegen</button></div></form>`); },
   kadd: d => { const g = +d.g; if(UI.addK && UI.addG===g) UI.addK = false; else { UI.addK = true; UI.addG = g; UI.kOpen = true; } render(); },
   af: d => { UI.af = d.v; render(); },
   sf: d => { UI.sf = d.v; render(); },
@@ -3222,13 +3247,14 @@ const ACT = {
     openModal(`<h2>Komponente ${kNr(c)} entfernen?</h2>
       <p style="margin:0">${h(typLabel(typOf(c)))} · ${h(kText(c))}</p>
       <p style="margin:0">Sie verschwindet aus der Anlage und aus künftigen Prüfungen. Alte Wartungsberichte bleiben unverändert.</p>
+      ${kSubsVon(c).length ? `<p class="err" style="margin:0">Auch ${kSubsVon(c).length===1 ? 'die Unterkomponente' : 'die '+kSubsVon(c).length+' Unterkomponenten'} ${kSubsVon(c).map(kNr).join(', ')} ${kSubsVon(c).length===1 ? 'wird' : 'werden'} entfernt.</p>` : ''}
       ${offen.length ? `<p class="err" style="margin:0">Sie wird auch aus ${offen.length===1 ? 'dem offenen Auftrag' : offen.length+' offenen Aufträgen'} ${offen.map(a => a.nr).join(', ')} genommen.</p>` : ''}
       <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close>Abbrechen</button><button class="btn pri" data-act="kdelok" style="background:var(--bad);border-color:var(--bad)">Entfernen</button></div>`);
   },
   kdelok: () => {
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
-    c.entfernt = true;
-    S.auftraege.filter(a => isOpen(a)).forEach(a => { a.kompIds = a.kompIds.filter(id => id!==c.id); delete a.pr[c.id]; });
+    const weg = [c, ...kSubsVon(c)];
+    weg.forEach(x => { x.entfernt = true; S.auftraege.filter(a => isOpen(a)).forEach(a => { a.kompIds = a.kompIds.filter(id => id!==x.id); delete a.pr[x.id]; }); });
     save(); closeModal(); render(); toast(`Komponente ${kNr(c)} entfernt`);
   },
   aedit: () => editModal(curA()),
