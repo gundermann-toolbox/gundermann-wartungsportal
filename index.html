@@ -173,6 +173,10 @@ section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
 @media (max-width:640px){ table.kt tr.kform td,table.kt tr.kleer td{display:block;text-align:left} table.kt tr.kform,table.kt tr.kleer{border:0;background:none;padding:2px 0;margin:2px 0} }
 .spkarte{display:grid;gap:12px;border:2px solid var(--line-strong);border-radius:10px;padding:14px;max-width:820px}
 .spk-wo{display:grid;gap:2px}
+.kfliste{display:grid;gap:10px}
+.kfzeile{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:10px;align-items:end;padding-bottom:10px;border-bottom:1px solid var(--line)}
+form.kfzeile{border-bottom:0;padding-bottom:0}
+@media (max-width:700px){.kfzeile{grid-template-columns:minmax(0,1fr)}}
 .spk-obj{font-size:18px;font-weight:700;color:var(--brand);overflow-wrap:anywhere}
 .spk-nb summary{cursor:pointer;font-weight:600}
 .spk-nb ul{margin:6px 0 0;padding-left:18px;display:grid;gap:3px;font-size:14px;max-height:240px;overflow:auto}
@@ -827,23 +831,30 @@ function alleGruppen(){
 }
 const gruppenOptionen = wert => alleGruppen().map(g => `<option value="${g}" ${g===wert ? 'selected' : ''}>${g} ${gname(g)}</option>`).join('');
 /* Eigene Angaben je Komponente statt allem im Standort-Text (aus Foxtag). Ohne Angaben wird der alte Standort-Text gezeigt. */
-const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Bezeichnungsnummer (z. B. BSK)'],['zulassung','Zulassungsnummer'],['hinweis','Hinweis für den Techniker'],['steuerung','Steuerung'],['gehoertZu','Gehört zu welcher Anlage']];
-const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : (+c.gruppe===4 ? 'BSK ' : 'Nr. ')+c.bskNr), c.zulassung && 'Zul. '+c.zulassung, c.steuerung && 'Steuerung '+c.steuerung, c.gehoertZu && 'für '+c.gehoertZu].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
+const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['bauart','Bauart'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Bezeichnungsnummer (z. B. BSK)'],['zulassung','Zulassungsnummer'],['hinweis','Hinweis für den Techniker'],['steuerung','Steuerung'],['gehoertZu','Gehört zu welcher Anlage']];
+const kText = c => { const t = [c.hersteller, c.modell, c.bauart, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : (+c.gruppe===4 ? 'BSK ' : 'Nr. ')+c.bskNr), c.zulassung && 'Zul. '+c.zulassung, c.steuerung && 'Steuerung '+c.steuerung, c.gehoertZu && 'für '+c.gehoertZu, ...kfEigene().map(f => c[f.k])].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
 /* Welche Felder je Gruppe abgefragt werden. Gruppen ohne Eintrag, zum Beispiel Sonstige oder eigene, zeigen alles. Bereits ausgefüllte Felder bleiben beim Bearbeiten immer sichtbar. */
-const K_ALLE = [...KFELDER.map(([k]) => k), 'sn', 'baujahr', 'letzte'];
+const K_STANDARD = [...KFELDER.map(([k]) => k), 'sn', 'baujahr', 'letzte'];
+/* Einstellungen aus Administration → Felder (S.feldCfg): eigene Felder, Namen, Auswahllisten und Felder je Gruppe. Ohne Eintrag gelten die Vorgaben hier im Code. */
+const kfCfg = () => S.feldCfg || {};
+const kfEigene = () => kfCfg().eigene || [];
+const kAlle = () => [...K_STANDARD.slice(0,-3), ...kfEigene().map(f => f.k), ...K_STANDARD.slice(-3)];
+const KF_OPT = {bauart:['Einzelraumlüfter','Rohrventilator'], luftart:['Zuluft','Abluft','Zu- und Abluft','Außenluft','Fortluft']};
+const kOptionen = k => { if(k==='gehoertZu' || k==='letzte') return []; const o = (kfCfg().optionen||{})[k]; return o !== undefined ? o : (KF_OPT[k]||[]); };
 const K_LUEFTUNG = ['hersteller','modell','luftart','luftmenge','einbauort','bezeichnung'];
-const K_GRUPPE = {1:K_LUEFTUNG, 2:K_LUEFTUNG, 3:['hersteller','modell','leistung','einbauort','bezeichnung'], 4:['hersteller','modell','einbauort','bskNr'], 5:['hersteller','modell','baujahr','einbauort','gehoertZu'], 6:['hersteller','steuerung','baujahr','einbauort','bezeichnung']};
-const kLabel = (k, g) => k==='baujahr' ? (g===5 ? 'Einbaujahr' : 'Baujahr') : k==='sn' ? 'Seriennummer' : k==='letzte' ? 'Letzte Prüfung' : (KFELDER.find(f => f[0]===k)||[])[1];
+const K_GRUPPE = {1:K_LUEFTUNG, 2:['hersteller','modell','bauart','luftart','luftmenge','einbauort','bezeichnung'], 3:['hersteller','modell','leistung','einbauort','bezeichnung'], 4:['hersteller','modell','einbauort','bskNr'], 5:['hersteller','modell','baujahr','einbauort','gehoertZu'], 6:['hersteller','steuerung','baujahr','einbauort','bezeichnung']};
+const kfListe = g => (kfCfg().gruppen||{})[g] || K_GRUPPE[g] || K_STANDARD;
+const kLabel = (k, g) => (kfCfg().namen||{})[k] || (kfEigene().find(f => f.k===k)||{}).label || kLabelStandard(k, g);
+const kLabelStandard = (k, g) => k==='baujahr' ? (g===5 ? 'Einbaujahr' : 'Baujahr') : k==='sn' ? 'Seriennummer' : k==='letzte' ? 'Letzte Prüfung' : (KFELDER.find(f => f[0]===k)||[])[1];
 function kFormFelder(c, g, aid, pre){
-  const liste = K_GRUPPE[g] ? [...K_GRUPPE[g], ...K_ALLE.filter(k => !K_GRUPPE[g].includes(k) && k!=='letzte' && c && String(c[k]||'').trim())] : K_ALLE;
+  const basis = kfListe(g), liste = [...basis, ...kAlle().filter(k => !basis.includes(k) && k!=='letzte' && c && String(c[k]||'').trim())];
   const anlagen = g===5 ? kompsOf(aid).filter(x => x.gruppe===1 || x.gruppe===2).map(x => `${kNr(x)} ${x.bezeichnung || [x.hersteller, x.modell].filter(Boolean).join(' ') || tname(typOf(x))}`) : [];
-  return `<div class="fgrid">${liste.map(k => { const id = pre+k, w = h((c||{})[k]||'');
-    const feld = k==='letzte' ? `<input id="${id}" name="${k}" type="date" value="${w}">` : `<input id="${id}" name="${k}" value="${w}" ${k==='luftart' ? 'list="luftarten"' : k==='gehoertZu' ? `list="kanlagen" placeholder="z. B. 1.1 Küche"` : ''} ${k==='baujahr' ? 'inputmode="numeric"' : ''} autocomplete="off">`;
+  return `<div class="fgrid">${liste.map(k => { const id = pre+k, roh = String((c||{})[k]||''), w = h(roh), opt = kOptionen(k);
+    const feld = k==='letzte' ? `<input id="${id}" name="${k}" type="date" value="${w}">` : opt.length ? `<select id="${id}" name="${k}"><option value=""></option>${[...opt, ...(roh && !opt.includes(roh) ? [roh] : [])].map(o => `<option value="${h(o)}" ${o===roh ? 'selected' : ''}>${h(o)}</option>`).join('')}</select>` : `<input id="${id}" name="${k}" value="${w}" ${k==='gehoertZu' ? `list="kanlagen" placeholder="z. B. 1.1 Küche"` : ''} ${k==='baujahr' ? 'inputmode="numeric"' : ''} autocomplete="off">`;
     return `<label class="f" for="${id}">${kLabel(k, g)}${feld}</label>`; }).join('')}</div>
-    <datalist id="luftarten"><option value="Zuluft"><option value="Abluft"><option value="Zu- und Abluft"><option value="Außenluft"><option value="Fortluft"></datalist>
     <datalist id="kanlagen">${anlagen.map(t => `<option value="${h(t)}">`).join('')}</datalist>`;
 }
-const kFelderLesen = f => Object.fromEntries(K_ALLE.filter(k => f.has(k)).map(k => [k, k==='letzte' ? (f.get(k)||null) : String(f.get(k)||'').trim()]));
+const kFelderLesen = f => Object.fromEntries(kAlle().filter(k => f.has(k)).map(k => [k, k==='letzte' ? (f.get(k)||null) : String(f.get(k)||'').trim()]));
 const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
 const nextDue = c => c.letzte ? addMonths(c.letzte, typOf(c).intervall) : null;
 function st(c){
@@ -1721,9 +1732,38 @@ function vStoerungen(){
 }
 
 /* ---------- Administration ---------- */
+/* Administration → Felder: Welche Angaben je Gruppe abgefragt werden, wie sie heißen und was zur Auswahl steht */
+function kfSetzen(g, neu){
+  const c = S.feldCfg = S.feldCfg || {}; c.gruppen = c.gruppen || {};
+  c.gruppen[g] = kfListe(g).includes('letzte') ? [...neu, 'letzte'] : neu;
+  save(); render();
+}
+function vFelder(){
+  const gs = alleGruppen().filter(g => g > 0), g = gs.includes(UI.fg) ? UI.fg : gs[0];
+  const liste = kfListe(g).filter(k => k!=='letzte'), frei = kAlle().filter(k => k!=='letzte' && !liste.includes(k));
+  return `<div class="subwahl" role="group" aria-label="Gruppe auswählen">${gs.map(n => `<button class="subw ${n===g?'on':''}" data-act="kfgruppe" data-v="${n}" aria-pressed="${n===g}">${n} ${gname(n)}</button>`).join('')}</div>
+    <section class="panel"><h2>Felder der Gruppe ${g} · ${gname(g)}</h2>
+      <p class="muted" style="margin:0">Das sind die Angaben, die beim Anlegen und Bearbeiten einer Komponente dieser Gruppe abgefragt werden. Steht bei „Auswahl“ etwas, wählt man aus der Liste. Ist „Auswahl“ leer, tippt man frei. Der Name und die Auswahl gelten in allen Gruppen, die das Feld nutzen.</p>
+      <div class="kfliste">${liste.map((k,i) => `<div class="kfzeile">
+        <label class="f" for="kfn_${k}">Name<input id="kfn_${k}" data-kfname="${k}" data-g="${g}" value="${h(kLabel(k,g))}" autocomplete="off"></label>
+        ${k==='gehoertZu' ? `<span class="muted small">Auswahl kommt aus den Anlagen im Objekt</span>` : `<label class="f" for="kfo_${k}">Auswahl, mit Komma getrennt<input id="kfo_${k}" data-kfopt="${k}" value="${h(kOptionen(k).join(', '))}" placeholder="leer = freie Eingabe" autocomplete="off"></label>`}
+        <div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kfschieb" data-k="${k}" data-g="${g}" data-v="-1" ${i===0?'disabled':''} aria-label="${h(kLabel(k,g))} nach oben">↑</button><button class="btn sm" data-act="kfschieb" data-k="${k}" data-g="${g}" data-v="1" ${i===liste.length-1?'disabled':''} aria-label="${h(kLabel(k,g))} nach unten">↓</button><button class="btn sm danger" data-act="kfweg" data-k="${k}" data-g="${g}">Entfernen</button></div>
+      </div>`).join('') || `<div class="empty">Diese Gruppe fragt keine Angaben ab.</div>`}</div>
+      <p class="muted small" style="margin:0">Entfernst du ein Feld, bleiben schon eingetragene Angaben erhalten und werden an diesen Komponenten weiter angezeigt.</p>
+      <div class="row" style="align-items:end">
+        ${frei.length ? `<form data-form="kfplus" class="row" style="align-items:end;flex:1 1 300px"><input type="hidden" name="g" value="${g}"><label class="f" for="kfp" style="flex:1 1 200px">Vorhandenes Feld hinzufügen<select id="kfp" name="k">${frei.map(k => `<option value="${k}">${h(kLabel(k,g))}</option>`).join('')}</select></label><button class="btn" type="submit">Hinzufügen</button></form>` : ''}
+        ${(kfCfg().gruppen||{})[g] ? `<button class="btn ghost" data-act="kfreset" data-g="${g}">Gruppe auf Standard zurücksetzen</button>` : ''}
+      </div>
+      <form data-form="kfneu" class="kfzeile" style="align-items:end"><input type="hidden" name="g" value="${g}">
+        <label class="f" for="kfnn">Neues Feld<input id="kfnn" name="name" required placeholder="z. B. Filterklasse" autocomplete="off"></label>
+        <label class="f" for="kfna">Auswahl, mit Komma getrennt<input id="kfna" name="auswahl" placeholder="leer = freie Eingabe" autocomplete="off"></label>
+        <button class="btn pri" type="submit">${ico('plus')} Feld anlegen</button></form>
+    </section>`;
+}
+const kfWerte = t => [...new Set(String(t||'').split(',').map(x => x.trim()).filter(Boolean))];
 function vAdmin(){
   if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
-  const tabs = [['ideen','Notizen'],['gruppen','Gruppen'],['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['import','Import'],['pruefen',`Standort prüfen${spOffenZahl() ? ' ('+spOffenZahl()+')' : ''}`],['it','IT & Einrichtung']];
+  const tabs = [['ideen','Notizen'],['gruppen','Gruppen'],['typen','Komponenten-Typen'],['felder','Felder'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['import','Import'],['pruefen',`Standort prüfen${spOffenZahl() ? ' ('+spOffenZahl()+')' : ''}`],['it','IT & Einrichtung']];
   let body = '';
   if(UI.at==='gruppen'){ const liste = alleGruppen();
     body = `<section class="panel"><p class="muted" style="margin:0">Die Nummer ist der erste Teil der Komponentennummer (z. B. 4.2) und bleibt deshalb fest. Der Name lässt sich jederzeit ändern und gilt überall sofort.</p>
@@ -1781,6 +1821,7 @@ function vAdmin(){
         <label class="f" for="ur">Rolle<select id="ur" name="rolle">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${v==='techniker'?'selected':''}>${l}</option>`).join('')}</select></label>
         <button class="btn pri" type="submit">Benutzer anlegen</button>
       </form></section>`;
+  if(UI.at==='felder') body = vFelder();
   if(UI.at==='it') body = vInfo(true);
   if(UI.at==='ideen') body = vIdeen();
   if(UI.at==='import') body = vImport();
@@ -2032,7 +2073,7 @@ function vSpKarte(){
       <label class="f" style="min-width:220px">Gruppe<select data-spgruppe><option value="">Alle Gruppen</option>${gruppenOptionen(gr==='' ? null : +gr)}</select></label></div>`;
   const weg = L.weg ? `<div class="row"><span class="muted small">${L.weg} nicht aufgeteilt</span><button class="btn sm ghost" data-act="spwegauf">Wieder zum Prüfen anzeigen</button></div>` : '';
   if(!x) return `<section class="panel">${kopf}${weg}</section>`;
-  const c = x.c, {o, k} = ctx(c.anlageId), snRoh = c.spAus ? c.snAlt : c.sn, feldListe = K_GRUPPE[c.gruppe] || SP_SPALTEN.map(([f]) => f);
+  const c = x.c, {o, k} = ctx(c.anlageId), snRoh = c.spAus ? c.snAlt : c.sn, feldListe = kfListe(c.gruppe);
   const felder = SP_SPALTEN.filter(([f]) => feldListe.includes(f) || String(x.v[f]||'').trim());
   const nachbarn = kompsOf(c.anlageId).filter(n => n.gruppe===c.gruppe && n.id!==c.id);
   return `<section class="panel">${kopf}
@@ -2594,7 +2635,7 @@ function kompEditModal(c){
         <label class="f" for="kes">Sub-Nummer<input id="kes" name="sub" type="number" min="0" value="${c.sub||0}"></label>
       </div>
       ${kFormFelder(c, c.gruppe, c.anlageId, 'ke_')}
-      <div class="fgrid">${K_GRUPPE[c.gruppe] ? `<label class="f" for="ke_letzte">Letzte Prüfung<input id="ke_letzte" name="letzte" type="date" value="${c.letzte||''}"></label>` : ''}
+      <div class="fgrid">${!kfListe(c.gruppe).includes('letzte') ? `<label class="f" for="ke_letzte">Letzte Prüfung<input id="ke_letzte" name="letzte" type="date" value="${c.letzte||''}"></label>` : ''}
         ${String(c.standort||'').trim() ? `<label class="f" for="keo">Standort-Text (aus Foxtag)<input id="keo" name="standort" value="${h(c.standort)}"></label>` : ''}</div>
       <p class="muted small" style="margin:0">Die nächste Fälligkeit ergibt sich aus letzter Prüfung und Prüfintervall des Typs.</p>
       <div class="row" style="justify-content:space-between">
@@ -3117,6 +3158,15 @@ const ACT = {
       S.komponenten.push({id:'c'+uid(), anlageId:x.anlage, gruppe:x.gruppe, nr, sub:0, typId:x.typ, standort:'', sn:'', baujahr:'', letzte:null, ...p.w}); });
     const aid = x.anlage; UI.xi = null; save(); UI.view = 'anlage'; UI.anlage = aid; UI.kOpen = true; render(); window.scrollTo(0,0);
     toast(`${plan.upd.length} ergänzt, ${plan.neu.length} neu angelegt`); },
+  kfgruppe: d => { UI.fg = +d.v; render(); },
+  kfschieb: d => { const g = +d.g, l = kfListe(g).filter(k => k!=='letzte'), i = l.indexOf(d.k), j = i + +d.v; if(i<0 || j<0 || j>=l.length) return; [l[i], l[j]] = [l[j], l[i]]; kfSetzen(g, l); },
+  kfweg: d => { const g = +d.g, name = kLabel(d.k, g); const cfg = S.feldCfg = S.feldCfg || {};
+    kfSetzen(g, kfListe(g).filter(k => k!=='letzte' && k!==d.k));
+    // Eigenes Feld, das nirgends mehr genutzt wird und keine Angaben hat, ganz entfernen
+    if(kfEigene().some(f => f.k===d.k) && !Object.values(cfg.gruppen).some(l => l.includes(d.k)) && !S.komponenten.some(c => String(c[d.k]||'').trim())){
+      cfg.eigene = cfg.eigene.filter(f => f.k!==d.k); if(cfg.optionen) delete cfg.optionen[d.k]; if(cfg.namen) delete cfg.namen[d.k]; save(); render(); }
+    toast(`${name} aus Gruppe ${g} entfernt`); },
+  kfreset: d => { const g = +d.g; if(S.feldCfg && S.feldCfg.gruppen) delete S.feldCfg.gruppen[g]; save(); render(); toast(`Gruppe ${g} nutzt wieder die Standard-Felder`); },
   gruppedel: d => { const g = +d.v;
     if(S.komponenten.some(c => !c.entfernt && c.gruppe===g) || S.typen.some(t => t.gruppe===g)){ toast('Die Gruppe ist noch in Benutzung'); return; }
     if(S.gruppen) delete S.gruppen[g];
@@ -3317,6 +3367,13 @@ app.addEventListener('submit', e => {
     (a.notizen = a.notizen || []).push({id:uid(), text, am:new Date().toISOString(), von:me().name});
     save(); render(); toast('Notiz gespeichert');
   }
+  if(kind==='kfplus'){ const g = +f.get('g'), k = f.get('k'); kfSetzen(g, [...kfListe(g).filter(x => x!=='letzte'), k]); toast(`${kLabel(k,g)} zu Gruppe ${g} hinzugefügt`); }
+  if(kind==='kfneu'){ const g = +f.get('g'), name = String(f.get('name')||'').trim(); if(!name) return;
+    if(kAlle().some(k => String(kLabel(k,g)).toLowerCase()===name.toLowerCase())){ toast(`Das Feld „${name}“ gibt es schon. Du kannst es oben hinzufügen.`); return; }
+    const cfg = S.feldCfg = S.feldCfg || {}, k = 'f'+uid(), w = kfWerte(f.get('auswahl'));
+    cfg.eigene = [...(cfg.eigene||[]), {k, label:name}];
+    if(w.length){ cfg.optionen = cfg.optionen || {}; cfg.optionen[k] = w; }
+    kfSetzen(g, [...kfListe(g).filter(x => x!=='letzte'), k]); toast(`Feld ${name} angelegt`); }
   if(kind==='gruppeneu'){
     const name = String(f.get('name')||'').trim(); if(!name) return;
     if(alleGruppen().some(g => gnameRoh(g).toLowerCase()===name.toLowerCase())){ toast(`Die Gruppe „${name}“ gibt es schon`); return; }
@@ -3491,6 +3548,12 @@ function render(){
 }
 document.addEventListener('change', e => {
   const t = e.target;
+  if(t.dataset && t.dataset.kfname){ const k = t.dataset.kfname, name = t.value.trim(), cfg = S.feldCfg = S.feldCfg || {};
+    if(!name){ toast('Der Name darf nicht leer sein'); render(); return; }
+    const eigen = (cfg.eigene||[]).find(f => f.k===k);
+    if(eigen) eigen.label = name; else { cfg.namen = cfg.namen || {}; if(name===kLabelStandard(k, +t.dataset.g)) delete cfg.namen[k]; else cfg.namen[k] = name; }
+    save(); toast(`Feld heißt jetzt ${name}`); }
+  if(t.dataset && t.dataset.kfopt){ const cfg = S.feldCfg = S.feldCfg || {}; cfg.optionen = cfg.optionen || {}; cfg.optionen[t.dataset.kfopt] = kfWerte(t.value); save(); render(); toast('Auswahl gespeichert'); }
   if(t.dataset && t.dataset.gruppenname){ const g = +t.dataset.gruppenname, name = t.value.trim();
     if(!name){ toast('Der Name darf nicht leer sein'); render(); return; }
     S.gruppen = S.gruppen || {}; S.gruppen[g] = name; save(); toast(`Gruppe ${g} heißt jetzt ${name}`); }
