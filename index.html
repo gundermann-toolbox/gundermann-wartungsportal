@@ -170,6 +170,12 @@ body.annette-body{background:#fbf1de}
 .sptbl input{width:100%;min-width:70px;min-height:32px;padding:3px 6px;font-size:13px}
 .imwarn{display:grid;gap:8px;border:2px solid var(--bad);border-radius:8px;padding:10px 12px;background:rgba(180,51,42,.05)}
 section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
+@media (max-width:640px){ table.kt tr.kform td,table.kt tr.kleer td{display:block;text-align:left} table.kt tr.kform,table.kt tr.kleer{border:0;background:none;padding:2px 0;margin:2px 0} }
+.adrgrid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:12px}
+.adrgrid .adr-ort{grid-column:span 1}
+.adrgrid label:nth-child(3){grid-column:1;grid-row:2;max-width:160px}
+.adrgrid .adr-ort{grid-column:1/-1;grid-row:2;margin-left:172px}
+@media (max-width:480px){ .adrgrid .adr-ort{margin-left:0;grid-row:3} .adrgrid label:nth-child(3){max-width:none;grid-column:1/-1} }
 .impliste{display:grid;gap:6px;max-width:620px}
 .impt{font:inherit;display:grid;gap:1px;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--ink)}
 .impt:hover{background:var(--sunk);border-color:var(--accent)}
@@ -1432,7 +1438,7 @@ function vKunde(){
   return `
   <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
   <div class="head"><div><div class="eyebrow">Kunde · <span class="code">${h(k.nr)}</span></div><h1>${h(kName(k))}</h1><p class="sub">${h([k.adresse, k.ort].filter(Boolean).join(', '))}</p></div>
-    <button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button></div>
+    <div class="row"><button class="btn" data-act="kundeedit" data-id="${k.id}">Kunde bearbeiten</button><button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button></div></div>
   <section class="panel"><div class="facts">
     <div><span>Kundennummer</span><span class="mono">${h(k.nr)}</span></div>
     <div><span>Objekte</span>${an.length}</div>
@@ -1465,6 +1471,7 @@ function vAnlage(){
   <button class="back" data-act="kunde" data-id="${k.id}">← ${h(kName(k))}</button>
   <div class="head"><div><div class="eyebrow">${h(kName(k))} · Anlage ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
     <div class="row">${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : a.stillgelegt ? '' : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}
+      <button class="btn" data-act="objektedit" data-id="${o.id}">Objekt bearbeiten</button>
       ${a.stillgelegt ? '' : `<button class="btn danger" data-act="stilllegen" data-a="${aid}">Wartungsvertrag stilllegen</button>`}</div></div>
   ${a.stillgelegt ? `<section class="panel" style="border-color:var(--warn)"><div class="panel-h"><h2>Wartungsvertrag stillgelegt</h2>${pill('warn','Stillgelegt')}</div>
     <p style="margin:0">Seit ${fmt(a.stillgelegt.am)}${a.stillgelegt.grund ? ` · ${h(a.stillgelegt.grund)}` : ''} · eingetragen von ${h(a.stillgelegt.von)}. Die Anlage zählt nicht mehr bei Fälligkeiten, erscheint nicht auf der Karte und kann nicht geplant werden. Berichte, Dateien und Störungen bleiben erhalten.</p>
@@ -1493,27 +1500,26 @@ function vAnlage(){
     <div class="row" style="justify-content:flex-end">
       <button class="btn sm" data-act="impauf" data-a="${aid}">${UI.impAuf===aid ? 'Import schließen' : 'KWP- und Brandschutz-Liste importieren'}</button>
       <label class="btn sm upl" title="In Foxtag: Anlage → Komponenten → Import/Export → Komponenten exportieren">Aus Foxtag importieren<input type="file" accept=".xlsx,.csv" data-kimport="${aid}"></label>
-      <button class="btn sm" data-act="togglek">${UI.addK ? 'Schließen' : 'Komponente hinzufügen'}</button></div>
-    ${UI.addK ? `<form class="fgrid inset" data-form="addk">
-      <label class="f" for="nkt">Typ<select id="nkt" name="typ">${S.typen.map(t => `<option value="${t.id}">${h(typLabel(t))}</option>`).join('')}</select></label>
-      <label class="f" for="nkg">Gruppe<select id="nkg" name="gruppe"><option value="">Wie beim Typ</option>${gruppenOptionen()}</select></label>
-
-      <label class="f" for="nksn">S/N<input id="nksn" name="sn"></label>
-      <label class="f" for="nkbj">Baujahr<input id="nkbj" name="baujahr" inputmode="numeric"></label>
-      <label class="f" for="nkl">Letzte Prüfung<input id="nkl" name="letzte" type="date"></label>
-      <div style="grid-column:1/-1">${kFelderHtml(null, 'nk_')}</div>
-      <button class="btn pri" type="submit">Hinzufügen</button></form>` : ''}
-    ${ks.length ? `<div class="tbl-wrap"><table>
+    </div>
+    <div class="tbl-wrap"><table>
       <thead><tr><th>Nummer</th><th>Typ</th><th>Details</th><th>Fälligkeit</th><th></th></tr></thead>
-      <tbody>${ks.map(c => { const s = st(c), t = typOf(c), e = ersatz(c), so = stoerOffen(c.id).length;
-        const grp = c.gruppe!==lastG ? `<tr class="grp"><td colspan="5">Gruppe ${c.gruppe} · ${gname(c.gruppe)}</td></tr>` : ''; lastG = c.gruppe;
-        return grp + `<tr>
+      <tbody>${[...new Set([...alleGruppen().filter(g => g > 0), ...ks.map(c => c.gruppe)])].sort((x,y) => x-y).map(g => { const inG = ks.filter(c => c.gruppe===g), offen = UI.addK && UI.addG===g;
+        return `<tr class="grp"><td colspan="5"><div class="row" style="justify-content:space-between"><span>Gruppe ${g} · ${gname(g)} <span class="muted small" style="font-weight:400">(${inG.length})</span></span>
+            <button class="btn sm" data-act="kadd" data-g="${g}">${offen ? 'Schließen' : ico('plus')+' Komponente hinzufügen'}</button></div></td></tr>
+          ${offen ? `<tr class="kform"><td colspan="5"><form class="fgrid inset" data-form="addk"><input type="hidden" name="gruppe" value="${g}">
+            <label class="f" for="nkt">Komponenten-Typ<select id="nkt" name="typ">${kwTypen(g).map(t => `<option value="${t.id}">${h(typLabel(t))}</option>`).join('')}</select></label>
+            <label class="f" for="nksn">Seriennummer<input id="nksn" name="sn" autocomplete="off"></label>
+            <label class="f" for="nkbj">Baujahr<input id="nkbj" name="baujahr" inputmode="numeric" autocomplete="off"></label>
+            <label class="f" for="nkl">Letzte Prüfung<input id="nkl" name="letzte" type="date"></label>
+            <div style="grid-column:1/-1">${kFelderHtml(null, 'nk_')}</div>
+            <button class="btn pri" type="submit">Komponente anlegen</button></form></td></tr>` : ''}
+          ${inG.length ? inG.map(c => { const s = st(c), t = typOf(c), e = ersatz(c), so = stoerOffen(c.id).length; return `<tr>
         <td class="mono">${kNr(c)}</td>
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
         <td>${h(kText(c))}${c.hinweis ? `<span class="t2" style="color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
         <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${so ? `<span class="t2"><span class="pill bad">${so} Störung${so>1?'en':''}</span></span>` : ''}</td>
         <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button><button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
-      </tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">Noch keine Komponenten. Über „Aus Foxtag importieren“ oder „Komponente hinzufügen“ anlegen.</div>`}
+      </tr>`; }).join('') : (offen ? '' : `<tr class="kleer"><td colspan="5" class="muted small">Noch keine Komponenten in dieser Gruppe.</td></tr>`)}`; }).join('')}</tbody></table></div>
     </div>
   </details>`;
 }
@@ -2552,25 +2558,48 @@ function auftragNeu({aid, datum, zeit, techs, frei, umfang, gruppen, ansp, tel})
   return A;
 }
 const umfangText = A => A.umfang==='ganz' ? 'Ganze Anlage' : A.umfang==='gruppen' ? 'Gruppen '+(A.gruppen||[]).join(', ') : 'Nur fällige Komponenten';
-function neuKundeModal(){
-  openModal(`<h2>Kunde anlegen</h2>
+/* Adresse: im Formular vier Felder, gespeichert weiter als „Straße Hausnummer“ und „PLZ Ort“ */
+function adrTeilen(adresse, ort){
+  const a = String(adresse||'').trim(), m = a.match(/^(.*?)[\s,]+(\d+\s*[a-zA-Z]?(?:\s*[-/+]\s*\d+\s*[a-zA-Z]?)?)$/), o = String(ort||'').trim(), n = o.match(/^(\d{4,5})\s+(.*)$/);
+  return {strasse:m ? m[1] : a, hausnr:m ? m[2] : '', plz:n ? n[1] : (/^\d{4,5}$/.test(o) ? o : ''), ortname:n ? n[2] : (/^\d{4,5}$/.test(o) ? '' : o)};
+}
+const adrFelder = (adresse, ort) => { const t = adrTeilen(adresse, ort); return `<div class="adrgrid">
+    <label class="f adr-str" for="adrS">Straße<input id="adrS" name="strasse" value="${h(t.strasse)}" placeholder="z. B. Alte Bundesstraße" autocomplete="off"></label>
+    <label class="f" for="adrH">Hausnummer<input id="adrH" name="hausnr" value="${h(t.hausnr)}" placeholder="z. B. 21" autocomplete="off"></label>
+    <label class="f" for="adrP">Postleitzahl<input id="adrP" name="plz" value="${h(t.plz)}" inputmode="numeric" placeholder="z. B. 76846" autocomplete="off"></label>
+    <label class="f adr-ort" for="adrO">Ort<input id="adrO" name="ortname" value="${h(t.ortname)}" placeholder="z. B. Hauenstein" autocomplete="off"></label></div>`; };
+const adrLesen = f => { const w = k => String(f.get(k)||'').trim(); return {adresse:[w('strasse'), w('hausnr')].filter(Boolean).join(' '), ort:[w('plz'), w('ortname')].filter(Boolean).join(' ')}; };
+function kundeModal(k){
+  UI.kEditId = k ? k.id : null;
+  openModal(`<h2>${k ? 'Kunde bearbeiten' : 'Kunde anlegen'}</h2>
     <form data-form="neukunde" style="display:grid;gap:12px">
-      <div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required placeholder="z. B. MUSTER2" autocomplete="off"></label>
-        <label class="f" for="mkname">Name<input id="mkname" name="kname" required autocomplete="off"></label>
-        <label class="f" for="mka">Adresse<input id="mka" name="kadr" autocomplete="off"></label>
-        <label class="f" for="mko">PLZ / Ort<input id="mko" name="kort" placeholder="z. B. 76846 Hauenstein" autocomplete="off"></label></div>
-      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Kunde anlegen</button></div>
+      <div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required value="${h(k ? k.nr : '')}" placeholder="z. B. MUSTER2" autocomplete="off"></label>
+        <label class="f" for="mkname">Name<input id="mkname" name="kname" required value="${h(k ? k.name : '')}" autocomplete="off"></label></div>
+      ${adrFelder(k && k.adresse, k && k.ort)}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">${k ? 'Speichern' : 'Kunde anlegen'}</button></div>
     </form>`);
 }
+const neuKundeModal = () => kundeModal(null);
 function neuObjektModal(kid){
   if(kid) UI.neuK = kid;
   openModal(`<h2>Objekt anlegen</h2>
     <form data-form="neuobjekt" style="display:grid;gap:12px">
       <label class="f" for="mk">Kunde<select id="mk" name="k">${S.kunden.slice().sort((x,y) => cmpDe(kName(x), kName(y))).map(k => `<option value="${k.id}" ${UI.neuK===k.id ? 'selected' : ''}>${h(k.nr+' '+k.name)}</option>`).join('')}</select></label>
-      <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required placeholder="Aus KWP, z. B. W26-0603" autocomplete="off"></label>
-        <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="z. B. Musterschuh, Lager"></label>
-        <label class="f" for="moa">Adresse<input id="moa" name="oadr"></label><label class="f" for="moo">PLZ / Ort<input id="moo" name="oort" placeholder="z. B. 76846 Hauenstein"></label></div>
+      <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required placeholder="Aus KWP, z. B. W26-0603" autocomplete="off" autofocus></label>
+        <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="z. B. Musterschuh, Lager" autocomplete="off"></label></div>
+      ${adrFelder('', '')}
+      <p class="muted small" style="margin:0">Ohne Angabe wird die Adresse des Kunden übernommen.</p>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Anlegen</button></div>
+    </form>`);
+}
+function objektModal(o){
+  UI.oEditId = o.id;
+  openModal(`<h2>Objekt bearbeiten</h2>
+    <form data-form="objektedit" style="display:grid;gap:12px">
+      <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required value="${h(o.nr)}" autocomplete="off"></label>
+        <label class="f" for="mona">Objektname<input id="mona" name="oname" required value="${h(o.name)}" autocomplete="off"></label></div>
+      ${adrFelder(o.adresse, o.ort)}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div>
     </form>`);
 }
 
@@ -2866,9 +2895,19 @@ modal.addEventListener('submit', e => {
   }
   if(kind==='neukunde'){
     const nr = String(f.get('knr')||'').trim(), name = String(f.get('kname')||'').trim(); if(!nr || !name) return;
-    if(S.kunden.some(k => k.nr===nr)){ toast(`Kundennummer ${nr} gibt es schon`); return; }
-    const kid = 'k'+uid(); S.kunden.push({id:kid, nr, name, adresse:f.get('kadr')||'', ort:f.get('kort')||''});
+    const alt = UI.kEditId && by(S.kunden, UI.kEditId);
+    if(S.kunden.some(k => k.nr===nr && k!==alt)){ toast(`Kundennummer ${nr} gibt es schon`); return; }
+    if(alt){ Object.assign(alt, {nr, name}, adrLesen(f)); save(); closeModal(); render(); toast('Kunde gespeichert'); return; }
+    const kid = 'k'+uid(); S.kunden.push({id:kid, nr, name, ...adrLesen(f)});
     save(); closeModal(); UI.view = 'kunde'; UI.kunde = kid; render(); window.scrollTo(0,0); toast('Kunde angelegt. Jetzt ein Objekt anlegen.');
+  }
+  if(kind==='objektedit'){
+    const o = by(S.objekte, UI.oEditId); if(!o) return closeModal();
+    const nr = String(f.get('onr')||'').trim(), name = String(f.get('oname')||'').trim(); if(!nr || !name) return;
+    if(S.objekte.some(x => x.nr===nr && x!==o)){ toast(`Wartungsnummer ${nr} gibt es schon`); return; }
+    const adr = adrLesen(f);
+    if(adr.adresse!==String(o.adresse||'').trim() || adr.ort!==String(o.ort||'').trim()){ o.lat = null; o.lng = null; } // Kartenposition passt nicht mehr zur neuen Adresse
+    Object.assign(o, {nr, name}, adr); save(); closeModal(); render(); toast('Objekt gespeichert');
   }
   if(kind==='still'){
     const a = by(S.anlagen, UI.stillA); if(!a) return closeModal();
@@ -2877,7 +2916,10 @@ modal.addEventListener('submit', e => {
   }
   if(kind==='neuobjekt'){
     const kid = f.get('k'), k = by(S.kunden,kid);
-    const oid = 'o'+uid(); S.objekte.push({id:oid, kundeId:kid, nr:f.get('onr'), name:f.get('oname'), adresse:f.get('oadr')||k.adresse, ort:f.get('oort')||k.ort});
+    const onr = String(f.get('onr')||'').trim();
+    if(S.objekte.some(x => x.nr===onr)){ toast(`Wartungsnummer ${onr} gibt es schon`); return; }
+    const adr = adrLesen(f);
+    const oid = 'o'+uid(); S.objekte.push({id:oid, kundeId:kid, nr:onr, name:f.get('oname'), adresse:adr.adresse||k.adresse, ort:adr.ort||k.ort});
     const aid = 'a'+uid(); S.anlagen.push({id:aid, objektId:oid, name:'Wartung', hinweis:''});
     save(); closeModal(); UI.view = 'anlage'; UI.anlage = aid; UI.addK = false; UI.kw = null; UI.xi = null; render(); window.scrollTo(0,0); toast('Objekt angelegt. Jetzt die Listen importieren oder Komponenten von Hand anlegen.');
   }
@@ -2932,6 +2974,8 @@ const ACT = {
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
   neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(d.k); },
   neukunde: () => neuKundeModal(),
+  kundeedit: d => { const k = by(S.kunden, d.id); if(k) kundeModal(k); },
+  objektedit: d => { const o = by(S.objekte, d.id); if(o) objektModal(o); },
   impwahl: d => { UI.impA = d.id; UI.impQ = ''; UI.kw = null; UI.xi = null; render(); },
   impweg: () => { UI.impA = null; UI.kw = null; UI.xi = null; render(); setTimeout(() => document.getElementById('impq')?.focus(), 0); },
   spart: d => { UI.spArt = d.v; render(); },
@@ -2992,7 +3036,7 @@ const ACT = {
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit" style="background:var(--bad);border-color:var(--bad)">Stilllegen</button></div></form>`); },
   stillauf: d => { const a = by(S.anlagen, d.a); if(!a) return; delete a.stillgelegt; save(); render(); toast('Wartungsvertrag wieder aktiv'); },
   importieren: () => importModal(),
-  togglek: () => { UI.addK = !UI.addK; render(); },
+  kadd: d => { const g = +d.g; if(UI.addK && UI.addG===g) UI.addK = false; else { UI.addK = true; UI.addG = g; UI.kOpen = true; } render(); },
   af: d => { UI.af = d.v; render(); },
   sf: d => { UI.sf = d.v; render(); },
   at: d => { UI.at = d.v; render(); },
