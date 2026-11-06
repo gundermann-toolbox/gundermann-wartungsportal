@@ -170,6 +170,9 @@ body.annette-body{background:#fbf1de}
 .sptbl input{width:100%;min-width:70px;min-height:32px;padding:3px 6px;font-size:13px}
 .imwarn{display:grid;gap:8px;border:2px solid var(--bad);border-radius:8px;padding:10px 12px;background:rgba(180,51,42,.05)}
 section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
+.impliste{display:grid;gap:6px;max-width:620px}
+.impt{font:inherit;display:grid;gap:1px;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--ink)}
+.impt:hover{background:var(--sunk);border-color:var(--accent)}
 .impk-kopf{display:flex;align-items:center;gap:12px;margin:0 -16px;padding:12px 16px;color:#fff}
 .impk-kopf h2{color:#fff;margin:0}
 .impk-sub{font-size:13px;opacity:.9}
@@ -1975,10 +1978,19 @@ function spPanel(){
       ${L.fertig ? `<button class="btn" data-act="spzurueck">Einordnung zurücknehmen (${L.fertig})</button>` : ''}${L.weg ? `<button class="btn ghost" data-act="spwegauf">Übersprungene wieder anzeigen</button>` : ''}</div></section>`;
 }
 function spAnwenden(c, v){ c.snAlt = c.sn; if(v.baujahr && !c.baujahr) c.spBj = true; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
+function impTreffer(q){
+  q = String(q||'').trim().toLowerCase();
+  if(q.length < 2) return '';
+  const rows = S.anlagen.filter(a => !a.stillgelegt).map(a => ({a, ...ctx(a.id)})).filter(r => r.o && r.k && [r.o.nr, r.o.name, r.o.ort, r.o.adresse, r.k.nr, r.k.name].join(' ').toLowerCase().includes(q));
+  if(!rows.length) return `<div class="empty">Kein Objekt gefunden.</div>`;
+  return rows.slice(0,12).map(r => `<button class="impt" data-act="impwahl" data-id="${r.a.id}"><b><span class="mono">${h(r.o.nr)}</span> ${h(r.o.name)}</b><span class="muted small">${h(kName(r.k))} · ${h([r.o.adresse, r.o.ort].filter(Boolean).join(', '))}</span></button>`).join('') + (rows.length > 12 ? `<div class="muted small">Die ersten 12 von ${rows.length}. Bitte genauer suchen.</div>` : '');
+}
 function vImport(){
-  const opt = S.kunden.map(k => { const o = S.objekte.filter(o => o.kundeId===k.id).flatMap(o => S.anlagen.filter(a => a.objektId===o.id && !a.stillgelegt).map(a => `<option value="${a.id}" ${a.id===UI.impA ? 'selected' : ''}>${h(o.nr+' '+o.name)}</option>`)).join(''); return o ? `<optgroup label="${h(k.nr+' '+k.name)}">${o}</optgroup>` : ''; }).join('');
+  const gew = UI.impA && by(S.anlagen, UI.impA) ? ctx(UI.impA) : null;
   return `<section class="panel"><h2>Listen für ein Objekt importieren</h2>
-      <label class="f" style="max-width:520px">Für welches Objekt?<select data-impa><option value="">Bitte wählen</option>${opt}</select></label></section>
+      ${gew ? `<div class="row" style="justify-content:space-between"><div><span class="muted small" style="display:block">Gewähltes Objekt</span><b><span class="mono">${h(gew.o.nr)}</span> ${h(gew.o.name)}</b><span class="muted small" style="display:block">${h(kName(gew.k))} · ${h([gew.o.adresse, gew.o.ort].filter(Boolean).join(', '))}</span></div><button class="btn" data-act="impweg">Anderes Objekt suchen</button></div>`
+      : `<label class="f" for="impq" style="max-width:620px">Für welches Objekt? Wartungsnummer, Objekt, Kunde oder Ort eingeben<input id="impq" type="search" value="${h(UI.impQ||'')}" placeholder="z. B. W26-0603 oder Grundschule" autocomplete="off"></label>
+      <div id="impliste" class="impliste">${impTreffer(UI.impQ)}</div>`}</section>
     ${UI.impA && by(S.anlagen, UI.impA) ? impPanel(UI.impA) : ''}
     ${spPanel()}
     <section class="panel"><h2>Foxtag-Daten</h2>
@@ -2920,6 +2932,8 @@ const ACT = {
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
   neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(d.k); },
   neukunde: () => neuKundeModal(),
+  impwahl: d => { UI.impA = d.id; UI.impQ = ''; UI.kw = null; UI.xi = null; render(); },
+  impweg: () => { UI.impA = null; UI.kw = null; UI.xi = null; render(); setTimeout(() => document.getElementById('impq')?.focus(), 0); },
   spart: d => { UI.spArt = d.v; render(); },
   spmehr: () => { UI.spN = (UI.spN||40) + 100; render(); },
   spalle: () => { const gr = UI.spG || '', l = spListe().sicher.filter(x => gr==='' || x.c.gruppe===+gr); l.forEach(x => spAnwenden(x.c, x.v)); save(); UI.spArt = 'pruefen'; UI.spN = 40; render(); toast(`${l.length} Komponenten eingeordnet`); },
@@ -3344,6 +3358,7 @@ document.addEventListener('change', e => {
   if(t.dataset && t.dataset.typgruppe){ const ty = by(S.typen, t.dataset.typgruppe); if(ty){ ty.gruppe = +t.value; save(); toast('Gruppe des Typs geändert. Gilt für neue Komponenten.'); } }
 });
 const kopfFinden = grid => { const zaehl = r => (r||[]).filter(v => String(v??'').trim()).length; let kopf = 0; grid.slice(0,15).forEach((r,i) => { if(zaehl(r) > zaehl(grid[kopf])) kopf = i; }); return kopf; };
+document.addEventListener('input', e => { if(e.target.id!=='impq') return; UI.impQ = e.target.value; document.getElementById('impliste').innerHTML = impTreffer(UI.impQ); });
 const listeLesen = async file => { const r = await readTable(file, true), blaetter = Array.isArray(r) ? [{name:'', grid:r}] : r.blaetter; if(!blaetter.length) throw 0;
   return {name:file.name, blaetter, blatt:0, grid:blaetter[0].grid, kopf:kopfFinden(blaetter[0].grid)}; };
 const blattWaehlen = (x, i) => { x.blatt = i; x.grid = x.blaetter[i].grid; x.kopf = kopfFinden(x.grid); };
@@ -3354,7 +3369,6 @@ document.addEventListener('change', async e => {
     if(t.matches('[data-xifile]') && t.files[0]){ const g4 = alleGruppen().includes(4) ? 4 : alleGruppen()[0]; UI.xi = {...await listeLesen(t.files[0]), map:{}, anlage:t.dataset.xifile, gruppe:g4, typ:''}; xiErkennen(UI.xi); render(); return; }
     if(t.matches('[data-kwfile]') && t.files[0]){ UI.kw = {...await listeLesen(t.files[0]), aid:t.dataset.kwfile, map:{}, zeilen:[]}; kwErkennen(UI.kw); render(); return; }
   }catch(ex){ toast('Die Datei konnte nicht gelesen werden'); return; }
-  if(t.matches('[data-impa]')){ UI.impA = t.value; UI.kw = null; UI.xi = null; render(); return; }
   const x = UI.kw;
   if(x){
     if(t.dataset.kwz!=null){ x.zeilen[+t.dataset.kwz].an = t.checked; render(); return; }
