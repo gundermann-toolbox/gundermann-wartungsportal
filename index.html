@@ -811,10 +811,23 @@ function alleGruppen(){
 }
 const gruppenOptionen = wert => alleGruppen().map(g => `<option value="${g}" ${g===wert ? 'selected' : ''}>${g} ${gname(g)}</option>`).join('');
 /* Eigene Angaben je Komponente statt allem im Standort-Text (aus Foxtag). Ohne Angaben wird der alte Standort-Text gezeigt. */
-const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Bezeichnungsnummer (z. B. BSK)'],['zulassung','Zulassungsnummer'],['hinweis','Hinweis für den Techniker']];
-const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : (+c.gruppe===4 ? 'BSK ' : 'Nr. ')+c.bskNr), c.zulassung && 'Zul. '+c.zulassung].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
-const kFelderHtml = (c, pre) => `<div class="fgrid">${KFELDER.map(([k,l]) => `<label class="f" for="${pre}${k}">${l}<input id="${pre}${k}" name="${k}" value="${h((c||{})[k]||'')}" ${k==='luftart' ? 'list="luftarten"' : ''} autocomplete="off"></label>`).join('')}</div><datalist id="luftarten"><option value="Zuluft"><option value="Abluft"><option value="Zu- und Abluft"><option value="Außenluft"><option value="Fortluft"></datalist>`;
-const kFelderLesen = f => Object.fromEntries(KFELDER.map(([k]) => [k, String(f.get(k)||'').trim()]));
+const KFELDER = [['hersteller','Hersteller'],['modell','Typ / Modell'],['luftart','Zu- / Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Einbauort / Anlagenstandort'],['bezeichnung','Bezeichnung / zuständig für'],['bskNr','Bezeichnungsnummer (z. B. BSK)'],['zulassung','Zulassungsnummer'],['hinweis','Hinweis für den Techniker'],['steuerung','Steuerung'],['gehoertZu','Gehört zu welcher Anlage']];
+const kText = c => { const t = [c.hersteller, c.modell, c.luftart, c.luftmenge, c.leistung, c.einbauort, c.bezeichnung, c.bskNr && (/^bsk/i.test(c.bskNr) ? c.bskNr : (+c.gruppe===4 ? 'BSK ' : 'Nr. ')+c.bskNr), c.zulassung && 'Zul. '+c.zulassung, c.steuerung && 'Steuerung '+c.steuerung, c.gehoertZu && 'für '+c.gehoertZu].filter(Boolean); return t.length ? t.join(' · ') : (c.standort || ''); };
+/* Welche Felder je Gruppe abgefragt werden. Gruppen ohne Eintrag, zum Beispiel Sonstige oder eigene, zeigen alles. Bereits ausgefüllte Felder bleiben beim Bearbeiten immer sichtbar. */
+const K_ALLE = [...KFELDER.map(([k]) => k), 'sn', 'baujahr', 'letzte'];
+const K_LUEFTUNG = ['hersteller','modell','luftart','luftmenge','einbauort','bezeichnung'];
+const K_GRUPPE = {1:K_LUEFTUNG, 2:K_LUEFTUNG, 3:['hersteller','modell','leistung','einbauort','bezeichnung'], 4:['hersteller','modell','einbauort','bskNr'], 5:['hersteller','modell','baujahr','einbauort','gehoertZu'], 6:['hersteller','steuerung','baujahr','einbauort','bezeichnung']};
+const kLabel = (k, g) => k==='baujahr' ? (g===5 ? 'Einbaujahr' : 'Baujahr') : k==='sn' ? 'Seriennummer' : k==='letzte' ? 'Letzte Prüfung' : (KFELDER.find(f => f[0]===k)||[])[1];
+function kFormFelder(c, g, aid, pre){
+  const liste = K_GRUPPE[g] ? [...K_GRUPPE[g], ...K_ALLE.filter(k => !K_GRUPPE[g].includes(k) && k!=='letzte' && c && String(c[k]||'').trim())] : K_ALLE;
+  const anlagen = g===5 ? kompsOf(aid).filter(x => x.gruppe===1 || x.gruppe===2).map(x => `${kNr(x)} ${x.bezeichnung || [x.hersteller, x.modell].filter(Boolean).join(' ') || tname(typOf(x))}`) : [];
+  return `<div class="fgrid">${liste.map(k => { const id = pre+k, w = h((c||{})[k]||'');
+    const feld = k==='letzte' ? `<input id="${id}" name="${k}" type="date" value="${w}">` : `<input id="${id}" name="${k}" value="${w}" ${k==='luftart' ? 'list="luftarten"' : k==='gehoertZu' ? `list="kanlagen" placeholder="z. B. 1.1 Küche"` : ''} ${k==='baujahr' ? 'inputmode="numeric"' : ''} autocomplete="off">`;
+    return `<label class="f" for="${id}">${kLabel(k, g)}${feld}</label>`; }).join('')}</div>
+    <datalist id="luftarten"><option value="Zuluft"><option value="Abluft"><option value="Zu- und Abluft"><option value="Außenluft"><option value="Fortluft"></datalist>
+    <datalist id="kanlagen">${anlagen.map(t => `<option value="${h(t)}">`).join('')}</datalist>`;
+}
+const kFelderLesen = f => Object.fromEntries(K_ALLE.filter(k => f.has(k)).map(k => [k, k==='letzte' ? (f.get(k)||null) : String(f.get(k)||'').trim()]));
 const kNr = c => `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
 const nextDue = c => c.letzte ? addMonths(c.letzte, typOf(c).intervall) : null;
 function st(c){
@@ -1512,10 +1525,7 @@ function vAnlage(){
             <button class="btn sm" data-act="kadd" data-g="${g}">${offen ? 'Schließen' : ico('plus')+' Komponente hinzufügen'}</button></div></td></tr>
           ${offen ? `<tr class="kform"><td colspan="5"><form class="fgrid inset" data-form="addk"><input type="hidden" name="gruppe" value="${g}">
             <label class="f" for="nkt">Komponenten-Typ<select id="nkt" name="typ">${kwTypen(g).map(t => `<option value="${t.id}">${h(typLabel(t))}</option>`).join('')}</select></label>
-            <label class="f" for="nksn">Seriennummer<input id="nksn" name="sn" autocomplete="off"></label>
-            <label class="f" for="nkbj">Baujahr<input id="nkbj" name="baujahr" inputmode="numeric" autocomplete="off"></label>
-            <label class="f" for="nkl">Letzte Prüfung<input id="nkl" name="letzte" type="date"></label>
-            <div style="grid-column:1/-1">${kFelderHtml(null, 'nk_')}</div>
+            <div style="grid-column:1/-1">${kFormFelder(null, g, aid, 'nk_')}</div>
             <button class="btn pri" type="submit">Komponente anlegen</button></form></td></tr>` : ''}
           ${inG.length ? inG.map(c => { const s = st(c), t = typOf(c), e = ersatz(c), so = stoerOffen(c.id).length; return `<tr>
         <td class="mono">${kNr(c)}</td>
@@ -2505,13 +2515,9 @@ function kompEditModal(c){
         <label class="f" for="ken">Nummer<input id="ken" name="nr" type="number" min="1" value="${c.nr}" required></label>
         <label class="f" for="kes">Sub-Nummer<input id="kes" name="sub" type="number" min="0" value="${c.sub||0}"></label>
       </div>
-      <label class="f" for="keo">Standort-Text (aus Foxtag)<input id="keo" name="standort" value="${h(c.standort)}" placeholder="Hersteller | Typ | Raum"></label>
-      <div class="fgrid">
-        <label class="f" for="kesn">S/N<input id="kesn" name="sn" value="${h(c.sn)}"></label>
-        <label class="f" for="kebj">Baujahr<input id="kebj" name="baujahr" inputmode="numeric" value="${h(c.baujahr)}"></label>
-        <label class="f" for="kel">Letzte Prüfung<input id="kel" name="letzte" type="date" value="${c.letzte||''}"></label>
-      </div>
-      ${kFelderHtml(c, 'ke_')}
+      ${kFormFelder(c, c.gruppe, c.anlageId, 'ke_')}
+      <div class="fgrid">${K_GRUPPE[c.gruppe] ? `<label class="f" for="ke_letzte">Letzte Prüfung<input id="ke_letzte" name="letzte" type="date" value="${c.letzte||''}"></label>` : ''}
+        ${String(c.standort||'').trim() ? `<label class="f" for="keo">Standort-Text (aus Foxtag)<input id="keo" name="standort" value="${h(c.standort)}"></label>` : ''}</div>
       <p class="muted small" style="margin:0">Die nächste Fälligkeit ergibt sich aus letzter Prüfung und Prüfintervall des Typs.</p>
       <div class="row" style="justify-content:space-between">
         <button type="button" class="btn ghost danger" data-act="kdel">Komponente entfernen</button>
@@ -2886,7 +2892,7 @@ modal.addEventListener('submit', e => {
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
     const g = parseInt(f.get('gruppe'),10) || c.gruppe, nr = parseInt(f.get('nr'),10) || c.nr, sub = parseInt(f.get('sub'),10) || 0;
     if(S.komponenten.some(x => x!==c && !x.entfernt && x.anlageId===c.anlageId && x.gruppe===g && x.nr===nr && (x.sub||0)===sub)){ toast(`Nummer ${g}.${nr}${sub ? '.'+sub : ''} ist in dieser Anlage schon vergeben`); return; }
-    Object.assign(c, {typId:f.get('typ'), gruppe:g, nr, sub, standort:f.get('standort')||'', sn:f.get('sn')||'', baujahr:f.get('baujahr')||'', letzte:f.get('letzte')||null}, kFelderLesen(f));
+    Object.assign(c, {typId:f.get('typ'), gruppe:g, nr, sub}, f.has('standort') ? {standort:f.get('standort')||''} : {}, kFelderLesen(f));
     save(); closeModal(); render(); toast(`Komponente ${kNr(c)} gespeichert`);
   }
   if(kind==='aedit'){
@@ -3237,7 +3243,7 @@ app.addEventListener('submit', e => {
     const typId = f.get('typ'), t = by(S.typen,typId);
     const gr = parseInt(f.get('gruppe'),10) || t.gruppe;
     const nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===UI.anlage && c.gruppe===gr).map(c => c.nr)) + 1;
-    const c = {id:'c'+uid(), anlageId:UI.anlage, gruppe:gr, nr, typId, standort:'', ...kFelderLesen(f), sn:f.get('sn')||'', baujahr:f.get('baujahr')||'', letzte:f.get('letzte')||null};
+    const c = {id:'c'+uid(), anlageId:UI.anlage, gruppe:gr, nr, typId, standort:'', sn:'', baujahr:'', letzte:null, ...kFelderLesen(f)};
     S.komponenten.push(c); save(); render(); toast(`Komponente ${kNr(c)} angelegt`);
   }
   if(kind==='fadd'){
