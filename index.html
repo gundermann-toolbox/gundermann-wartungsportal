@@ -189,16 +189,28 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   table.kt tr.grp td{display:block;text-align:left;background:none}
   table.kt tr.click:hover td{background:none}
 }
-/* Druck / PDF: nur der Bericht */
+/* Druck / PDF: Bericht auf dem Gundermann-Briefbogen. thead und tfoot wiederholen sich je Seite und halten Kopf und Fuß frei. */
+#druck{display:none}
 @media print{
-  @page{size:A4;margin:14mm}
-  body.printing *{visibility:hidden}
-  body.printing .doc, body.printing .doc *{visibility:visible}
-  body.printing .doc{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;padding:0;border-radius:0}
-  body.printing .doc .vorschau-hinweis, body.printing .doc .no-print{display:none}
-  body.printing .doc section:not(.kblock){break-inside:avoid}
-  body.printing .doc .pgrp{break-inside:avoid}
-  body{background:#fff}
+  @page{size:A4;margin:6mm 0 0 0;@top-right{content:"Seite " counter(page) " von " counter(pages);font:8.5pt Arial,sans-serif;color:#555;padding-right:15mm}}
+  html,body{background:none!important;margin:0;padding:0}
+  body.printing > *:not(#druck){display:none!important}
+  body.printing #druck{display:block}
+  #druck .druck-bg{position:fixed;left:0;top:0;width:210mm;height:291mm;object-fit:cover;object-position:bottom;max-width:none}
+  #druck table.druck-tb{position:relative}
+  #druck table.druck-tb{width:100%;border-collapse:collapse;table-layout:fixed}
+  #druck .druck-tb > thead > tr > td,#druck .druck-tb > tbody > tr > td,#druck .druck-tb > tfoot > tr > td{padding:0 15mm 0 21mm;border:0;background:none}
+  #druck .druck-kopf{height:44mm}
+  #druck .druck-fuss{height:24mm}
+  #druck .doc{max-width:none;width:100%;padding:0;box-shadow:none;border-radius:0;background:none;gap:12px;font-size:11.5px;line-height:1.35}
+  #druck .doc-head{border:0;padding:0;justify-content:flex-end}
+  #druck .doc-head > div:first-child{display:none}
+  #druck .doc-type{font-size:20px}
+  #druck .vorschau-hinweis,#druck .no-print{display:none}
+  #druck .doc section:not(.kblock){break-inside:avoid}
+  #druck .doc .pgrp{break-inside:avoid}
+  #druck .doc .khead{break-inside:avoid;break-after:avoid}
+  #druck .doc .sigs{break-inside:avoid}
 }
 .who select{min-height:34px;padding:5px 8px;width:auto}
 .modes{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -3157,15 +3169,20 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') document.queryS
 document.addEventListener('click', e => { if(!e.target.closest('.gsuche')) document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 
 /* Bericht als PDF: Druckfenster nur mit dem Bericht, Dateiname aus Auftrag und Objekt */
-function pdfSpeichern(A){
-  if(!A || !document.querySelector('.doc')) return;
+async function pdfSpeichern(A){
+  const doc = document.querySelector('.doc'); if(!A || !doc) return;
   const {o} = ctx(A.anlageId), titel = document.title;
+  document.getElementById('druck')?.remove();
+  const d = document.createElement('div'); d.id = 'druck';
+  d.innerHTML = `<img class="druck-bg" src="briefbogen.jpg" alt=""><table class="druck-tb"><thead><tr><td><div class="druck-kopf"></div></td></tr></thead><tbody><tr><td class="druck-inhalt"></td></tr></tbody><tfoot><tr><td><div class="druck-fuss"></div></td></tr></tfoot></table>`;
+  d.querySelector('.druck-inhalt').appendChild(doc.cloneNode(true));
+  document.body.appendChild(d);
+  try{ await d.querySelector('img').decode(); }catch(e){}
   document.title = `Wartungsbericht_${A.nr}_${(o.nr||'Objekt').replace(/[^\w-]/g,'')}`;
   document.body.classList.add('printing');
-  const fertig = () => { document.body.classList.remove('printing'); document.title = titel; removeEventListener('afterprint', fertig); };
+  const fertig = () => { document.body.classList.remove('printing'); document.title = titel; d.remove(); removeEventListener('afterprint', fertig); };
   addEventListener('afterprint', fertig);
   try{ window.print(); }catch(e){ fertig(); toast('Drucken ist hier nicht möglich. Bitte die Seite im Browser öffnen.'); }
-  setTimeout(() => { if(document.body.classList.contains('printing') && !matchMedia('print').matches) fertig(); }, 60000);
 }
 
 /* Tabellen am Handy als Karten: jede Zelle bekommt die Spaltenüberschrift als Beschriftung */
