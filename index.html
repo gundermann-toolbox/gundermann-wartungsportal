@@ -177,9 +177,9 @@ section.panel.impk{border-width:3px;padding-top:0;overflow:hidden}
 section.panel.impk-kwp{border-color:var(--brand)}
 .impk-kwp .impk-kopf{background:var(--brand)}
 .impk-kwp .impk-nr{color:var(--brand)}
-section.panel.impk-bsk{border-color:var(--mag);margin-top:14px}
-.impk-bsk .impk-kopf{background:var(--mag)}
-.impk-bsk .impk-nr{color:var(--mag)}
+section.panel.impk-bsk{border-color:var(--brand);margin-top:14px}
+.impk-bsk .impk-kopf{background:var(--brand)}
+.impk-bsk .impk-nr{color:var(--brand)}
 .kwtbl select{min-width:150px;width:100%}
 .kwtbl tr.kwoffen td{background:rgba(201,138,0,.07)}
 .kwspalten summary{cursor:pointer;font-weight:600}
@@ -1675,6 +1675,8 @@ function vStoerungen(){
 }
 
 /* ---------- Administration ---------- */
+/* Anzeige, damit Checklisten nicht wie die gleichnamigen Gruppen aussehen. Der gespeicherte Name bleibt, der Foxtag-Import ordnet darüber zu. */
+const clTitel = c => { const n = c.name || ''; return !n || /checkliste/i.test(n) ? n : 'Checkliste '+n; };
 function vAdmin(){
   if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
   const tabs = [['ideen','Notizen'],['gruppen','Gruppen'],['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['import','Import'],['it','IT & Einrichtung']];
@@ -1692,14 +1694,14 @@ function vAdmin(){
     <p class="muted small" style="margin:0">Damit neue Komponenten in einer Gruppe landen: beim Komponenten-Typ die Gruppe einstellen oder sie beim Anlegen der Komponente auswählen.</p></section>`; }
   if(UI.at==='typen') body = `<section class="panel"><p class="muted" style="margin:0">Der Typ bestimmt Prüfintervall und Checkliste. Kürzel wie in Foxtag: [V] vierteljährlich, [H] halbjährlich, [J] jährlich, [Z] alle 2 Jahre.</p>
     <div class="tbl-wrap"><table><thead><tr><th>Typ</th><th>Gruppe</th><th>Intervall</th><th>Checkliste</th><th>Austausch</th><th>Anzahl</th></tr></thead><tbody>
-    ${S.typen.map(t => `<tr><td>${h(typLabel(t))}</td><td><select data-typgruppe="${t.id}" aria-label="Gruppe von ${h(typLabel(t))}">${gruppenOptionen(t.gruppe)}</select></td><td>${t.intervall} Monate</td><td><button class="btn ghost sm" data-act="clopen" data-id="${t.checklisteId}">${h((by(S.checklisten,t.checklisteId)||{}).name)}</button></td>
+    ${S.typen.map(t => `<tr><td>${h(typLabel(t))}</td><td><select data-typgruppe="${t.id}" aria-label="Gruppe von ${h(typLabel(t))}">${gruppenOptionen(t.gruppe)}</select></td><td>${t.intervall} Monate</td><td><button class="btn ghost sm" data-act="clopen" data-id="${t.checklisteId}">${h(clTitel(by(S.checklisten,t.checklisteId)||{}))}</button></td>
       <td>${t.ersatzJahre ? t.ersatzJahre+' Jahre ab Baujahr' : '–'}</td><td class="mono">${S.komponenten.filter(c => c.typId===t.id).length}</td></tr>`).join('')}
     </tbody></table></div></section>`;
   if(UI.at==='checklisten'){
     const cl = by(S.checklisten, UI.cl) || S.checklisten[0];
-    body = `<div class="chips">${S.checklisten.map(c => `<button class="chip ${cl.id===c.id?'on':''}" data-act="clopen" data-id="${c.id}">${h(c.name)}</button>`).join('')}</div>
+    body = `<div class="chips">${S.checklisten.map(c => `<button class="chip ${cl.id===c.id?'on':''}" data-act="clopen" data-id="${c.id}">${h(clTitel(c))}</button>`).join('')}</div>
     <section class="panel">
-      <div class="panel-h"><h2>${h(cl.name)}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${cl.auftrag ? 'Aufträge allgemein (in der App derzeit ausgeblendet)' : S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
+      <div class="panel-h"><h2>${h(clTitel(cl))}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${cl.auftrag ? 'Aufträge allgemein (in der App derzeit ausgeblendet)' : S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
       <div class="tbl-wrap"><table><thead><tr><th>Feldname</th><th>Feldtyp</th><th>Einheit / Grenzwert</th><th></th></tr></thead><tbody>
       ${cl.felder.map((x,i) => `<tr class="${x.typ==='ueberschrift'?'grp':''}"><td>${h(x.label)}</td><td>${FELDTYPEN[x.typ]}</td><td class="mono">${x.typ==='wert' ? h(x.einheit)+(x.max!=null ? ' · ≤ '+x.max : '') : ''}</td>
         <td><div class="row" style="flex-wrap:nowrap"><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="-1" aria-label="Nach oben" ${i?'':'disabled'}>↑</button><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="1" aria-label="Nach unten" ${i<cl.felder.length-1?'':'disabled'}>↓</button><button class="btn ghost sm danger" data-act="fdel" data-id="${x.id}">Löschen</button></div></td></tr>`).join('')}
