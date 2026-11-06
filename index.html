@@ -587,7 +587,7 @@ const uid = () => Math.random().toString(36).slice(2,9);
 const num = v => parseFloat(String(v).replace(/\./g,'').replace(',','.'));
 const nowTime = () => { const d = new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); };
 
-const GRUPPEN = {1:'Zentrale Lüftungsanlage', 2:'Dezentrale Lüftungsanlage', 3:'Klima', 4:'Brandschutz', 5:'Rauchmelder', 6:'Sonstiges'};
+const GRUPPEN = {1:'Zentrale Lüftungsanlage', 2:'Dezentrale Lüftungsanlage', 3:'Klima', 4:'Brandschutz', 5:'Rauchmelder', 6:'Schaltschrank', 7:'Sonstige'};
 const CODES = {V:['Vierteljährlich',3], H:['Halbjährlich',6], J:['Jährlich',12], Z:['Alle 2 Jahre',24]};
 const FELDTYPEN = {ueberschrift:'Überschrift', ionv:'i.O. | n.i.O. | n.v.', ion:'i.O. | n.i.O.', janein:'Ja | Nein', janeinnv:'Ja | Nein | n.v.', checkbox:'Checkbox', text:'Text', wert:'Zahl / Messwert'};
 /* Checklisten 1:1 aus Foxtag (Wartungsanwendung „Wartung“), Stand 02.11.2026. cl-vor/cl-nach gelten für den ganzen Auftrag. */
@@ -637,7 +637,7 @@ function seed(){
     T(3,'H','cl-klima'), T(3,'J','cl-klima'),
     T(4,'J','cl-bsk'),
     T(5,'J','cl-rm', {ersatzJahre:8}),
-    T(6,'H','cl-sonst'), T(6,'J','cl-sonst')
+    T(7,'H','cl-sonst'), T(7,'J','cl-sonst')
   ];
   typen.push({id:'t-ss', gruppe:6, name:'Schaltschrank', code:'', intervall:12, checklisteId:'cl-ss'},
     {id:'t-msr', gruppe:1, name:'MSR', code:'', intervall:12, checklisteId:'cl-msr'},
@@ -767,6 +767,10 @@ function migrate(){
     const rmCl = by(S.checklisten, 'cl-rm');
     if(rmCl && !rmCl.felder.some(f => f.id==='cl-rm-vg')) rmCl.felder.splice(1, 0, {id:'cl-rm-vg', typ:'wert', label:'Verschmutzungsgrad', einheit:'%', max:70, ab:true});
     S.v = 6;
+  }
+  if((S.v||0) < 7){ // Gruppe 7 Sonstige: die allgemeinen Sonstiges-Typen gehören jetzt dorthin
+    S.typen.filter(t => t.gruppe===6 && t.checklisteId==='cl-sonst').forEach(t => { t.gruppe = 7; t.name = t.name || 'Sonstiges'; });
+    S.v = 7;
   }
   // Recht „Aufträge vor Ort anlegen“: standardmäßig für alle mit App-Zugang
   S.users.forEach(u => { if(u.eigen===undefined) u.eigen = !!u.app; });
@@ -2708,7 +2712,7 @@ function importKomponenten(aid, rows){
   S.komponenten = S.komponenten.filter(c => c.anlageId!==aid);
   S.gruppen = S.gruppen || {};
   rows.forEach(r => {
-    const g = parseInt(r['GRUPPE.NUMMER'],10) || 6;
+    const g = parseInt(r['GRUPPE.NUMMER'],10) || 7;
     if(r['GRUPPE.NAME'] && r['GRUPPE.NAME']!==GRUPPEN[g]) S.gruppen[g] = r['GRUPPE.NAME'];
     const name = r['TYP.NAME'] || r['GRUPPE.NAME'] || 'Komponente';
     const code = ((r['TYP.HERSTELLER']+' '+r['TYP.MODELL']).match(/\[([VHJZ])\]/)||[])[1] || '';
@@ -2788,7 +2792,7 @@ function importBundle(B, replace){
   S.gruppen = S.gruppen || {};
   B.komponenten.forEach(r => {
     const a = aByKey[r.anlageKey]; if(!a) return;
-    const g = +r.gruppe || 6;
+    const g = +r.gruppe || 7;
     if(gnMehr[r.gruppe] && gnMehr[r.gruppe]!==GRUPPEN[g]) S.gruppen[g] = gnMehr[r.gruppe];
     const name = r.typName || r.gruppeName || 'Komponente', code = r.code || '';
     let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
