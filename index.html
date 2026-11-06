@@ -169,6 +169,12 @@ body.annette-body{background:#fbf1de}
 .an-regen{position:absolute;top:0;font-size:1.3em;opacity:0;pointer-events:none;animation:an-fall 3s ease-in 1 both}
 .sptbl input{width:100%;min-width:70px;min-height:32px;padding:3px 6px;font-size:13px}
 .imwarn{display:grid;gap:8px;border:2px solid var(--bad);border-radius:8px;padding:10px 12px;background:rgba(180,51,42,.05)}
+.kwtbl select{min-width:150px;width:100%}
+.kwtbl tr.kwoffen td{background:rgba(201,138,0,.07)}
+.kwspalten summary{cursor:pointer;font-weight:600}
+.xivier{display:grid;gap:8px}
+.xiz{display:grid;grid-template-columns:minmax(0,240px) minmax(0,300px) minmax(0,1fr);gap:10px;align-items:center}
+@media (max-width:760px){ .xiz{grid-template-columns:minmax(0,1fr)} }
 .luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
 .lueck:hover{border-color:var(--accent)}
@@ -1452,6 +1458,7 @@ function vAnlage(){
     <div><span>Hinweise für den Techniker</span>${h(a.hinweis || '–')}</div>
     ${a.techName ? `<div><span>Techniker laut Foxtag</span>${h(a.techName)}</div>` : ''}
   </div></section>
+  ${!ks.length || UI.impAuf===aid ? impPanel(aid) : ''}
   ${stoerPanel(aid)}
   <div class="grid2">
     <section class="panel"><h2>Aufträge</h2>${auftragTable(auftr, true)}</section>
@@ -1463,6 +1470,7 @@ function vAnlage(){
       <span class="row">${zaehl('bad') ? `<span class="pill bad">${zaehl('bad')} überfällig</span>` : ''}${zaehl('warn') ? `<span class="pill warn">${zaehl('warn')} fällig</span>` : ''}<span class="muted small kdet-hint"></span></span></summary>
     <div style="display:grid;gap:12px;margin-top:12px">
     <div class="row" style="justify-content:flex-end">
+      <button class="btn sm" data-act="impauf" data-a="${aid}">${UI.impAuf===aid ? 'Import schließen' : 'KWP- und Brandschutz-Liste importieren'}</button>
       <label class="btn sm upl" title="In Foxtag: Anlage → Komponenten → Import/Export → Komponenten exportieren">Aus Foxtag importieren<input type="file" accept=".xlsx,.csv" data-kimport="${aid}"></label>
       <button class="btn sm" data-act="togglek">${UI.addK ? 'Schließen' : 'Komponente hinzufügen'}</button></div>
     ${UI.addK ? `<form class="fgrid inset" data-form="addk">
@@ -1747,21 +1755,108 @@ function vIdeen(){
 }
 /* Excel-Import: Spalten frei den Feldern zuordnen, z. B. Brandschutzklappen-Listen */
 const XI_FELDER = [...KFELDER, ['sn','S/N'], ['baujahr','Baujahr']];
-const XI_ERKENNEN = {hersteller:/hersteller|fabrikat/i, modell:/^typ|modell|bauart/i, bskNr:/bsk|klappe/i, einbauort:/einbauort|standort|raum|lage|\bort\b/i, bezeichnung:/zust(ä|ae|a)ndig|bereich|bezeichnung/i, luftmenge:/luftmenge|volumenstrom|m³|m3/i, luftart:/zu.*ab|luftart|medium/i, zulassung:/zulass/i, sn:/s\/n|serien/i, baujahr:/baujahr/i};
+const XI_VIER = [['hersteller','Hersteller'],['modell','Typ'],['einbauort','Einbauort'],['bskNr','Bezeichnung (Klappen-Nummer)']], XI_MEHR = [['hinweis','Bemerkung (Hinweis für den Techniker)'],['bezeichnung','Wofür zuständig'],['luftart','Zu- / Abluft'],['zulassung','Zulassungsnummer'],['sn','Seriennummer'],['baujahr','Baujahr']];
+const XI_ERKENNEN = {hersteller:/hersteller|fabrikat/i, modell:/\btyp\b|modell|bauart/i, bskNr:/bsk|klappe/i, hinweis:/bemerkung/i, einbauort:/einbauort|standort|raum|lage|\bort\b/i, bezeichnung:/zust(ä|ae|a)ndig|bereich|bezeichnung/i, luftmenge:/luftmenge|volumenstrom|m³|m3/i, luftart:/zu.*ab|luftart|medium/i, zulassung:/zulass/i, sn:/s\/n|serien/i, baujahr:/baujahr/i};
 const xiSpalte = i => { let t = ''; i++; while(i > 0){ const r = (i-1)%26; t = String.fromCharCode(65+r)+t; i = (i-1-r)/26; } return t; };
 function xiKopf(x){ return (x.grid[x.kopf]||[]).map(v => String(v??'').trim()); }
 function xiErkennen(x){ const kopf = xiKopf(x); x.map = {}; XI_FELDER.forEach(([k]) => { const re = XI_ERKENNEN[k]; if(!re) return; const i = kopf.findIndex((v,j) => v && re.test(v) && !Object.values(x.map).includes(j)); if(i>=0) x.map[k] = i; }); }
 const xiNorm = v => String(v||'').toLowerCase().replace(/[\s._\-\/]/g,'');
 function xiPlan(x){
-  const plan = {neu:[], upd:[], leer:0}, felder = Object.keys(x.map); if(!x.anlage || !felder.length) return plan;
-  const vorhanden = kompsOf(x.anlage);
-  x.grid.slice(x.kopf+1).forEach(r => {
+  const plan = {neu:[], upd:[], leer:0, klappen:0, ohne:0}, felder = Object.keys(x.map); if(!x.anlage || !felder.length) return plan;
+  const vorhanden = kompsOf(x.anlage).filter(c => c.gruppe===x.gruppe), frei = new Set(vorhanden);
+  plan.klappen = vorhanden.length;
+  const zeilen = [];
+  let stock = '';
+  x.grid.slice(x.kopf+1).forEach(r => { const zellen = r.map(v => String(v??'').trim()).filter(Boolean);
+    if(!zellen.length || zellen.join(' ')==='.') return;
+    if(zellen.some(v => /unterschrift/i.test(v))){ plan.leer++; return; }
+    if(zellen.length===1){ stock = zellen[0]; return; } // Zwischenzeile wie „EG“ oder „1. OG“
     const w = {}; felder.forEach(k => { const v = String(r[x.map[k]]??'').trim(); if(v) w[k] = v; });
     if(!Object.keys(w).length){ plan.leer++; return; }
-    const key = xiNorm(w.bskNr), c = x.abgleich && key ? vorhanden.find(c => [c.bskNr, c.sn, c.zulassung].some(v => xiNorm(v)===key)) : null;
-    if(c) plan.upd.push({c, w}); else plan.neu.push({w});
-  });
+    if(w.modell) w.modell = spModell(w.modell);
+    if(stock && w.einbauort) w.einbauort = stock+', '+w.einbauort;
+    zeilen.push({w}); });
+  // Erst gleiche Nummern zuordnen, den Rest der Reihe nach
+  zeilen.forEach(z => { const key = xiNorm(z.w.bskNr); if(!key) return; const c = [...frei].find(c => [c.bskNr, c.sn, c.zulassung].some(v => xiNorm(v)===key)); if(c){ z.c = c; frei.delete(c); } });
+  const rest = [...frei];
+  zeilen.forEach(z => { if(!z.c && rest.length){ z.c = rest.shift(); frei.delete(z.c); } if(z.c) plan.upd.push(z); else plan.neu.push(z); });
+  plan.ohne = frei.size;
   return plan;
+}
+/* KWP-Liste aus dem Wartungswesen: jede Zeile bekommt von Hand eine Gruppe, die Anzahl wird zu einzelnen Komponenten */
+const KW_FELDER = [['bezeichnung','Bezeichnung (wofür zuständig)'],['hersteller','Hersteller'],['modell','Typ'],['anzahl','Anzahl'],['zuluft','Zuluft (Menge)'],['abluft','Abluft (Menge)'],['info','Filter / Info'],['keilriemen','Keilriemen'],['leistung','Leistung'],['einbauort','Einbauort'],['sn','Seriennummer'],['baujahr','Baujahr']];
+const KW_ERKENNEN = {bezeichnung:/^anlage|bezeichnung|artikel|ger(ä|ae)t|komponente|beschreibung/i, anzahl:/^anzahl$|^menge$|stk|stück/i, hersteller:/fabrikat|hersteller/i, modell:/\btyp\b|modell|bauart/i, zuluft:/^zuluft/i, abluft:/^abluft/i, info:/^info|filter/i, keilriemen:/keilriemen/i, leistung:/leistung/i, einbauort:/einbauort|standort|raum/i, sn:/s\/n|serien/i, baujahr:/baujahr/i};
+const kwAnzahl = v => { const n = parseInt(String(v||'').replace(/[^\d]/g,''), 10); return n >= 1 ? Math.min(n, 500) : 1; };
+function kwZeilenBauen(x){
+  const b = x.map.bezeichnung; x.zeilen = [];
+  x.grid.slice(x.kopf+1).forEach(r => { const w = {}; KW_FELDER.forEach(([k]) => { if(x.map[k]!=null){ const v = String(r[x.map[k]]??'').trim(); if(v) w[k] = v; } }); if(Object.keys(w).some(k => k!=='anzahl')) x.zeilen.push({w, f:kwFelder(w), n:kwAnzahl(w.anzahl), g:'', t:'', an:false}); });
+}
+/* Aus Zuluft-/Abluft-Mengen, Filter und Keilriemen die Felder der Komponente machen */
+function kwFelder(w){ const {anzahl, zuluft, abluft, info, keilriemen, ...r} = w, zahl = v => /\d/.test(v||'') ? String(v).trim() : '';
+  const z = zahl(zuluft), a = zahl(abluft);
+  if(z && a){ r.luftart = 'Zu- und Abluft'; r.luftmenge = z===a ? z+' m³/h' : `Zuluft ${z} / Abluft ${a} m³/h`; }
+  else if(z){ r.luftart = 'Zuluft'; r.luftmenge = z+' m³/h'; }
+  else if(a){ r.luftart = 'Abluft'; r.luftmenge = a+' m³/h'; }
+  const hinw = [info && !/^ohne$/i.test(info.trim()) && 'Filter: '+info.trim().replace(/\s+/g,' '), keilriemen && !/^ohne$/i.test(keilriemen.trim()) && 'Keilriemen: '+keilriemen.trim().replace(/\s+/g,' ')].filter(Boolean);
+  if(hinw.length) r.hinweis = hinw.join(' · ');
+  if(r.modell) r.modell = spModell(r.modell);
+  return r; }
+function kwErkennen(x){ const kopf = xiKopf(x); x.map = {}; KW_FELDER.forEach(([k]) => { const i = kopf.findIndex((v,j) => v && KW_ERKENNEN[k].test(v) && !Object.values(x.map).includes(j)); if(i>=0) x.map[k] = i; }); kwZeilenBauen(x); }
+const kwTypen = g => { const l = S.typen.filter(t => t.gruppe===g); return l.length ? l : S.typen; };
+function kwHtml(aid){
+  const x = UI.kw;
+  if(!x || x.aid!==aid) return `<label class="btn pri upl" style="justify-self:start">KWP-Liste auswählen (Excel oder CSV)<input type="file" accept=".xlsx,.csv" data-kwfile="${aid}"></label>`;
+  const kopf = xiKopf(x), spalten = kopf.map((v,i) => `<option value="${i}">${xiSpalte(i)}: ${h(v || '(leer)')}</option>`).join('');
+  const offen = x.zeilen.filter(z => z.g==='').length, summe = x.zeilen.filter(z => z.g && z.g!=='x').reduce((s,z) => s+z.n, 0), markiert = x.zeilen.filter(z => z.an).length;
+  const hat = kompsOf(aid).length;
+  return `<div class="row" style="justify-content:space-between"><b>${h(x.name)}</b><button class="btn sm ghost" data-act="kwweg">Andere Datei wählen</button></div>
+    <div class="fgrid">${blattFeld(x, 'data-kw')}</div>
+    <details class="kwspalten"><summary>Spalten prüfen (bereits vorausgefüllt)</summary><div class="fgrid" style="margin-top:8px">
+      <label class="f">Zeile mit den Überschriften<input type="number" min="1" max="${x.grid.length}" value="${x.kopf+1}" data-kw="kopf"></label>
+      ${KW_FELDER.map(([k,l]) => `<label class="f">${l}<select data-kw="map:${k}"><option value="">Nicht übernehmen</option>${spalten.replace(`value="${x.map[k]}"`, `value="${x.map[k]}" selected`)}</select></label>`).join('')}</div></details>
+    ${x.zeilen.length ? `<div class="row" style="align-items:end"><label class="f">Mehrere auf einmal: Gruppe für ${markiert} markierte Zeilen<select data-kw="sammel"><option value="">Bitte wählen</option><option value="x">Nicht übernehmen</option>${gruppenOptionen()}</select></label>
+      <button class="btn sm" data-act="kwalle">${x.zeilen.every(z => z.an) ? 'Keine markieren' : 'Alle markieren'}</button></div>
+    <div class="tbl-wrap"><table class="kwtbl"><thead><tr><th style="width:34px"></th><th>Aus der Liste</th><th style="width:70px">Anzahl</th><th>Gruppe</th><th>Komponenten-Typ</th></tr></thead><tbody>
+      ${x.zeilen.map((z,i) => { const g = +z.g, typen = z.g && z.g!=='x' ? kwTypen(g) : []; if(typen.length && !typen.some(t => t.id===z.t)) z.t = typen[0].id;
+        return `<tr class="${z.g==='' ? 'kwoffen' : ''}"><td><input type="checkbox" data-kwz="${i}" ${z.an ? 'checked' : ''} aria-label="Zeile ${i+1} markieren"></td>
+          <td><b style="font-weight:600">${h(z.w.bezeichnung || z.w.modell || z.w.hersteller || '–')}</b><span class="t2">${h([z.f.hersteller, z.f.modell, z.f.luftart, z.f.luftmenge].filter(Boolean).join(' · '))}</span></td>
+          <td><input type="number" min="1" max="500" value="${z.n}" data-kwn="${i}" aria-label="Anzahl" style="width:60px"></td>
+          <td><select data-kwg="${i}" aria-label="Gruppe"><option value="" ${z.g==='' ? 'selected' : ''}>Bitte wählen</option><option value="x" ${z.g==='x' ? 'selected' : ''}>Nicht übernehmen</option>${gruppenOptionen(g)}</select></td>
+          <td>${typen.length ? `<select data-kwt="${i}" aria-label="Typ">${typen.map(t => `<option value="${t.id}" ${t.id===z.t ? 'selected' : ''}>${h(typLabel(t))}</option>`).join('')}</select>` : ''}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    <div class="summary" style="padding:10px 14px;border:2px solid ${offen ? 'var(--warn)' : 'var(--line-strong)'};border-radius:8px">${offen ? `<b>${offen} Zeilen</b> haben noch keine Gruppe. ` : ''}<b>${summe} Komponenten</b> werden angelegt${hat ? `, zusätzlich zu den ${hat} vorhandenen` : ''}.</div>
+    <div><button class="btn pri" data-act="kwstart">${summe} Komponenten anlegen</button></div>` : `<div class="empty">Keine Zeilen erkannt. Bitte oben die Spalten zuordnen.</div>`}`;
+}
+function xiHtml(aid){
+  const x = UI.xi;
+  if(!x) return `<label class="btn pri upl" style="justify-self:start">Brandschutz-Liste auswählen (Excel oder CSV)<input type="file" accept=".xlsx,.csv" data-xifile="${aid}"></label>`;
+  x.anlage = aid;
+  const kopf = xiKopf(x), spalten = kopf.map((v,i) => `<option value="${i}">${xiSpalte(i)}: ${h(v || '(leer)')}</option>`).join('');
+  const bsp = i => { const r = x.grid.slice(x.kopf+1).find(r => String(r[i]??'').trim() && r.filter(v => String(v??'').trim()).length > 1); return r ? String(r[i]).trim() : ''; };
+  const plan = xiPlan(x), felder = Object.keys(x.map), vorschau = [...plan.upd, ...plan.neu].slice(0,5), zeilen = plan.upd.length + plan.neu.length;
+  const typen = S.typen.filter(t => t.gruppe===x.gruppe), typListe = typen.length ? typen : S.typen;
+  if(!typListe.some(t => t.id===x.typ)) x.typ = typListe[0].id;
+  const passt = zeilen===plan.klappen;
+  const xiZeile = (k,l) => `<div class="xiz"><label for="xi_${k}"><b style="font-weight:600">${l}</b></label><select id="xi_${k}" data-xi="map:${k}"><option value="">Nicht übernehmen</option>${spalten.replace(`value="${x.map[k]}"`, `value="${x.map[k]}" selected`)}</select><span class="muted small">${x.map[k]!=null ? 'z. B. '+h(bsp(x.map[k])) : ''}</span></div>`;
+  return `<div class="row" style="justify-content:space-between"><b>${h(x.name)}</b><button class="btn sm ghost" data-act="xiweg">Andere Datei wählen</button></div>
+    <div class="fgrid">${blattFeld(x, 'data-xi')}
+      <label class="f">In welcher Gruppe sind die Klappen?<select data-xi="gruppe">${gruppenOptionen(x.gruppe)}</select></label>
+      ${plan.neu.length ? `<label class="f">Komponenten-Typ für zusätzliche<select data-xi="typ">${typListe.map(t => `<option value="${t.id}" ${t.id===x.typ ? 'selected' : ''}>${h(typLabel(t))}</option>`).join('')}</select></label>` : ''}
+    </div>
+    <h3 style="margin:4px 0 0;font-size:15px">Welche Spalte enthält was?</h3>
+    <div class="xivier">${XI_VIER.map(([k,l]) => xiZeile(k,l)).join('')}</div>
+    <details class="kwspalten"><summary>Weitere Angaben aus der Liste (freiwillig)</summary><div class="xivier" style="margin-top:8px">${XI_MEHR.map(([k,l]) => xiZeile(k,l)).join('')}
+      <div class="xiz"><label for="xikopf"><b style="font-weight:600">Zeile mit den Überschriften</b></label><input id="xikopf" type="number" min="1" max="${x.grid.length}" value="${x.kopf+1}" data-xi="kopf" style="max-width:90px"><span></span></div></div></details>
+    ${felder.length ? `<div class="summary" style="padding:10px 14px;border:2px solid ${passt ? 'var(--ok)' : 'var(--warn)'};border-radius:8px">${zeilen} Zeilen in der Liste, ${plan.klappen} Komponenten in Gruppe ${x.gruppe}${passt ? ': passt.' : `. <b>${plan.neu.length ? plan.neu.length+' werden zusätzlich angelegt' : plan.ohne+' Komponenten bleiben ohne Eintrag'}.</b>`}${plan.leer ? ` ${plan.leer===1 ? '1 Zeile wird' : plan.leer+' Zeilen werden'} übersprungen, weil dort keine Klappe steht.` : ''}</div>
+      ${vorschau.length ? `<div class="tbl-wrap"><table><thead><tr><th>Komponente</th>${felder.map(k => `<th>${h(([...XI_VIER, ...XI_MEHR].find(f => f[0]===k) || XI_FELDER.find(f => f[0]===k))[1].split(' (')[0])}</th>`).join('')}</tr></thead><tbody>
+      ${vorschau.map(p => `<tr><td>${p.c ? `<span class="mono">${kNr(p.c)}</span>` : pill('','Neu')}</td>${felder.map(k => `<td>${h(p.w[k]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="muted small">Vorschau der ersten ${vorschau.length} Zeilen. Vorhandene Werte werden mit den Angaben aus der Liste überschrieben, leere Zellen ändern nichts.</div>` : ''}
+      <div><button class="btn pri" data-act="xistart">${zeilen} Zeilen übernehmen</button></div>` : `<div class="empty">Bitte mindestens eine Spalte zuordnen.</div>`}`;
+}
+function impPanel(aid){
+  return `<section class="panel"><h2>Schritt 1: Komponenten aus der KWP-Liste</h2>
+      <p class="muted" style="margin:0">Excel-Liste aus dem KWP-Wartungswesen auswählen und für jede Zeile die Gruppe festlegen. Steht bei einer Zeile zum Beispiel Anzahl 72, entstehen 72 einzelne Komponenten.</p>${kwHtml(aid)}</section>
+    <section class="panel"><h2>Schritt 2: Brandschutzklappen-Liste</h2>
+      <p class="muted" style="margin:0">Ergänzt die Klappen aus Schritt 1 Zeile für Zeile um Hersteller, Typ, Einbauort und Bezeichnung. Du wählst dafür aus, in welcher Spalte diese Angaben stehen. Zwischenzeilen wie „EG“ werden erkannt und beim Einbauort vorangestellt.</p>${xiHtml(aid)}</section>`;
 }
 /* Foxtag-Angaben einheitlich einordnen: Standort-Text und S/N in die Felder aufteilen. Vorschläge werden erst nach Bestätigung übernommen, die alten Werte bleiben erhalten. */
 const SP_LUFT = {za:'Zu- und Abluft', 'zu/ab':'Zu- und Abluft', 'zu+ab':'Zu- und Abluft', z:'Zuluft', zu:'Zuluft', zul:'Zuluft', zuluft:'Zuluft', a:'Abluft', ab:'Abluft', abl:'Abluft', abluft:'Abluft', au:'Außenluft', aul:'Außenluft', al:'Außenluft', 'außenluft':'Außenluft', f:'Fortluft', fo:'Fortluft', fol:'Fortluft', fl:'Fortluft', fortluft:'Fortluft'};
@@ -1863,37 +1958,14 @@ function spPanel(){
 }
 function spAnwenden(c, v){ c.snAlt = c.sn; if(v.baujahr && !c.baujahr) c.spBj = true; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
 function vImport(){
-  const x = UI.xi;
-  let excel = `<label class="btn pri upl" style="justify-self:start">Excel- oder CSV-Datei auswählen<input type="file" accept=".xlsx,.csv" data-xifile></label>`;
-  if(x){
-    const kopf = xiKopf(x), spalten = kopf.map((v,i) => `<option value="${i}">${xiSpalte(i)}: ${h(v || '(leer)')}</option>`).join('');
-    const bsp = i => { const r = x.grid.slice(x.kopf+1).find(r => String(r[i]??'').trim()); return r ? String(r[i]).trim() : ''; };
-    const plan = xiPlan(x), felder = Object.keys(x.map), vorschau = [...plan.upd, ...plan.neu].slice(0,5);
-    const anlagen = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id); const opt = os.flatMap(o => S.anlagen.filter(a => a.objektId===o.id && !a.stillgelegt).map(a => `<option value="${a.id}" ${a.id===x.anlage ? 'selected' : ''}>${h(o.nr+' '+o.name)}</option>`)).join(''); return opt ? `<optgroup label="${h(k.nr+' '+k.name)}">${opt}</optgroup>` : ''; }).join('');
-    const typen = S.typen.filter(t => t.gruppe===x.gruppe), typListe = typen.length ? typen : S.typen;
-    if(!typListe.some(t => t.id===x.typ)) x.typ = typListe[0].id;
-    excel = `<div class="row" style="justify-content:space-between"><b>${h(x.name)}</b><button class="btn sm ghost" data-act="xiweg">Andere Datei wählen</button></div>
-      <div class="fgrid">
-        <label class="f">Zeile mit den Überschriften<input type="number" min="1" max="${x.grid.length}" value="${x.kopf+1}" data-xi="kopf"></label>
-        <label class="f">In welche Anlage?<select data-xi="anlage"><option value="">Bitte wählen</option>${anlagen}</select></label>
-        <label class="f">Gruppe<select data-xi="gruppe">${gruppenOptionen(x.gruppe)}</select></label>
-        <label class="f">Komponenten-Typ für neue<select data-xi="typ">${typListe.map(t => `<option value="${t.id}" ${t.id===x.typ ? 'selected' : ''}>${h(typLabel(t))}</option>`).join('')}</select></label>
-      </div>
-      <div class="tbl-wrap"><table class="xitbl"><thead><tr><th>Feld im Portal</th><th>Spalte aus der Tabelle</th><th>Beispiel</th></tr></thead><tbody>
-      ${XI_FELDER.map(([k,l]) => `<tr><td><b style="font-weight:600">${l}</b></td><td><select data-xi="map:${k}" aria-label="Spalte für ${l}"><option value="">Nicht übernehmen</option>${spalten.replace(`value="${x.map[k]}"`, `value="${x.map[k]}" selected`)}</select></td><td class="muted small">${x.map[k]!=null ? h(bsp(x.map[k])) : ''}</td></tr>`).join('')}
-      </tbody></table></div>
-      <div class="checks"><label><input type="checkbox" data-xi="abgleich" ${x.abgleich ? 'checked' : ''}>Vorhandene Komponenten ergänzen, wenn die Bezeichnungsnummer mit Bezeichnung, S/N oder Zulassungsnummer übereinstimmt</label></div>
-      ${x.anlage && felder.length ? `<div class="summary" style="padding:10px 14px;border:2px solid var(--line-strong);border-radius:8px"><b>${plan.upd.length}</b> vorhandene werden ergänzt · <b>${plan.neu.length}</b> werden neu angelegt${plan.leer ? ` · ${plan.leer} leere Zeilen übersprungen` : ''}</div>
-        ${vorschau.length ? `<div class="tbl-wrap"><table><thead><tr><th>Aktion</th>${felder.map(k => `<th>${h(XI_FELDER.find(f => f[0]===k)[1])}</th>`).join('')}</tr></thead><tbody>
-        ${vorschau.map(p => `<tr><td>${p.c ? pill('ok','Ergänzen '+kNr(p.c)) : pill('','Neu')}</td>${felder.map(k => `<td>${h(p.w[k]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="muted small">Vorschau der ersten ${vorschau.length} Zeilen.</div>` : ''}
-        <div><button class="btn pri" data-act="xistart">${plan.upd.length + plan.neu.length} Zeilen übernehmen</button></div>` : `<div class="empty">Bitte eine Anlage wählen und mindestens eine Spalte zuordnen.</div>`}`;
-  }
-  return `<section class="panel"><h2>Excel-Tabelle importieren</h2>
-    <p class="muted" style="margin:0">Zum Beispiel eine Brandschutzklappen-Liste. Du legst selbst fest, welche Spalte in welches Feld kommt. Es werden nur zugeordnete Spalten übernommen, leere Zellen überschreiben nichts.</p>${excel}</section>
-  ${spPanel()}
-  <section class="panel"><h2>Foxtag-Daten</h2>
-    <p class="muted" style="margin:0">Einmaliger Import von Kunden, Objekten und Anlagen aus dem Foxtag-Export. Die Dateien werden nur in diesem Browser gelesen.</p>
-    <div><button class="btn" data-act="importieren">Foxtag-Export importieren</button></div></section>`;
+  const opt = S.kunden.map(k => { const o = S.objekte.filter(o => o.kundeId===k.id).flatMap(o => S.anlagen.filter(a => a.objektId===o.id && !a.stillgelegt).map(a => `<option value="${a.id}" ${a.id===UI.impA ? 'selected' : ''}>${h(o.nr+' '+o.name)}</option>`)).join(''); return o ? `<optgroup label="${h(k.nr+' '+k.name)}">${o}</optgroup>` : ''; }).join('');
+  return `<section class="panel"><h2>Listen für ein Objekt importieren</h2>
+      <label class="f" style="max-width:520px">Für welches Objekt?<select data-impa><option value="">Bitte wählen</option>${opt}</select></label></section>
+    ${UI.impA && by(S.anlagen, UI.impA) ? impPanel(UI.impA) : ''}
+    ${spPanel()}
+    <section class="panel"><h2>Foxtag-Daten</h2>
+      <p class="muted" style="margin:0">Einmaliger Import von Kunden, Objekten, Anlagen und Komponenten aus der Foxtag-Gesamtdatei. Die Datei wird nur in diesem Browser gelesen.</p>
+      <div><button class="btn" data-act="importieren">Foxtag-Export importieren</button></div></section>`;
 }
 function vInfo(eingebettet){
   const repo = 'https://github.com/gundermann-toolbox/gundermann-wartungsportal';
@@ -2495,16 +2567,23 @@ async function readXlsx(buf, roh){
   const xml = s => new DOMParser().parseFromString(s,'application/xml');
   const ss = await read('xl/sharedStrings.xml');
   const strings = ss ? [...xml(ss).getElementsByTagName('si')].map(si => si.textContent) : [];
-  const sheet = Object.keys(files).filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort()[0];
-  if(!sheet) throw new Error('In der Excel-Datei wurde keine Tabelle gefunden.');
+  const blaetterNamen = Object.keys(files).filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((x,y) => parseInt(x.match(/\d+/)[0]) - parseInt(y.match(/\d+/)[0]));
+  if(!blaetterNamen.length) throw new Error('In der Excel-Datei wurde keine Tabelle gefunden.');
   const col = ref => { let c = 0; for(const ch of ref.replace(/\d+/g,'')) c = c*26 + ch.charCodeAt(0)-64; return c-1; };
-  const grid = [...xml(await read(sheet)).getElementsByTagName('row')].map(r => {
+  const gridVon = async name => [...xml(await read(name)).getElementsByTagName('row')].map(r => {
     const out = [];
     [...r.getElementsByTagName('c')].forEach(c => { const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0];
       out[col(c.getAttribute('r'))] = t==='s' ? strings[+v.textContent] : t==='inlineStr' ? c.textContent : v ? v.textContent : ''; });
     return out;
   });
-  return roh ? grid : toObjects(grid);
+  if(!roh) return toObjects(await gridVon(blaetterNamen[0]));
+  // Für den Listen-Import: alle gefüllten Blätter mit ihrem Namen
+  const wb = await read('xl/workbook.xml'), rels = await read('xl/_rels/workbook.xml.rels'), ziele = {};
+  if(rels) [...xml(rels).getElementsByTagName('Relationship')].forEach(r => { ziele[r.getAttribute('Id')] = 'xl/'+r.getAttribute('Target').replace(/^\/?xl\//,''); });
+  const liste = wb ? [...xml(wb).getElementsByTagName('sheet')].map(x => ({name:x.getAttribute('name').trim(), datei:ziele[x.getAttribute('r:id')]})).filter(x => files[x.datei]) : blaetterNamen.map((d,i) => ({name:'Blatt '+(i+1), datei:d}));
+  const blaetter = [];
+  for(const b of liste){ const grid = await gridVon(b.datei); if(grid.some(r => r.filter(v => String(v??'').trim() && String(v).trim()!=='.').length)) blaetter.push({name:b.name, grid}); }
+  return {blaetter};
 }
 function readCsv(text, roh){
   text = text.replace(/^﻿/,'');
@@ -2770,7 +2849,7 @@ modal.addEventListener('submit', e => {
     const kid = f.get('k'), k = by(S.kunden,kid);
     const oid = 'o'+uid(); S.objekte.push({id:oid, kundeId:kid, nr:f.get('onr'), name:f.get('oname'), adresse:f.get('oadr')||k.adresse, ort:f.get('oort')||k.ort});
     const aid = 'a'+uid(); S.anlagen.push({id:aid, objektId:oid, name:'Wartung', hinweis:''});
-    save(); closeModal(); UI.view = 'anlage'; UI.anlage = aid; UI.addK = true; render(); toast('Objekt angelegt. Jetzt Komponenten hinzufügen.');
+    save(); closeModal(); UI.view = 'anlage'; UI.anlage = aid; UI.addK = false; UI.kw = null; UI.xi = null; render(); window.scrollTo(0,0); toast('Objekt angelegt. Jetzt die Listen importieren oder Komponenten von Hand anlegen.');
   }
 });
 
@@ -2823,6 +2902,32 @@ const ACT = {
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
   neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(d.k); },
   neukunde: () => neuKundeModal(),
+  spart: d => { UI.spArt = d.v; render(); },
+  spmehr: () => { UI.spN = (UI.spN||40) + 100; render(); },
+  spalle: () => { const gr = UI.spG || '', l = spListe().sicher.filter(x => gr==='' || x.c.gruppe===+gr); l.forEach(x => spAnwenden(x.c, x.v)); save(); UI.spArt = 'pruefen'; UI.spN = 40; render(); toast(`${l.length} Komponenten eingeordnet`); },
+  spok: d => { const c = by(S.komponenten, d.id), tr = document.querySelector(`[data-spc="${d.id}"]`); if(!c || !tr) return; const v = {}; let n = 0;
+    tr.querySelectorAll('[data-spf]').forEach(i => { const w = i.value.trim(); if(w){ v[i.dataset.spf] = w; n++; } });
+    if(!n){ toast('Bitte mindestens ein Feld ausfüllen'); return; }
+    const L = spLernen(S.komponenten.filter(x => !x.entfernt)), vs = spTeilen(c, L).v; if('sn' in vs) v.sn = vs.sn; if(vs.baujahr) v.baujahr = vs.baujahr;
+    spAnwenden(c, v); save(); render(); toast(`${kNr(c)} übernommen`); },
+  spweg: d => { const c = by(S.komponenten, d.id); if(c){ c.spWeg = true; save(); render(); } },
+  spwegauf: () => { S.komponenten.forEach(c => delete c.spWeg); save(); render(); },
+  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } if(c.spBj){ delete c.baujahr; delete c.spBj; } delete c.spAus; n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
+  xiweg: () => { UI.xi = null; render(); },
+  xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.anlage && c.gruppe===x.gruppe).map(c => c.nr));
+    plan.upd.forEach(p => Object.assign(p.c, p.w));
+    plan.neu.forEach(p => { nr++; S.komponenten.push({id:'c'+uid(), anlageId:x.anlage, gruppe:x.gruppe, nr, sub:0, typId:x.typ, standort:'', sn:'', baujahr:'', letzte:null, ...p.w}); });
+    UI.xi = null; UI.kOpen = true; save(); render();
+    toast(`${plan.upd.length} ergänzt${plan.neu.length ? `, ${plan.neu.length} neu angelegt` : ''}`); },
+  kwweg: () => { UI.kw = null; render(); },
+  kwalle: () => { const x = UI.kw; if(!x) return; const an = !x.zeilen.every(z => z.an); x.zeilen.forEach(z => z.an = an); render(); },
+  kwstart: () => { const x = UI.kw; if(!x) return; const offen = x.zeilen.filter(z => z.g==='').length;
+    if(offen){ toast(`Bei ${offen} Zeilen fehlt noch die Gruppe. Oder „Nicht übernehmen“ wählen.`); return; }
+    let summe = 0;
+    x.zeilen.filter(z => z.g!=='x').forEach(z => { const g = +z.g, w = kwFelder(z.w); let nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.aid && c.gruppe===g).map(c => c.nr));
+      for(let i=0; i<z.n; i++){ nr++; summe++; S.komponenten.push({id:'c'+uid(), anlageId:x.aid, gruppe:g, nr, sub:0, typId:z.t, standort:'', sn:'', baujahr:'', letzte:null, ...w}); } });
+    UI.kw = null; UI.kOpen = true; save(); render(); toast(`${summe} Komponenten angelegt. Jetzt kann die Brandschutz-Liste folgen.`); },
+  impauf: d => { UI.impAuf = UI.impAuf===d.a ? null : d.a; render(); },
   spart: d => { UI.spArt = d.v; render(); },
   spmehr: () => { UI.spN = (UI.spN||40) + 100; render(); },
   spalle: () => { const gr = UI.spG || '', l = spListe().sicher.filter(x => gr==='' || x.c.gruppe===+gr); l.forEach(x => spAnwenden(x.c, x.v)); save(); UI.spArt = 'pruefen'; UI.spN = 40; render(); toast(`${l.length} Komponenten eingeordnet`); },
@@ -3220,24 +3325,37 @@ document.addEventListener('change', e => {
     S.gruppen = S.gruppen || {}; S.gruppen[g] = name; save(); toast(`Gruppe ${g} heißt jetzt ${name}`); }
   if(t.dataset && t.dataset.typgruppe){ const ty = by(S.typen, t.dataset.typgruppe); if(ty){ ty.gruppe = +t.value; save(); toast('Gruppe des Typs geändert. Gilt für neue Komponenten.'); } }
 });
+const kopfFinden = grid => { const zaehl = r => (r||[]).filter(v => String(v??'').trim()).length; let kopf = 0; grid.slice(0,15).forEach((r,i) => { if(zaehl(r) > zaehl(grid[kopf])) kopf = i; }); return kopf; };
+const listeLesen = async file => { const r = await readTable(file, true), blaetter = Array.isArray(r) ? [{name:'', grid:r}] : r.blaetter; if(!blaetter.length) throw 0;
+  return {name:file.name, blaetter, blatt:0, grid:blaetter[0].grid, kopf:kopfFinden(blaetter[0].grid)}; };
+const blattWaehlen = (x, i) => { x.blatt = i; x.grid = x.blaetter[i].grid; x.kopf = kopfFinden(x.grid); };
+const blattFeld = (x, attr) => x.blaetter.length > 1 ? `<label class="f">Welches Tabellenblatt?<select ${attr}="blatt">${x.blaetter.map((b,i) => `<option value="${i}" ${i===x.blatt ? 'selected' : ''}>${h(b.name)}</option>`).join('')}</select></label>` : '';
 document.addEventListener('change', async e => {
-  const t = e.target;
-  if(t.matches && t.matches('[data-xifile]') && t.files[0]){
-    try{ const grid = await readTable(t.files[0], true); if(!grid.length) throw 0;
-      const zaehl = r => (r||[]).filter(v => String(v??'').trim()).length; let kopf = 0;
-      grid.slice(0,15).forEach((r,i) => { if(zaehl(r) > zaehl(grid[kopf])) kopf = i; });
-      const g4 = alleGruppen().includes(4) ? 4 : alleGruppen()[0];
-      UI.xi = {name:t.files[0].name, grid, kopf, map:{}, anlage:'', gruppe:g4, typ:'', abgleich:true}; xiErkennen(UI.xi); render();
-    }catch(ex){ toast('Die Datei konnte nicht gelesen werden'); }
-    return;
+  const t = e.target; if(!t.matches) return;
+  try{
+    if(t.matches('[data-xifile]') && t.files[0]){ const g4 = alleGruppen().includes(4) ? 4 : alleGruppen()[0]; UI.xi = {...await listeLesen(t.files[0]), map:{}, anlage:t.dataset.xifile, gruppe:g4, typ:''}; xiErkennen(UI.xi); render(); return; }
+    if(t.matches('[data-kwfile]') && t.files[0]){ UI.kw = {...await listeLesen(t.files[0]), aid:t.dataset.kwfile, map:{}, zeilen:[]}; kwErkennen(UI.kw); render(); return; }
+  }catch(ex){ toast('Die Datei konnte nicht gelesen werden'); return; }
+  if(t.matches('[data-impa]')){ UI.impA = t.value; UI.kw = null; UI.xi = null; render(); return; }
+  const x = UI.kw;
+  if(x){
+    if(t.dataset.kwz!=null){ x.zeilen[+t.dataset.kwz].an = t.checked; render(); return; }
+    if(t.dataset.kwn!=null){ x.zeilen[+t.dataset.kwn].n = kwAnzahl(t.value); render(); return; }
+    if(t.dataset.kwg!=null){ const z = x.zeilen[+t.dataset.kwg]; z.g = t.value; z.t = ''; render(); return; }
+    if(t.dataset.kwt!=null){ x.zeilen[+t.dataset.kwt].t = t.value; return; }
+    const k = t.dataset.kw;
+    if(k==='blatt'){ blattWaehlen(x, +t.value); kwErkennen(x); render(); return; }
+    if(k==='sammel'){ if(t.value!==''){ x.zeilen.filter(z => z.an).forEach(z => { z.g = t.value; z.t = ''; z.an = false; }); } render(); return; }
+    if(k==='kopf'){ x.kopf = Math.max(0, Math.min(x.grid.length-1, (+t.value||1)-1)); kwErkennen(x); render(); return; }
+    if(k && k.startsWith('map:')){ const f = k.slice(4); if(t.value==='') delete x.map[f]; else x.map[f] = +t.value; kwZeilenBauen(x); render(); return; }
   }
-  if(!t.dataset || !t.dataset.xi || !UI.xi) return;
-  const k = t.dataset.xi, x = UI.xi;
-  if(k.startsWith('map:')){ const f = k.slice(4); if(t.value==='') delete x.map[f]; else x.map[f] = +t.value; }
-  else if(k==='kopf'){ x.kopf = Math.max(0, Math.min(x.grid.length-1, (+t.value||1)-1)); xiErkennen(x); }
-  else if(k==='gruppe') x.gruppe = +t.value;
-  else if(k==='abgleich') x.abgleich = t.checked;
-  else x[k] = t.value;
+  if(!t.dataset.xi || !UI.xi) return;
+  const k = t.dataset.xi, y = UI.xi;
+  if(k.startsWith('map:')){ const f = k.slice(4); if(t.value==='') delete y.map[f]; else y.map[f] = +t.value; }
+  else if(k==='blatt'){ blattWaehlen(y, +t.value); xiErkennen(y); }
+  else if(k==='kopf'){ y.kopf = Math.max(0, Math.min(y.grid.length-1, (+t.value||1)-1)); xiErkennen(y); }
+  else if(k==='gruppe') y.gruppe = +t.value;
+  else y[k] = t.value;
   render();
 });
 document.addEventListener('change', e => { if(e.target.matches && e.target.matches('[data-spgruppe]')){ UI.spG = e.target.value; UI.spN = 40; render(); } });
