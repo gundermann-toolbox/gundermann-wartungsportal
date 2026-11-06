@@ -2,7 +2,7 @@
    Seite: erst Netz (für Updates), bei fehlendem Netz aus dem Speicher.
    Bibliotheken, Schriften, Symbole: aus dem Speicher, im Hintergrund aktualisiert.
    Kartenkacheln werden nicht gespeichert (Karte braucht Internet). */
-const VERSION = 'gm-wartung-54';
+const VERSION = 'gm-wartung-55';
 const GRUNDDATEIEN = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png', './favicon-32.png', './briefbogen.jpg'];
 const FREMDE_QUELLEN = ['https://cdnjs.cloudflare.com/', 'https://fonts.googleapis.com/', 'https://fonts.gstatic.com/'];
 

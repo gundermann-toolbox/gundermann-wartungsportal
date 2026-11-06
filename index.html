@@ -262,6 +262,13 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   #druck .doc .pgrp{break-inside:avoid}
   #druck .doc .khead{break-inside:avoid;break-after:avoid}
   #druck .doc .sigs{break-inside:avoid}
+  /* Firefox: Ohne Seitenrand hat die Browser-Kopfzeile (Titel und Adresse) keinen Platz. Der Briefbogen muss ausdrücklich unter dem Inhalt liegen, sonst verdeckt er ihn ab Seite 2. Firefox kennt @top-right nicht und zählt Seiten in festen Elementen nicht mit, deshalb dort ohne Seitenzahl. */
+  @supports (-moz-appearance:none){
+    @page{margin:0}
+    #druck .druck-bg{height:297mm;z-index:0}
+    #druck table.druck-tb{z-index:1}
+    #druck .druck-kopf{height:50mm}
+  }
 }
 .who select{min-height:34px;padding:5px 8px;width:auto}
 .modes{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
