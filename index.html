@@ -772,6 +772,8 @@ function migrate(){
     S.typen.filter(t => t.gruppe===6 && t.checklisteId==='cl-sonst').forEach(t => { t.gruppe = 7; t.name = t.name || 'Sonstiges'; });
     S.v = 7;
   }
+  if((S.v||0) < 8){ if(S.gruppen) delete S.gruppen[6]; S.v = 8; } // Gruppe 6 heißt fest Schaltschrank
+  if((S.v||0) < 9){ spAlleEinordnen(); S.v = 9; } // Standort-Texte vorhandener Daten aufteilen
   // Recht „Aufträge vor Ort anlegen“: standardmäßig für alle mit App-Zugang
   S.users.forEach(u => { if(u.eigen===undefined) u.eigen = !!u.app; });
   S.auftraege.filter(A => ['erledigt','abgerechnet'].includes(A.status) && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
@@ -1978,24 +1980,34 @@ const SP_HAT = c => c.spAus || KFELDER.some(([k]) => c[k]);
 function spListe(){
   const ks = S.komponenten.filter(c => !c.entfernt), L = spLernen(ks);
   const offen = ks.filter(c => (String(c.standort||'').trim() || String(c.sn||'').trim()) && !SP_HAT(c) && !c.spWeg).map(c => ({c, ...spTeilen(c, L)}));
-  return {sicher:offen.filter(x => x.sicher), pruefen:offen.filter(x => !x.sicher), fertig:ks.filter(c => c.spAus).length, weg:ks.filter(c => c.spWeg).length};
+  const nachsehen = ks.filter(c => c.spPruefen).map(c => ({c, v:Object.fromEntries(SP_SPALTEN.map(([k]) => [k, c[k]||'']))}));
+  return {sicher:offen.filter(x => x.sicher), pruefen:[...nachsehen, ...offen.filter(x => !x.sicher)], fertig:ks.filter(c => c.spAus && !c.spPruefen).length, nachsehen:nachsehen.length, weg:ks.filter(c => c.spWeg).length};
 }
+/* Beim Foxtag-Import alles aufteilen. Unsichere Vorschläge werden markiert und bleiben unter „Bitte prüfen“. Die Originaltexte bleiben gespeichert. */
+function spAlleEinordnen(){
+  const L = spListe(); let sicher = 0, pruefen = 0;
+  L.sicher.forEach(x => { spAnwenden(x.c, x.v); x.c.spAuto = true; sicher++; });
+  L.pruefen.filter(x => !x.c.spPruefen).forEach(x => { spAnwenden(x.c, x.v); x.c.spAuto = true; x.c.spPruefen = true; pruefen++; });
+  return {sicher, pruefen};
+}
+function spEinzelnZurueck(c){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } if(c.spBj){ delete c.baujahr; delete c.spBj; } delete c.spAus; delete c.spAuto; delete c.spPruefen; }
 const SP_SPALTEN = [['hersteller','Hersteller'],['modell','Typ'],['luftart','Zu-/Abluft'],['luftmenge','Luftmenge'],['leistung','Leistung'],['einbauort','Ort'],['bezeichnung','Bezeichnung'],['bskNr','Nummer'],['hinweis','Hinweis']];
 function spPanel(){
   const L = spListe(), art = UI.spArt || (L.pruefen.length && !L.sicher.length ? 'pruefen' : 'sicher'), gr = UI.spG || '';
   const nachGr = l => gr==='' ? l : l.filter(x => x.c.gruppe===+gr);
   const liste = nachGr(art==='sicher' ? L.sicher : L.pruefen), seite = liste.slice(0, UI.spN || 40);
   return `<section class="panel"><h2>Foxtag-Angaben einheitlich einordnen</h2>
-    <p class="muted" style="margin:0">Teilt Standort-Text und S/N in die einzelnen Felder auf: Hersteller, Typ, Zu-/Abluft, Luftmenge, Ort, Bezeichnung und Bezeichnungsnummer. Die alten Werte bleiben gespeichert.</p>
-    <div class="row" style="justify-content:space-between"><div class="chips"><button class="chip ${art==='sicher' ? 'on' : ''}" data-act="spart" data-v="sicher">Eindeutig ${nachGr(L.sicher).length}</button><button class="chip ${art==='pruefen' ? 'on' : ''}" data-act="spart" data-v="pruefen">Bitte prüfen ${nachGr(L.pruefen).length}</button><span class="muted small" style="align-self:center">${L.fertig} schon eingeordnet${L.weg ? ` · ${L.weg} übersprungen` : ''}</span></div>
+    <p class="muted" style="margin:0">Standort-Text und S/N werden beim Foxtag-Import automatisch in die einzelnen Felder aufgeteilt: Hersteller, Typ, Zu-/Abluft, Luftmenge, Ort, Bezeichnung und Bezeichnungsnummer. Die alten Werte bleiben gespeichert.</p>
+    ${L.nachsehen ? `<p class="muted small" style="margin:0">Unter „Bitte prüfen“ stehen ${L.nachsehen} Komponenten, bei denen die Aufteilung nicht eindeutig war. Sie sind schon so eingeordnet. Hier kannst du sie korrigieren und bestätigen.</p>` : ''}
+    <div class="row" style="justify-content:space-between"><div class="chips"><button class="chip ${art==='sicher' ? 'on' : ''}" data-act="spart" data-v="sicher">Eindeutig ${nachGr(L.sicher).length}</button><button class="chip ${art==='pruefen' ? 'on' : ''}" data-act="spart" data-v="pruefen">Bitte prüfen ${nachGr(L.pruefen).length}</button><span class="muted small" style="align-self:center">${L.fertig} eingeordnet${L.weg ? ` · ${L.weg} übersprungen` : ''}</span></div>
       <label class="f" style="min-width:220px">Gruppe<select data-spgruppe><option value="">Alle Gruppen</option>${gruppenOptionen(gr==='' ? null : +gr)}</select></label></div>
     ${seite.length ? `<div class="tbl-wrap"><table class="sptbl"><thead><tr><th>Nr.</th><th>Standort-Text und S/N</th>${SP_SPALTEN.map(([,l]) => `<th>${l}</th>`).join('')}<th></th></tr></thead><tbody>
-      ${seite.map(x => `<tr data-spc="${x.c.id}"><td class="mono">${kNr(x.c)}<span class="t2">${h(ctx(x.c.anlageId).o.nr)}</span></td><td class="small">${h(x.c.standort)}${x.c.sn ? `<span class="t2">S/N ${h(x.c.sn)}</span>` : ''}</td>
+      ${seite.map(x => `<tr data-spc="${x.c.id}"><td class="mono">${kNr(x.c)}<span class="t2">${h(ctx(x.c.anlageId).o.nr)}</span></td><td class="small">${h(x.c.standort)}${(x.c.spAus ? x.c.snAlt : x.c.sn) ? `<span class="t2">S/N ${h(x.c.spAus ? x.c.snAlt : x.c.sn)}</span>` : ''}</td>
         ${SP_SPALTEN.map(([k,l]) => art==='pruefen' ? `<td><input data-spf="${k}" value="${h(x.v[k]||'')}" aria-label="${l}"></td>` : `<td>${h(x.v[k]||'')}</td>`).join('')}
-        <td style="white-space:nowrap">${art==='pruefen' ? `<button class="btn sm pri" data-act="spok" data-id="${x.c.id}">Übernehmen</button> <button class="btn sm ghost" data-act="spweg" data-id="${x.c.id}">Überspringen</button>` : ''}</td></tr>`).join('')}
+        <td style="white-space:nowrap">${art==='pruefen' ? `<button class="btn sm pri" data-act="spok" data-id="${x.c.id}">${x.c.spPruefen ? 'Bestätigen' : 'Übernehmen'}</button> <button class="btn sm ghost" data-act="spweg" data-id="${x.c.id}">${x.c.spPruefen ? 'Nicht aufteilen' : 'Überspringen'}</button>` : ''}</td></tr>`).join('')}
     </tbody></table></div>${liste.length > seite.length ? `<div class="row"><span class="muted small">${seite.length} von ${liste.length}</span><button class="btn sm" data-act="spmehr">100 weitere anzeigen</button></div>` : ''}` : `<div class="empty">Hier ist nichts mehr offen.</div>`}
     <div class="row">${art==='sicher' && liste.length ? `<button class="btn pri" data-act="spalle">Alle ${liste.length} eindeutigen übernehmen</button>` : ''}
-      ${L.fertig ? `<button class="btn" data-act="spzurueck">Einordnung zurücknehmen (${L.fertig})</button>` : ''}${L.weg ? `<button class="btn ghost" data-act="spwegauf">Übersprungene wieder anzeigen</button>` : ''}</div></section>`;
+      ${L.fertig + L.nachsehen ? `<button class="btn" data-act="spzurueck">Einordnung zurücknehmen (${L.fertig + L.nachsehen})</button>` : ''}${L.weg ? `<button class="btn ghost" data-act="spwegauf">Übersprungene wieder anzeigen</button>` : ''}</div></section>`;
 }
 function spAnwenden(c, v){ c.snAlt = c.sn; if(v.baujahr && !c.baujahr) c.spBj = true; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
 function impTreffer(q){
@@ -2719,7 +2731,7 @@ function importKomponenten(aid, rows){
   S.gruppen = S.gruppen || {};
   rows.forEach(r => {
     const g = parseInt(r['GRUPPE.NUMMER'],10) || 7;
-    if(r['GRUPPE.NAME'] && r['GRUPPE.NAME']!==GRUPPEN[g]) S.gruppen[g] = r['GRUPPE.NAME'];
+    if(g!==6 && r['GRUPPE.NAME'] && r['GRUPPE.NAME']!==GRUPPEN[g]) S.gruppen[g] = r['GRUPPE.NAME'];
     const name = r['TYP.NAME'] || r['GRUPPE.NAME'] || 'Komponente';
     const code = ((r['TYP.HERSTELLER']+' '+r['TYP.MODELL']).match(/\[([VHJZ])\]/)||[])[1] || '';
     let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
@@ -2799,7 +2811,7 @@ function importBundle(B, replace){
   B.komponenten.forEach(r => {
     const a = aByKey[r.anlageKey]; if(!a) return;
     const g = +r.gruppe || 7;
-    if(gnMehr[r.gruppe] && gnMehr[r.gruppe]!==GRUPPEN[g]) S.gruppen[g] = gnMehr[r.gruppe];
+    if(g!==6 && gnMehr[r.gruppe] && gnMehr[r.gruppe]!==GRUPPEN[g]) S.gruppen[g] = gnMehr[r.gruppe]; // Gruppe 6 heißt immer Schaltschrank
     const name = r.typName || r.gruppeName || 'Komponente', code = r.code || '';
     let t = S.typen.find(x => tname(x)===name && (x.code||'')===code);
     if(!t){
@@ -2816,7 +2828,7 @@ function importBundle(B, replace){
 }
 function importModal(){
   const nDat = S.anlagen.reduce((n,a) => n + (a.dateien||[]).length + (a.notizen||[]).length, 0);
-  const wichtig = [[S.auftraege.length,S.auftraege.length===1 ? 'Auftrag' : 'Aufträge'],[S.berichte.length,S.berichte.length===1 ? 'Bericht' : 'Berichte'],[S.stoerungen.length,S.stoerungen.length===1 ? 'Störung' : 'Störungen'],[nDat,'Dateien und Notizen'],[S.komponenten.filter(c => c.spAus || KFELDER.some(([k]) => c[k])).length,'Komponenten mit eigenen Angaben']].filter(x => x[0]);
+  const wichtig = [[S.auftraege.length,S.auftraege.length===1 ? 'Auftrag' : 'Aufträge'],[S.berichte.length,S.berichte.length===1 ? 'Bericht' : 'Berichte'],[S.stoerungen.length,S.stoerungen.length===1 ? 'Störung' : 'Störungen'],[nDat,'Dateien und Notizen'],[S.komponenten.filter(c => !c.spAuto && (c.spAus || KFELDER.some(([k]) => c[k]))).length,'Komponenten mit eigenen Angaben']].filter(x => x[0]);
   openModal(`<h2>Foxtag-Daten importieren</h2>
     <p style="margin:0">Entweder die <b>Foxtag-Gesamtdatei (.json)</b> mit Kunden, Objekten, Anlagen und allen Komponenten, oder die Excel-Exporte aus Foxtag: <b>Anlagen → Import/Export → Anlagen exportieren</b> und <b>Kunden → Import/Export → Kunden exportieren</b>.</p>
     <form data-form="import" style="display:grid;gap:12px">
@@ -2857,9 +2869,10 @@ modal.addEventListener('submit', e => {
           const kf = f.get('kun'), krows = kf && kf.size ? await readTable(kf) : null;
           r = importAnlagen(rows, krows, !!f.get('replace'));
         }
+        const sp = spAlleEinordnen();
         const ok = await saveNow();
         closeModal(); UI.view = 'kunden'; UI.q = ''; render();
-        toast(`${r.kunden} Kunden, ${r.objekte} Objekte, ${r.anlagen} Anlagen${r.komponenten!=null ? ', '+r.komponenten+' Komponenten' : ''} importiert` + (ok ? '' : '. Achtung: zu groß für den Browserspeicher, nach dem Neuladen weg'));
+        toast(`${r.kunden} Kunden, ${r.objekte} Objekte, ${r.anlagen} Anlagen${r.komponenten!=null ? ', '+r.komponenten+' Komponenten' : ''} importiert` + (sp.sicher + sp.pruefen ? `. Standort aufgeteilt: ${sp.sicher} eindeutig, ${sp.pruefen} bitte prüfen` : '') + (ok ? '' : '. Achtung: zu groß für den Browserspeicher, nach dem Neuladen weg'));
       }catch(ex){ err.textContent = ex.message || 'Die Datei konnte nicht gelesen werden.'; }
     })();
   }
@@ -2892,7 +2905,7 @@ modal.addEventListener('submit', e => {
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
     const g = parseInt(f.get('gruppe'),10) || c.gruppe, nr = parseInt(f.get('nr'),10) || c.nr, sub = parseInt(f.get('sub'),10) || 0;
     if(S.komponenten.some(x => x!==c && !x.entfernt && x.anlageId===c.anlageId && x.gruppe===g && x.nr===nr && (x.sub||0)===sub)){ toast(`Nummer ${g}.${nr}${sub ? '.'+sub : ''} ist in dieser Anlage schon vergeben`); return; }
-    Object.assign(c, {typId:f.get('typ'), gruppe:g, nr, sub}, f.has('standort') ? {standort:f.get('standort')||''} : {}, kFelderLesen(f));
+    delete c.spAuto; delete c.spPruefen; Object.assign(c, {typId:f.get('typ'), gruppe:g, nr, sub}, f.has('standort') ? {standort:f.get('standort')||''} : {}, kFelderLesen(f));
     save(); closeModal(); render(); toast(`Komponente ${kNr(c)} gespeichert`);
   }
   if(kind==='aedit'){
@@ -2994,11 +3007,12 @@ const ACT = {
   spok: d => { const c = by(S.komponenten, d.id), tr = document.querySelector(`[data-spc="${d.id}"]`); if(!c || !tr) return; const v = {}; let n = 0;
     tr.querySelectorAll('[data-spf]').forEach(i => { const w = i.value.trim(); if(w){ v[i.dataset.spf] = w; n++; } });
     if(!n){ toast('Bitte mindestens ein Feld ausfüllen'); return; }
+    if(c.spPruefen){ SP_SPALTEN.forEach(([k]) => delete c[k]); Object.assign(c, v); delete c.spPruefen; delete c.spAuto; save(); render(); toast(`${kNr(c)} bestätigt`); return; }
     const L = spLernen(S.komponenten.filter(x => !x.entfernt)), vs = spTeilen(c, L).v; if('sn' in vs) v.sn = vs.sn; if(vs.baujahr) v.baujahr = vs.baujahr;
     spAnwenden(c, v); save(); render(); toast(`${kNr(c)} übernommen`); },
-  spweg: d => { const c = by(S.komponenten, d.id); if(c){ c.spWeg = true; save(); render(); } },
+  spweg: d => { const c = by(S.komponenten, d.id); if(c){ if(c.spPruefen) spEinzelnZurueck(c); c.spWeg = true; save(); render(); } },
   spwegauf: () => { S.komponenten.forEach(c => delete c.spWeg); save(); render(); },
-  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } if(c.spBj){ delete c.baujahr; delete c.spBj; } delete c.spAus; n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
+  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ spEinzelnZurueck(c); n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
   xiweg: () => { UI.xi = null; render(); },
   xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.anlage && c.gruppe===x.gruppe).map(c => c.nr));
     plan.upd.forEach(p => Object.assign(p.c, p.w));
@@ -3014,17 +3028,6 @@ const ACT = {
       for(let i=0; i<z.n; i++){ nr++; summe++; S.komponenten.push({id:'c'+uid(), anlageId:x.aid, gruppe:g, nr, sub:0, typId:z.t, standort:'', sn:'', baujahr:'', letzte:null, ...w}); } });
     UI.kw = null; UI.kOpen = true; save(); render(); toast(`${summe} Komponenten angelegt. Jetzt kann die Brandschutz-Liste folgen.`); },
   impauf: d => { UI.impAuf = UI.impAuf===d.a ? null : d.a; render(); },
-  spart: d => { UI.spArt = d.v; render(); },
-  spmehr: () => { UI.spN = (UI.spN||40) + 100; render(); },
-  spalle: () => { const gr = UI.spG || '', l = spListe().sicher.filter(x => gr==='' || x.c.gruppe===+gr); l.forEach(x => spAnwenden(x.c, x.v)); save(); UI.spArt = 'pruefen'; UI.spN = 40; render(); toast(`${l.length} Komponenten eingeordnet`); },
-  spok: d => { const c = by(S.komponenten, d.id), tr = document.querySelector(`[data-spc="${d.id}"]`); if(!c || !tr) return; const v = {}; let n = 0;
-    tr.querySelectorAll('[data-spf]').forEach(i => { const w = i.value.trim(); if(w){ v[i.dataset.spf] = w; n++; } });
-    if(!n){ toast('Bitte mindestens ein Feld ausfüllen'); return; }
-    const L = spLernen(S.komponenten.filter(x => !x.entfernt)), vs = spTeilen(c, L).v; if('sn' in vs) v.sn = vs.sn; if(vs.baujahr) v.baujahr = vs.baujahr;
-    spAnwenden(c, v); save(); render(); toast(`${kNr(c)} übernommen`); },
-  spweg: d => { const c = by(S.komponenten, d.id); if(c){ c.spWeg = true; save(); render(); } },
-  spwegauf: () => { S.komponenten.forEach(c => delete c.spWeg); save(); render(); },
-  spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ SP_SPALTEN.forEach(([k]) => delete c[k]); if('snAlt' in c){ c.sn = c.snAlt; delete c.snAlt; } if(c.spBj){ delete c.baujahr; delete c.spBj; } delete c.spAus; n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
   xiweg: () => { UI.xi = null; render(); },
   xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = 0;
     plan.upd.forEach(p => Object.assign(p.c, p.w));
@@ -3209,7 +3212,7 @@ app.addEventListener('change', e => {
   if(t.dataset.dupload && t.files.length) return dateienHochladen(t.dataset.dupload, [...t.files]);
   if(t.dataset.kimport && t.files[0]){
     const aid = t.dataset.kimport;
-    readTable(t.files[0]).then(async rows => { const n = importKomponenten(aid, rows); const ok = await saveNow(); render(); toast(`${n} Komponenten importiert` + (ok ? '' : '. Achtung: konnte nicht dauerhaft gespeichert werden')); })
+    readTable(t.files[0]).then(async rows => { const n = importKomponenten(aid, rows); spAlleEinordnen(); const ok = await saveNow(); render(); toast(`${n} Komponenten importiert` + (ok ? '' : '. Achtung: konnte nicht dauerhaft gespeichert werden')); })
       .catch(ex => toast(ex.message || 'Die Datei konnte nicht gelesen werden.'));
     return;
   }
