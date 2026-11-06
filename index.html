@@ -2711,7 +2711,7 @@ async function anmelden(user, pw){
 }
 function importBundle(B, replace){
   if(!B || B.format!=='gm-foxtag-bundle') throw new Error('Das ist keine Foxtag-Gesamtdatei.');
-  if(replace){ S.kunden = []; S.objekte = []; S.anlagen = []; S.komponenten = []; S.auftraege = []; S.stoerungen = []; S.berichte = []; S.mails = []; }
+  if(replace){ S.kunden = []; S.objekte = []; S.anlagen = []; S.komponenten = []; S.auftraege = []; S.stoerungen = []; S.berichte = []; S.mails = []; S.gruppen = {}; S.gruppenWeg = []; }
   const gnZahl = {}, gnMehr = {};
   (B.komponenten||[]).forEach(r => { if(!r.gruppeName) return; const g = gnZahl[r.gruppe] = gnZahl[r.gruppe] || {}; g[r.gruppeName] = (g[r.gruppeName]||0)+1; });
   Object.entries(gnZahl).forEach(([g,z]) => { gnMehr[g] = Object.keys(z).sort((a,b) => z[b]-z[a])[0]; });
