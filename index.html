@@ -254,6 +254,15 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   #druck .druck-kopf{height:44mm}
   #druck .druck-fuss{height:24mm}
   #druck .doc{max-width:none;width:100%;padding:0;box-shadow:none;border-radius:0;background:none;gap:12px;font-size:11.5px;line-height:1.35}
+  #druck .druck-tb > tbody > tr{break-inside:avoid}
+  #druck .doc.dzl{padding-bottom:12px}
+  #druck .doc .kteil{border-radius:0;border-top:1px solid var(--paper-line);border-bottom:0}
+  #druck .doc .kteil.oben{border-top:1.5px solid var(--paper-line);border-radius:6px 6px 0 0}
+  #druck .doc .kteil.unten{border-bottom:1.5px solid var(--paper-line);border-radius:0 0 6px 6px}
+  #druck .doc .druck-st{table-layout:fixed;width:100%}
+  #druck .doc .druck-st th:nth-child(1),#druck .doc .druck-st td:nth-child(1){width:9%}
+  #druck .doc .druck-st th:nth-child(2),#druck .doc .druck-st td:nth-child(2){width:20%}
+  #druck .doc .druck-st th:nth-child(4),#druck .doc .druck-st td:nth-child(4){width:14%}
   #druck .doc-head{border:0;padding:0;justify-content:flex-end}
   #druck .doc-head > div:first-child{display:none}
   #druck .doc-type{font-size:20px}
@@ -3534,14 +3543,40 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 document.addEventListener('click', e => { if(!e.target.closest('.gsuche')) document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 
+/* Der Bericht wird für den Druck in einzelne Tabellenzeilen zerlegt. Nur zwischen Zeilen brechen alle Browser sauber um,
+   und nur dort wiederholen sie den Platz für Briefkopf und Fuß. Kurze Komponenten bleiben am Stück, lange werden zwischen den Prüfgruppen getrennt. */
+function druckZeilen(doc, tb){
+  const kopie = doc.cloneNode(true), hoehen = [...doc.querySelectorAll('.kblock')].map(x => x.getBoundingClientRect().height);
+  const zeile = (nodes, luft = true) => { const tr = document.createElement('tr'), td = document.createElement('td'), box = document.createElement('div');
+    box.className = 'doc dz' + (luft ? ' dzl' : ''); nodes.forEach(n => box.appendChild(n)); td.appendChild(box); tr.appendChild(td); tb.appendChild(tr); };
+  let vor = [], nKb = 0;
+  [...kopie.children].forEach(n => {
+    if(n.matches('h3.doc-h')){ vor = [n]; return; }
+    if(n.matches('.kblock')){ const hoch = hoehen[nKb++] > 760, teile = [...n.children];
+      if(!hoch || teile.length < 3){ zeile([...vor, n]); vor = []; return; }
+      const stuecke = [teile.slice(0,2), ...teile.slice(2).map(x => [x])];
+      stuecke.forEach((st, i) => { const sec = document.createElement('section'), ende = i===stuecke.length-1;
+        sec.className = 'kblock kteil' + (i===0 ? ' oben' : '') + (ende ? ' unten' : ''); st.forEach(x => sec.appendChild(x));
+        zeile(i===0 ? [...vor, sec] : [sec], ende); });
+      vor = []; return; }
+    const reihen = n.matches('section') && !n.querySelector('.sumtbl') ? [...n.querySelectorAll('table > tbody > tr')] : [];
+    if(reihen.length > 1){ const tbl = n.querySelector('table');
+      tbl.classList.add('druck-st'); reihen.slice(1).forEach(r => r.remove());
+      const leer = tbl.cloneNode(true); leer.querySelector('thead')?.remove(); leer.querySelector('tbody').innerHTML = '';
+      zeile([...vor, n], false); vor = [];
+      reihen.slice(1).forEach((r, i) => { const t = leer.cloneNode(true); t.querySelector('tbody').appendChild(r); zeile([t], i===reihen.length-2); });
+      return; }
+    zeile([...vor, n]); vor = [];
+  });
+}
 /* Bericht als PDF: Druckfenster nur mit dem Bericht, Dateiname aus Auftrag und Objekt */
 async function pdfSpeichern(A){
   const doc = document.querySelector('.doc'); if(!A || !doc) return;
   const {o} = ctx(A.anlageId), titel = document.title;
   document.getElementById('druck')?.remove();
   const d = document.createElement('div'); d.id = 'druck';
-  d.innerHTML = `<img class="druck-bg" src="briefbogen.jpg" alt=""><table class="druck-tb"><thead><tr><td><div class="druck-kopf"></div></td></tr></thead><tbody><tr><td class="druck-inhalt"></td></tr></tbody><tfoot><tr><td><div class="druck-fuss"></div></td></tr></tfoot></table>`;
-  d.querySelector('.druck-inhalt').appendChild(doc.cloneNode(true));
+  d.innerHTML = `<img class="druck-bg" src="briefbogen.jpg" alt=""><table class="druck-tb"><thead><tr><td><div class="druck-kopf"></div></td></tr></thead><tbody></tbody><tfoot><tr><td><div class="druck-fuss"></div></td></tr></tfoot></table>`;
+  druckZeilen(doc, d.querySelector('tbody'));
   document.body.appendChild(d);
   try{ await d.querySelector('img').decode(); }catch(e){}
   document.title = `Wartungsbericht_${A.nr}_${(o.nr||'Objekt').replace(/[^\w-]/g,'')}`;
