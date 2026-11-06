@@ -186,6 +186,13 @@ section.panel.impk-bsk{border-color:var(--brand);margin-top:14px}
 .xivier{display:grid;gap:8px}
 .xiz{display:grid;grid-template-columns:minmax(0,240px) minmax(0,300px) minmax(0,1fr);gap:10px;align-items:center}
 @media (max-width:760px){ .xiz{grid-template-columns:minmax(0,1fr)} }
+.admtabs{gap:8px}
+.admtabs .chip{font-size:15.5px;padding:9px 16px}
+.subwahl{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin:6px 0 4px 24px;padding-left:14px;border-left:3px solid var(--line-strong)}
+.subw{font:inherit;font-size:13.5px;font-weight:600;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:4px;padding:8px 10px;cursor:pointer;transition:background-color .15s ease,border-color .15s ease}
+.subw:hover{background:var(--sunk);border-color:var(--accent)}
+.subw.on{background:var(--sunk);border-color:var(--brand);box-shadow:inset 3px 0 0 var(--brand);color:var(--brand)}
+@media (max-width:640px){ .subwahl{margin-left:8px;padding-left:8px;grid-template-columns:repeat(2,minmax(0,1fr))} }
 .luecken{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .lueck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line-strong);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
 .lueck:hover{border-color:var(--accent)}
@@ -1675,8 +1682,6 @@ function vStoerungen(){
 }
 
 /* ---------- Administration ---------- */
-/* Anzeige, damit Checklisten nicht wie die gleichnamigen Gruppen aussehen. Der gespeicherte Name bleibt, der Foxtag-Import ordnet darüber zu. */
-const clTitel = c => { const n = c.name || ''; return !n || /checkliste/i.test(n) ? n : 'Checkliste '+n; };
 function vAdmin(){
   if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
   const tabs = [['ideen','Notizen'],['gruppen','Gruppen'],['typen','Komponenten-Typen'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['import','Import'],['it','IT & Einrichtung']];
@@ -1694,14 +1699,14 @@ function vAdmin(){
     <p class="muted small" style="margin:0">Damit neue Komponenten in einer Gruppe landen: beim Komponenten-Typ die Gruppe einstellen oder sie beim Anlegen der Komponente auswählen.</p></section>`; }
   if(UI.at==='typen') body = `<section class="panel"><p class="muted" style="margin:0">Der Typ bestimmt Prüfintervall und Checkliste. Kürzel wie in Foxtag: [V] vierteljährlich, [H] halbjährlich, [J] jährlich, [Z] alle 2 Jahre.</p>
     <div class="tbl-wrap"><table><thead><tr><th>Typ</th><th>Gruppe</th><th>Intervall</th><th>Checkliste</th><th>Austausch</th><th>Anzahl</th></tr></thead><tbody>
-    ${S.typen.map(t => `<tr><td>${h(typLabel(t))}</td><td><select data-typgruppe="${t.id}" aria-label="Gruppe von ${h(typLabel(t))}">${gruppenOptionen(t.gruppe)}</select></td><td>${t.intervall} Monate</td><td><button class="btn ghost sm" data-act="clopen" data-id="${t.checklisteId}">${h(clTitel(by(S.checklisten,t.checklisteId)||{}))}</button></td>
+    ${S.typen.map(t => `<tr><td>${h(typLabel(t))}</td><td><select data-typgruppe="${t.id}" aria-label="Gruppe von ${h(typLabel(t))}">${gruppenOptionen(t.gruppe)}</select></td><td>${t.intervall} Monate</td><td><button class="btn ghost sm" data-act="clopen" data-id="${t.checklisteId}">${h((by(S.checklisten,t.checklisteId)||{}).name)}</button></td>
       <td>${t.ersatzJahre ? t.ersatzJahre+' Jahre ab Baujahr' : '–'}</td><td class="mono">${S.komponenten.filter(c => c.typId===t.id).length}</td></tr>`).join('')}
     </tbody></table></div></section>`;
   if(UI.at==='checklisten'){
     const cl = by(S.checklisten, UI.cl) || S.checklisten[0];
-    body = `<div class="chips">${S.checklisten.map(c => `<button class="chip ${cl.id===c.id?'on':''}" data-act="clopen" data-id="${c.id}">${h(clTitel(c))}</button>`).join('')}</div>
+    body = `<div class="subwahl" role="group" aria-label="Checkliste auswählen">${S.checklisten.map(c => `<button class="subw ${cl.id===c.id?'on':''}" data-act="clopen" data-id="${c.id}" aria-pressed="${cl.id===c.id}">${h(c.name)}</button>`).join('')}</div>
     <section class="panel">
-      <div class="panel-h"><h2>${h(clTitel(cl))}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${cl.auftrag ? 'Aufträge allgemein (in der App derzeit ausgeblendet)' : S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
+      <div class="panel-h"><h2>${h(cl.name)}</h2><span class="muted small">${cl.felder.filter(x => x.typ!=='ueberschrift').length} Prüfpunkte · gilt für ${cl.auftrag ? 'Aufträge allgemein (in der App derzeit ausgeblendet)' : S.typen.filter(t => t.checklisteId===cl.id).map(typLabel).join(', ') || '–'}</span></div>
       <div class="tbl-wrap"><table><thead><tr><th>Feldname</th><th>Feldtyp</th><th>Einheit / Grenzwert</th><th></th></tr></thead><tbody>
       ${cl.felder.map((x,i) => `<tr class="${x.typ==='ueberschrift'?'grp':''}"><td>${h(x.label)}</td><td>${FELDTYPEN[x.typ]}</td><td class="mono">${x.typ==='wert' ? h(x.einheit)+(x.max!=null ? ' · ≤ '+x.max : '') : ''}</td>
         <td><div class="row" style="flex-wrap:nowrap"><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="-1" aria-label="Nach oben" ${i?'':'disabled'}>↑</button><button class="btn ghost sm" data-act="fmove" data-i="${i}" data-d="1" aria-label="Nach unten" ${i<cl.felder.length-1?'':'disabled'}>↓</button><button class="btn ghost sm danger" data-act="fdel" data-id="${x.id}">Löschen</button></div></td></tr>`).join('')}
@@ -1744,7 +1749,7 @@ function vAdmin(){
     <p class="muted" style="margin:0">Jeder zurückgeschickte Bericht wird als PDF im Kundenordner gespeichert und zusätzlich an diese Adresse geschickt, damit das Büro ihn weiterleiten kann.</p>
     <form class="fgrid inset" data-form="mail"><label class="f" for="bm">Empfänger im Büro<input id="bm" name="an" type="email" value="${h(S.settings.bueroMail)}" required></label><button class="btn pri" type="submit">Speichern</button></form></section>`;
   return `<div><h1>Administration</h1><p class="sub">Einstellungen, Checklisten und Zugänge.</p></div>
-  <div class="chips">${tabs.map(([v,l]) => `<button class="chip ${UI.at===v?'on':''}" data-act="at" data-v="${v}">${l}</button>`).join('')}</div>${body}`;
+  <div class="chips admtabs">${tabs.map(([v,l]) => `<button class="chip ${UI.at===v?'on':''}" data-act="at" data-v="${v}">${l}</button>`).join('')}</div>${body}`;
 }
 
 /* ---------- IT & Einrichtung ---------- */
