@@ -1775,7 +1775,7 @@ function vAdmin(){
   if(UI.at==='it') body = vInfo(true);
   if(UI.at==='ideen') body = vIdeen();
   if(UI.at==='import') body = vImport();
-  if(UI.at==='pruefen') body = vSpKarte();
+  if(UI.at==='pruefen') body = vSpKarte() + siPanel();
   if(UI.at==='mail') body = `<section class="panel"><h2>Berichte per E-Mail</h2>
     <p class="muted" style="margin:0">Jeder zurückgeschickte Bericht wird als PDF im Kundenordner gespeichert und zusätzlich an diese Adresse geschickt, damit das Büro ihn weiterleiten kann.</p>
     <form class="fgrid inset" data-form="mail"><label class="f" for="bm">Empfänger im Büro<input id="bm" name="an" type="email" value="${h(S.settings.bueroMail)}" required></label><button class="btn pri" type="submit">Speichern</button></form></section>`;
@@ -2019,7 +2019,7 @@ function vSpKarte(){
   const L = spListe(), gr = UI.spG || '', liste = gr==='' ? L.pruefen : L.pruefen.filter(x => x.c.gruppe===+gr);
   const n = liste.length, i = n ? Math.min(UI.spI||0, n-1) : 0, x = liste[i];
   UI.spI = i;
-  const kopf = `<div class="row" style="justify-content:space-between;align-items:end"><div><h2 style="margin:0">Standort prüfen</h2><div class="muted">${n ? `Noch <b>${n}</b> offen. Stimmt die Aufteilung, einfach speichern.` : 'Hier ist nichts mehr offen.'}</div></div>
+  const kopf = `<div class="row" style="justify-content:space-between;align-items:end"><div><h2 style="margin:0">Standort prüfen</h2><div class="muted">${n ? `Noch <b>${n}</b> offen. Stimmt die Aufteilung, einfach speichern. Das gilt zunächst nur in diesem Browser.` : 'Hier ist nichts mehr offen.'}</div></div>
       <label class="f" style="min-width:220px">Gruppe<select data-spgruppe><option value="">Alle Gruppen</option>${gruppenOptionen(gr==='' ? null : +gr)}</select></label></div>`;
   const weg = L.weg ? `<div class="row"><span class="muted small">${L.weg} nicht aufgeteilt</span><button class="btn sm ghost" data-act="spwegauf">Wieder zum Prüfen anzeigen</button></div>` : '';
   if(!x) return `<section class="panel">${kopf}${weg}</section>`;
@@ -2036,6 +2036,29 @@ function vSpKarte(){
         <button class="btn ghost" data-act="spspaeter" data-v="-1" ${n < 2 ? 'disabled' : ''}>Vorherige</button>
         <button class="btn ghost danger" data-act="spweg" data-id="${c.id}">Nicht aufteilen</button></div>
     </div>${weg}</section>`;
+}
+/* Kompletter Stand als Datei: So kommt derselbe Stand in andere Browser, solange es noch keinen gemeinsamen Server gibt */
+function siPanel(){
+  return `<section class="panel"><h2>Stand auf andere Browser übertragen</h2>
+    <p class="muted" style="margin:0">Was du speicherst, liegt nur in diesem Browser. Speichere den Stand als Datei und spiele ihn im anderen Browser ein, dann arbeitest du dort genau hier weiter. Die Datei enthält Kundendaten, also nur intern weitergeben. An Anlagen hochgeladene Dokumente sind nicht enthalten.</p>
+    <div class="row"><button class="btn pri" data-act="siexport">Stand als Datei speichern</button><button class="btn" data-act="siimport">Stand einspielen</button>
+      <span class="muted small">${S.gesichert ? 'Zuletzt gespeichert: '+new Date(S.gesichert).toLocaleString('de-DE', {dateStyle:'short', timeStyle:'short'}) : 'Noch nicht als Datei gespeichert'}</span></div></section>`;
+}
+function siSpeichern(){
+  const jetzt = new Date(); S.gesichert = jetzt.toISOString(); save();
+  const zwei = n => String(n).padStart(2,'0'), name = `Wartungsportal-Stand_${jetzt.getFullYear()}-${zwei(jetzt.getMonth()+1)}-${zwei(jetzt.getDate())}_${zwei(jetzt.getHours())}${zwei(jetzt.getMinutes())}.json`;
+  const url = URL.createObjectURL(new Blob([JSON.stringify({format:'gm-sicherung', stand:S.gesichert, daten:S})], {type:'application/json'}));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  render(); toast(`${name} gespeichert`);
+}
+function siModal(){
+  openModal(`<h2>Stand einspielen</h2>
+    <form data-form="sicherung" style="display:grid;gap:12px">
+      <label class="f" for="siD">Datei „Wartungsportal-Stand_…json“<input id="siD" name="datei" type="file" required></label>
+      <div class="imwarn"><p style="margin:0"><b>Alle Daten in diesem Browser werden durch den Stand aus der Datei ersetzt.</b> Das sind ${S.kunden.length} Kunden, ${S.objekte.length} Objekte und ${S.komponenten.filter(c => !c.entfernt).length} Komponenten, außerdem alle Aufträge und Berichte hier.</p></div>
+      <div class="err" id="siErr" aria-live="polite"></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Stand einspielen</button></div>
+    </form>`);
 }
 const spNeu = () => { const k = document.querySelector('.spkarte'); if(!k) return; const y = k.getBoundingClientRect().top; if(y < 70) window.scrollBy(0, y - 80); if(window.matchMedia('(pointer:fine)').matches) k.querySelector('[data-spf]')?.focus(); };
 function spAnwenden(c, v){ c.snAlt = c.sn; if(v.baujahr && !c.baujahr) c.spBj = true; const {sn, ...rest} = v; Object.assign(c, rest, {spAus:true}); if('sn' in v) c.sn = sn; }
@@ -2054,6 +2077,7 @@ function vImport(){
       <div id="impliste" class="impliste">${impTreffer(UI.impQ)}</div>`}</section>
     ${UI.impA && by(S.anlagen, UI.impA) ? impPanel(UI.impA) : ''}
     ${spPanel()}
+    ${siPanel()}
     <section class="panel"><h2>Foxtag-Daten</h2>
       <p class="muted" style="margin:0">Einmaliger Import von Kunden, Objekten, Anlagen und Komponenten aus der Foxtag-Gesamtdatei. Die Datei wird nur in diesem Browser gelesen.</p>
       <div><button class="btn" data-act="importieren">Foxtag-Export importieren</button></div></section>`;
@@ -2905,6 +2929,20 @@ modal.addEventListener('submit', e => {
       }catch(ex){ err.textContent = ex.message || 'Die Datei konnte nicht gelesen werden.'; }
     })();
   }
+  if(kind==='sicherung'){
+    const err = document.getElementById('siErr'); err.textContent = 'Wird eingelesen …';
+    (async () => {
+      try{
+        const file = f.get('datei'); if(!file || !file.size) throw new Error('Bitte eine Datei auswählen.');
+        let B; try{ B = JSON.parse((await file.text()).replace(/^\uFEFF/, '')); }catch(x){ throw new Error('Die Datei ist beschädigt oder unvollständig.'); }
+        if(!B || B.format!=='gm-sicherung' || !B.daten || !Array.isArray(B.daten.komponenten) || !Array.isArray(B.daten.kunden) || !Array.isArray(B.daten.users)) throw new Error('Das ist keine Stand-Datei aus dem Wartungsportal.');
+        S = B.daten; migrate();
+        const ok = await saveNow();
+        closeModal(); render(); window.scrollTo(0,0);
+        toast(`Stand vom ${new Date(B.stand).toLocaleString('de-DE', {dateStyle:'short', timeStyle:'short'})} eingespielt: ${S.komponenten.length} Komponenten, ${spOffenZahl()} noch zu prüfen` + (ok ? '' : '. Achtung: zu groß für den Browserspeicher, nach dem Neuladen weg'));
+      }catch(ex){ err.textContent = ex.message || 'Die Datei konnte nicht gelesen werden.'; }
+    })();
+  }
   if(kind==='planen'){
     const aid = f.get('anlage'), umfang = f.get('umfang'), gruppen = f.getAll('gruppe').map(Number);
     if(umfang==='gruppen' && !gruppen.length){ toast('Bitte mindestens eine Gruppe auswählen'); return; }
@@ -3025,6 +3063,8 @@ const ACT = {
   auftrag: (d,t,e) => { e.stopPropagation(); UI.view = 'auftrag'; UI.auftrag = d.id; UI.err = ''; render(); window.scrollTo(0,0); },
   planen: (d,t,e) => { e.stopPropagation(); planenModal(d.a); },
   neuobjekt: d => { UI.neuK = d.k || null; neuObjektModal(d.k); },
+  siexport: () => siSpeichern(),
+  siimport: () => siModal(),
   neukunde: () => neuKundeModal(),
   kundeedit: d => { const k = by(S.kunden, d.id); if(k) kundeModal(k); },
   objektedit: d => { const o = by(S.objekte, d.id); if(o) objektModal(o); },
