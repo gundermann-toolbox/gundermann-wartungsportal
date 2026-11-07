@@ -259,6 +259,8 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   table.kt tr.grp{border:0;background:none;padding:10px 0 0;margin:12px 0 0}
   table.kt td{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border:0;padding:5px 0;text-align:right}
   table.kt td>*{text-align:right}
+  table.kt td>.kt-wert{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+  table.kt td>.kt-wert .pill{margin:2px 0 2px 4px}
   table.kt td[data-l]::before{content:attr(data-l);color:var(--muted);font-size:12px;font-weight:600;text-align:left;flex:none;max-width:42%}
   table.kt tr.grp td{display:block;text-align:left;background:none}
   table.kt tr.click:hover td{background:none}
@@ -1530,7 +1532,7 @@ function vKunde(){
   return `
   <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
   <div class="head"><div><div class="eyebrow">Kunde · <span class="code">${h(k.nr)}</span></div><h1>${h(kName(k))}</h1><p class="sub">${h([k.adresse, k.ort].filter(Boolean).join(', '))}</p></div>
-    <div class="row"><button class="btn" data-act="kundeedit" data-id="${k.id}">Kunde bearbeiten</button><button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button></div></div>
+    <div class="row"><button class="btn" data-act="kundeedit" data-id="${k.id}">Kunde bearbeiten</button><button class="btn danger" data-act="kundedel" data-id="${k.id}">Kunde löschen</button><button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button></div></div>
   <section class="panel"><div class="facts">
     <div><span>Kundennummer</span><span class="mono">${h(k.nr)}</span></div>
     <div><span>Objekte</span>${an.length}</div>
@@ -1550,7 +1552,7 @@ function vKunde(){
     </tbody></table></div></section>`;
 }
 function vAnlage(){
-  const aid = UI.anlage, {a,o,k} = ctx(aid);
+  const aid = UI.anlage, {a,o,k} = ctx(aid); if(!a) return vKunden();
   const ks = kompsOf(aid);
   const auftr = S.auftraege.filter(x => x.anlageId===aid).sort((x,y) => x.datum < y.datum ? 1 : -1);
   const ber = S.berichte.filter(b => auftr.some(x => x.id===b.auftragId)).sort((x,y) => x.erstellt < y.erstellt ? 1 : -1);
@@ -1564,7 +1566,8 @@ function vAnlage(){
   <div class="head"><div><div class="eyebrow">${h(kName(k))} · Anlage ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
     <div class="row">${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : a.stillgelegt ? '' : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}
       <button class="btn" data-act="objektedit" data-id="${o.id}">Objekt bearbeiten</button>
-      ${a.stillgelegt ? '' : `<button class="btn danger" data-act="stilllegen" data-a="${aid}">Wartungsvertrag stilllegen</button>`}</div></div>
+      ${a.stillgelegt ? '' : `<button class="btn danger" data-act="stilllegen" data-a="${aid}">Wartungsvertrag stilllegen</button>`}
+      <button class="btn danger" data-act="objektdel" data-id="${o.id}">Objekt löschen</button></div></div>
   ${a.stillgelegt ? `<section class="panel" style="border-color:var(--warn)"><div class="panel-h"><h2>Wartungsvertrag stillgelegt</h2>${pill('warn','Stillgelegt')}</div>
     <p style="margin:0">Seit ${fmt(a.stillgelegt.am)}${a.stillgelegt.grund ? ` · ${h(a.stillgelegt.grund)}` : ''} · eingetragen von ${h(a.stillgelegt.von)}. Die Anlage zählt nicht mehr bei Fälligkeiten, erscheint nicht auf der Karte und kann nicht geplant werden. Berichte, Dateien und Störungen bleiben erhalten.</p>
     <div><button class="btn" data-act="stillauf" data-a="${aid}">Wieder aktivieren</button></div></section>` : ''}
@@ -3081,6 +3084,7 @@ modal.addEventListener('submit', e => {
     a.kontakt = (name || tel) ? {name, tel} : null;
     save(); closeModal(); render(); toast('Ansprechpartner gespeichert');
   }
+  if(kind==='loeschen'){ loeschAusfuehren(); return; }
   if(kind==='ksub'){
     const m = by(S.komponenten, UI.kSubVon); if(!m) return closeModal();
     const sub = Math.max(0, ...kSubsVon(m).map(x => x.sub)) + 1;
@@ -3190,6 +3194,8 @@ const ACT = {
   siimport: () => siModal(),
   neukunde: () => neuKundeModal(),
   kundeedit: d => { const k = by(S.kunden, d.id); if(k) kundeModal(k); },
+  kundedel: d => loeschModal('kunde', d.id),
+  objektdel: d => loeschModal('objekt', d.id),
   objektedit: d => { const o = by(S.objekte, d.id); if(o) objektModal(o); },
   impwahl: d => { UI.impA = d.id; UI.impQ = ''; UI.kw = null; UI.xi = null; render(); },
   impweg: () => { UI.impA = null; UI.kw = null; UI.xi = null; render(); setTimeout(() => document.getElementById('impq')?.focus(), 0); },
@@ -3578,6 +3584,52 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 document.addEventListener('click', e => { if(!e.target.closest('.gsuche')) document.querySelectorAll('.gres').forEach(g => g.hidden = true); });
 
+/* Kunde oder Objekt endgültig löschen, mit allem, was daran hängt */
+function loeschUmfang(objektIds){
+  const anlagen = S.anlagen.filter(a => objektIds.includes(a.objektId)), aIds = new Set(anlagen.map(a => a.id));
+  const komps = S.komponenten.filter(c => aIds.has(c.anlageId)), kIds = new Set(komps.map(c => c.id));
+  const auftraege = S.auftraege.filter(a => aIds.has(a.anlageId)), auIds = new Set(auftraege.map(a => a.id)), auNr = new Set(auftraege.map(a => a.nr));
+  const berichte = S.berichte.filter(b => auIds.has(b.auftragId)), bIds = new Set(berichte.map(b => b.id));
+  const stoerungen = S.stoerungen.filter(x => kIds.has(x.kompId) || auNr.has(x.auftragNr));
+  return {anlagen, aIds, komps:komps.filter(c => !c.entfernt), kIds, auftraege, auIds, berichte, bIds, stoerungen, dateien:anlagen.flatMap(a => a.dateien||[])};
+}
+function loeschModal(art, id){
+  const k = art==='kunde' ? by(S.kunden, id) : null, o = art==='objekt' ? by(S.objekte, id) : null; if(!k && !o) return;
+  const objekte = k ? S.objekte.filter(x => x.kundeId===k.id) : [o], u = loeschUmfang(objekte.map(x => x.id));
+  const anz = (n, e, m) => n ? `${n} ${n===1 ? e : m}` : '';
+  const liste = [k && anz(objekte.length,'Objekt','Objekte'), anz(u.komps.length,'Komponente','Komponenten'), anz(u.dateien.length,'Dokument','Dokumente'), anz(u.auftraege.length,'Auftrag','Aufträge'), anz(u.berichte.length,'Bericht','Berichte'), anz(u.stoerungen.length,'Störung','Störungen')].filter(Boolean);
+  const wichtig = [anz(u.auftraege.length,'Auftrag','Aufträge'), anz(u.berichte.length,'Bericht','Berichte')].filter(Boolean);
+  UI.loesch = {art, id};
+  openModal(`<h2>${k ? 'Kunde' : 'Objekt'} wirklich löschen?</h2>
+    <p style="margin:0"><b>${h(k ? kName(k) : [o.nr, o.name].filter(Boolean).join(' '))}</b> wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.</p>
+    ${liste.length ? `<p style="margin:0">Dabei werden auch gelöscht: ${liste.join(', ')}.</p>` : ''}
+    <form data-form="loeschen" style="display:grid;gap:12px">
+      ${wichtig.length ? `<div class="imwarn"><div class="checks"><label><input type="checkbox" name="sicher" required><b>Ja, auch ${wichtig.join(' und ')} löschen</b></label></div></div>` : ''}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit" style="background:var(--bad);border-color:var(--bad)">Endgültig löschen</button></div>
+    </form>`);
+}
+function loeschAusfuehren(){
+  const {art, id} = UI.loesch || {}, k = art==='kunde' ? by(S.kunden, id) : null, o = art==='objekt' ? by(S.objekte, id) : null; if(!k && !o) return;
+  const objekte = k ? S.objekte.filter(x => x.kundeId===k.id) : [o], oIds = objekte.map(x => x.id), u = loeschUmfang(oIds), zurueck = o && o.kundeId;
+  u.dateien.forEach(d => { IDB.del(d.id, 'files').catch(() => {}); });
+  const stWeg = new Set(u.stoerungen.map(x => x.id));
+  S.mails = S.mails.filter(m => !u.bIds.has(m.berichtId));
+  S.berichte = S.berichte.filter(b => !u.bIds.has(b.id));
+  S.stoerungen = S.stoerungen.filter(x => !stWeg.has(x.id));
+  S.auftraege = S.auftraege.filter(a => !u.auIds.has(a.id));
+  S.komponenten = S.komponenten.filter(c => !u.kIds.has(c.id));
+  S.anlagen = S.anlagen.filter(a => !u.aIds.has(a.id));
+  S.objekte = S.objekte.filter(x => !oIds.includes(x.id));
+  if(k) S.kunden = S.kunden.filter(x => x.id!==k.id);
+  if(UI.kw && u.aIds.has(UI.kw.aid)) UI.kw = null;
+  if(UI.xi && u.aIds.has(UI.xi.anlage)) UI.xi = null;
+  if(u.aIds.has(UI.impA)) UI.impA = null;
+  if(oIds.includes(UI.mapSel)) UI.mapSel = null;
+  UI.anlage = null; UI.auftrag = null; UI.loesch = null;
+  save(); closeModal();
+  if(k){ UI.kunde = null; UI.view = 'kunden'; } else { UI.kunde = zurueck; UI.view = 'kunde'; }
+  render(); window.scrollTo(0,0); toast(k ? 'Kunde gelöscht' : 'Objekt gelöscht');
+}
 /* Der Bericht wird für den Druck in einzelne Tabellenzeilen zerlegt. Nur zwischen Zeilen brechen alle Browser sauber um,
    und nur dort wiederholen sie den Platz für Briefkopf und Fuß. Kurze Komponenten bleiben am Stück, lange werden zwischen den Prüfgruppen getrennt. */
 function druckZeilen(doc, tb){
@@ -3628,11 +3680,45 @@ function tabellenBeschriften(root){
     const kopf = [...t.querySelectorAll('thead th')].map(x => x.innerText.trim());
     if(!kopf.length) return;
     t.classList.add('kt');
-    t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td,i) => { if(!td.hasAttribute('colspan') && kopf[i]) td.dataset.l = kopf[i]; }));
+    t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td,i) => { if(td.hasAttribute('colspan') || !kopf[i]) return; td.dataset.l = kopf[i];
+      // Mehrere Teile einer Zelle zusammenhalten, sonst setzt die Handy-Karte sie als eigene Spalten nebeneinander
+      if([...td.childNodes].filter(n => n.nodeType===1 || n.textContent.trim()).length > 1){ const w = document.createElement('div'); w.className = 'kt-wert'; w.append(...td.childNodes); td.append(w); } }));
   });
 }
 
 const VIEWS = {woche:vWoche, luecken:vLuecken, faellig:vFaellig, start:vStart, karte:vKarte, kunden:vKunden, kunde:vKunde, anlage:vAnlage, auftraege:vAuftraege, auftrag:vAuftrag, berichte:vBerichte, stoerungen:vStoerungen, admin:vAdmin, info:vInfo};
+/* Browser-Verlauf: Jeder Seitenwechsel im Portal wird eingetragen, damit Zurück und Vor im Browser und an der Maus innerhalb des Portals bleiben */
+let navLetzt = null;
+function navZustand(){
+  const z = {mode:S.mode, view:UI.view};
+  if(S.mode==='app'){ z.app = UI.app ? {screen:UI.app.screen, komp:UI.app.komp} : null; z.auftrag = UI.auftrag; return z; }
+  if(UI.view==='kunde') z.kunde = UI.kunde;
+  if(UI.view==='anlage') z.anlage = UI.anlage;
+  if(UI.view==='auftrag') z.auftrag = UI.auftrag;
+  if(UI.view==='admin') z.at = UI.at;
+  return z;
+}
+function navMerken(){
+  const z = navZustand(), key = JSON.stringify(z);
+  if(key===navLetzt) return;
+  try{
+    if(navLetzt===null) history.replaceState({nav:z, y:0}, '');
+    else { history.replaceState({...(history.state||{}), y:window.scrollY}, ''); history.pushState({nav:z, y:0}, ''); }
+  }catch(e){}
+  navLetzt = key;
+}
+try{ history.scrollRestoration = 'manual'; }catch(e){}
+window.addEventListener('popstate', e => {
+  const z = e.state && e.state.nav; if(!z) return;
+  closeModal();
+  if(z.mode!==S.mode){ S.mode = z.mode; save(); }
+  UI.view = z.view; if('kunde' in z) UI.kunde = z.kunde; if('anlage' in z) UI.anlage = z.anlage; if('auftrag' in z) UI.auftrag = z.auftrag; if('at' in z) UI.at = z.at;
+  if(z.app && UI.app) Object.assign(UI.app, z.app);
+  // Inzwischen gelöschtes bleibt nicht als kaputte Seite stehen
+  if(UI.view==='anlage' && !by(S.anlagen, UI.anlage)) UI.view = 'kunden';
+  navLetzt = JSON.stringify(navZustand());
+  render(); window.scrollTo(0, e.state.y || 0);
+});
 function render(){
   kIdx = null; stillSet = null;
   queueMicrotask(() => { const w = document.querySelector('.imgrid-wrap'); if(w){ w.scrollLeft = UI.imSL||0; w.scrollTop = UI.imST||0; } });
@@ -3644,6 +3730,7 @@ function render(){
   top.querySelector('.band').hidden = false; document.getElementById('modes').hidden = false; document.querySelector('.who').hidden = false;
   renderChrome();
   app.innerHTML = S.mode==='app' ? vApp() : S.mode==='annette' ? vAnnette() : (VIEWS[UI.view] || vStart)();
+  navMerken();
   uebergang();
   app.querySelectorAll('canvas[data-sig]').forEach(initSig);
   tabellenBeschriften();
