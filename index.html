@@ -1931,7 +1931,9 @@ function xiPlan(x){
   return plan;
 }
 /* KWP-Liste aus dem Wartungswesen: jede Zeile bekommt von Hand eine Gruppe, die Anzahl wird zu einzelnen Komponenten */
-const KW_FELDER = [['bezeichnung','Bezeichnung (wofür zuständig)'],['hersteller','Hersteller'],['modell','Typ'],['anzahl','Anzahl'],['zuluft','Zuluft (Menge)'],['abluft','Abluft (Menge)'],['info','Filter / Info'],['keilriemen','Keilriemen'],['leistung','Leistung'],['einbauort','Einbauort'],['sn','Seriennummer'],['baujahr','Baujahr']];
+const KW_FELDER = [['bezeichnung','Bezeichnung (wofür zuständig)'],['hersteller','Hersteller'],['modell','Typ'],['anzahl','Anzahl'],['zuluft','Zuluft (Menge)'],['abluft','Abluft (Menge)'],['einbauort','Einbauort'],['sn','Seriennummer'],['baujahr','Baujahr']];
+/* Nur diese Spalten werden beim Einlesen vorausgewählt, alles andere bleibt auf „Nicht übernehmen“ */
+const KW_VORAUSWAHL = ['bezeichnung','hersteller','modell','anzahl','zuluft','abluft'];
 const KW_ERKENNEN = {bezeichnung:/^anlage|bezeichnung|artikel|ger(ä|ae)t|komponente|beschreibung/i, anzahl:/^anzahl$|^menge$|stk|stück/i, hersteller:/fabrikat|hersteller/i, modell:/\btyp\b|modell|bauart/i, zuluft:/^zuluft/i, abluft:/^abluft/i, info:/^info|filter/i, keilriemen:/keilriemen/i, leistung:/leistung/i, einbauort:/einbauort|standort|raum/i, sn:/s\/n|serien/i, baujahr:/baujahr/i};
 const kwAnzahl = v => { const n = parseInt(String(v||'').replace(/[^\d]/g,''), 10); return n >= 1 ? Math.min(n, 500) : 1; };
 const kwFeldListe = () => [...KW_FELDER, ['bauart','Bauart'], ...kfEigene().map(f => [f.k, f.label])];
@@ -1951,7 +1953,7 @@ function kwFelder(w){ const {anzahl, zuluft, abluft, info, keilriemen, ...r} = w
   if(hinw.length) r.hinweis = hinw.join(' · ');
   if(r.modell) r.modell = spModell(r.modell);
   return r; }
-function kwErkennen(x){ const kopf = xiKopf(x); x.map = {}; x.zeilen = []; KW_FELDER.forEach(([k]) => { const i = kopf.findIndex((v,j) => v && KW_ERKENNEN[k].test(v) && !Object.values(x.map).includes(j)); if(i>=0) x.map[k] = i; }); kwZeilenBauen(x); }
+function kwErkennen(x){ const kopf = xiKopf(x); x.map = {}; x.zeilen = []; KW_VORAUSWAHL.forEach(k => { const i = kopf.findIndex((v,j) => v && KW_ERKENNEN[k].test(v) && !Object.values(x.map).includes(j)); if(i>=0) x.map[k] = i; }); kwZeilenBauen(x); }
 const kwTypen = g => { const l = S.typen.filter(t => t.gruppe===g); return l.length ? l : S.typen; };
 /* Listen-Import zum Anklicken: Die Excel-Tabelle wird angezeigt. Oben je Spalte wählen, was drin steht, links je Zeile, was damit passiert. */
 const imKnoepfe = (aid, cls) => `<label class="${cls} upl">Wartungswesen importieren<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-kwfile="${aid}"></label><label class="${cls} upl">Brandschutzklappenliste importieren<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-xifile="${aid}"></label>`;
