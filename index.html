@@ -1426,7 +1426,7 @@ function kontaktModal(aid){
   const {a,o} = ctx(aid), kt = a.kontakt || {};
   UI.ktEdit = aid;
   openModal(`<h2>Ansprechpartner vor Ort</h2><p class="muted" style="margin:0">${h(o.nr)} ${h(o.name)}</p>
-    <form data-form="kontakt" style="display:grid;gap:12px">${kontaktFelder(kt.name, kt.tel)}
+    <form data-form="kontakt" style="display:grid;gap:12px">${kontaktFelder(kt.name, kt.tel, aid)}
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div></form>`);
 }
 
@@ -2702,9 +2702,27 @@ function stoerModal(x, c, auftragNr){
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">${x ? 'Speichern' : 'Störung anlegen'}</button></div>
     </form>`);
 }
-function kontaktFelder(name, tel){
-  return `<div class="fgrid"><label class="f" for="kpn">Ansprechpartner vor Ort<input id="kpn" name="ansp" value="${h(name||'')}" placeholder="z. B. Hausmeister Herr Müller" autocomplete="off"></label>
-    <label class="f" for="kpt">Telefon<input id="kpt" name="tel" type="tel" value="${h(tel||'')}" placeholder="z. B. 06392 123456" autocomplete="off"></label></div>`;
+/* Ansprechpartner je Anlage: der zuletzt genutzte steht in a.kontakt, frühere bleiben in a.kontakte zur Auswahl */
+function kontaktListe(a){
+  if(!a) return [];
+  const l = [...(a.kontakte||[])];
+  if(a.kontakt && (a.kontakt.name || a.kontakt.tel) && !l.some(x => x.name===a.kontakt.name && x.tel===a.kontakt.tel)) l.unshift(a.kontakt);
+  return l;
+}
+function kontaktSpeichern(a, name, tel){
+  if(!a || !(name || tel)) return;
+  const gleich = x => name ? (x.name||'').toLowerCase()===name.toLowerCase() : x.tel===tel;
+  a.kontakt = {name, tel};
+  a.kontakte = [{name, tel}, ...kontaktListe(a).filter(x => !gleich(x) && !(x.name===name && x.tel===tel))].slice(0, 6);
+}
+function kontaktWahl(aid, name, tel){
+  const l = kontaktListe(by(S.anlagen, aid)); if(!l.length) return '';
+  const i = l.findIndex(x => (x.name||'')===(name||'') && (x.tel||'')===(tel||''));
+  return `<label class="f" for="kpw">Gespeicherter Ansprechpartner<select id="kpw" data-kpw="${h(aid)}"><option value="">Selbst eintragen</option>${l.map((x, j) => `<option value="${j}" ${j===i?'selected':''}>${h([x.name, x.tel].filter(Boolean).join(' · '))}</option>`).join('')}</select></label>`;
+}
+function kontaktFelder(name, tel, aid){
+  return `<div id="kpbox" style="display:grid;gap:12px">${aid ? kontaktWahl(aid, name, tel) : ''}<div class="fgrid"><label class="f" for="kpn">Ansprechpartner vor Ort<input id="kpn" name="ansp" value="${h(name||'')}" placeholder="z. B. Hausmeister Herr Müller" autocomplete="off"></label>
+    <label class="f" for="kpt">Telefon<input id="kpt" name="tel" type="tel" value="${h(tel||'')}" placeholder="z. B. 06392 123456" autocomplete="off"></label></div></div>`;
 }
 const telLink = t => `<a href="tel:${h(String(t).replace(/[^\d+]/g,''))}">${h(t)}</a>`;
 function kontaktText(A){
@@ -2713,7 +2731,7 @@ function kontaktText(A){
 }
 function kontaktMerken(A){
   const a = by(S.anlagen, A.anlageId);
-  if(a && (A.ansp || A.tel)) a.kontakt = {name:A.ansp||'', tel:A.tel||''};
+  kontaktSpeichern(a, A.ansp||'', A.tel||'');
 }
 function kompEditModal(c){
   UI.kEdit = c.id;
@@ -2741,7 +2759,7 @@ function editModal(A){
     <p class="muted" style="margin:0"><span class="code">${h(o.nr)}</span> ${h(o.name)}</p>
     <form data-form="aedit" style="display:grid;gap:12px">
       <div class="fgrid"><label class="f" for="ed">Datum<input id="ed" name="datum" type="date" value="${A.datum}" required></label><label class="f" for="ez">Uhrzeit<input id="ez" name="zeit" type="time" value="${h(A.zeit)}"></label></div>
-      ${kontaktFelder(A.ansp, A.tel)}
+      ${kontaktFelder(A.ansp, A.tel, A.anlageId)}
       <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}" ${A.techIds.includes(t.id)?'checked':''}>${h(t.name)}</label>`).join('')}</div></div>
       <p class="muted small" style="margin:0">Ohne Techniker geht der Auftrag zurück auf „In Planung“ und ist in keiner App mehr zu sehen.</p>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div>
@@ -2758,7 +2776,7 @@ function planenModal(aid, datum, techId){
         <div class="f puhr-feld"><label for="pz">Uhrzeit</label><input id="pz" name="zeit" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--"><button type="button" class="puhr-knopf" data-uhr aria-label="Uhrzeit auswählen" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><div class="puhr" id="puhr" hidden></div></div></div>
       <div class="pkal" id="pkal"></div>
       </div><div>
-      ${kontaktFelder(...(() => { const a0 = by(S.anlagen, aid); const kt = (a0 && a0.kontakt) || {}; return [kt.name, kt.tel]; })())}
+      ${kontaktFelder(...(() => { const a0 = by(S.anlagen, aid); const kt = (a0 && a0.kontakt) || {}; return [kt.name, kt.tel]; })(), aid)}
       <div class="f">Techniker<div class="checks">${appUsers().map(t => `<label><input type="checkbox" name="tech" value="${t.id}" ${t.id===techId?'checked':''}>${h(t.name)}</label>`).join('')}</div></div>
       <label class="f" for="pu">Umfang<select id="pu" name="umfang"><option value="ganz">Ganze Anlage</option><option value="faellig">Nur fällige Komponenten</option><option value="gruppen">Gruppen auswählen</option></select></label>
       <div class="f" id="pgw" hidden></div>
@@ -3116,7 +3134,9 @@ function importModal(){
 }
 modal.addEventListener('change', e => {
   if(e.target.id==='pu' || e.target.id==='pa') pgwFuellen();
-  if(e.target.id==='pa'){ const kt = (by(S.anlagen, e.target.value)||{}).kontakt || {}; document.getElementById('kpn').value = kt.name || ''; document.getElementById('kpt').value = kt.tel || ''; }
+  if(e.target.id==='pa'){ const kt = (by(S.anlagen, e.target.value)||{}).kontakt || {}, box = document.getElementById('kpbox'); if(box) box.outerHTML = kontaktFelder(kt.name, kt.tel, e.target.value); }
+  if(e.target.id==='kpw'){ const x = kontaktListe(by(S.anlagen, e.target.dataset.kpw))[e.target.value], n = document.getElementById('kpn'), t = document.getElementById('kpt');
+    n.value = x ? x.name||'' : ''; t.value = x ? x.tel||'' : ''; if(!x) n.focus(); }
 });
 modal.addEventListener('submit', e => {
   e.preventDefault(); const f = new FormData(e.target), kind = e.target.dataset.form;
@@ -3184,7 +3204,7 @@ modal.addEventListener('submit', e => {
   if(kind==='kontakt'){
     const a = by(S.anlagen, UI.ktEdit); if(!a) return closeModal();
     const name = (f.get('ansp')||'').trim(), tel = (f.get('tel')||'').trim();
-    a.kontakt = (name || tel) ? {name, tel} : null;
+    if(name || tel) kontaktSpeichern(a, name, tel); else a.kontakt = null;
     save(); closeModal(); render(); toast('Ansprechpartner gespeichert');
   }
   if(kind==='loeschen'){ loeschAusfuehren(); return; }
