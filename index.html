@@ -615,6 +615,19 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .pkal-wt{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:2px 0}
 .pkal-tag{position:relative;min-height:32px;font:inherit;font-size:15px;font-weight:600;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);cursor:pointer;padding:0}
 .pkal-tag:hover{background:var(--line)}
+.puhr-feld{position:relative}
+.puhr-feld input{padding-right:44px}
+.puhr-knopf{position:absolute;right:4px;bottom:4px;width:36px;height:32px;border:0;border-radius:6px;background:none;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.puhr-knopf:hover,.puhr-knopf[aria-expanded="true"]{background:var(--line)}
+.puhr{position:absolute;right:0;width:min(330px,calc(100vw - 64px));top:calc(100% + 4px);z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:grid;gap:8px}
+.puhr small{font-size:13px;font-weight:700;color:var(--muted)}
+.puhr-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.puhr-grid.min{grid-template-columns:repeat(4,1fr)}
+.puhr-grid button{min-height:42px;font:inherit;font-size:17px;font-weight:600;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer;padding:0}
+.puhr-grid button:hover{background:var(--line)}
+.puhr-grid button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.puhr-fuss{display:flex;justify-content:space-between;gap:8px}
+.puhr-fuss button{font:inherit;font-size:14px;border:0;background:none;color:var(--accent);cursor:pointer;padding:4px 2px;font-weight:600}
 .pkal-tag.we{color:var(--muted)}
 .pkal-tag.alt{opacity:.45}
 .pkal-tag.heute{border-color:var(--accent)}
@@ -2741,7 +2754,8 @@ function planenModal(aid, datum, techId){
     <form data-form="planen" style="display:grid;gap:12px">
       <div class="pspalten"><div>
       <label class="f" for="pa">Objekt / Anlage<select id="pa" name="anlage">${opts}</select></label>
-      <div class="fgrid"><label class="f" for="pd">Datum<input id="pd" name="datum" type="date" value="${datum || iso(TODAY)}" required></label><label class="f" for="pz">Uhrzeit<input id="pz" name="zeit" type="time"></label></div>
+      <div class="fgrid"><label class="f" for="pdt">Datum<input id="pdt" type="text" inputmode="numeric" autocomplete="off" placeholder="TT.MM.JJJJ" value="${fmt(datum || iso(TODAY))}"><input id="pd" name="datum" type="hidden" value="${datum || iso(TODAY)}"></label>
+        <div class="f puhr-feld"><label for="pz">Uhrzeit</label><input id="pz" name="zeit" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--"><button type="button" class="puhr-knopf" data-uhr aria-label="Uhrzeit auswählen" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><div class="puhr" id="puhr" hidden></div></div></div>
       <div class="pkal" id="pkal"></div>
       </div><div>
       ${kontaktFelder(...(() => { const a0 = by(S.anlagen, aid); const kt = (a0 && a0.kontakt) || {}; return [kt.name, kt.tel]; })())}
@@ -2753,9 +2767,12 @@ function planenModal(aid, datum, techId){
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Auftrag anlegen</button></div>
     </form>`, () => {
       modal.querySelector('.mbox').classList.add('gross');
-      const pd = document.getElementById('pd'), d0 = new Date((pd.value || iso(TODAY))+'T00:00');
+      const pd = document.getElementById('pd'), pdt = document.getElementById('pdt'), pz = document.getElementById('pz'), d0 = new Date((pd.value || iso(TODAY))+'T00:00');
       UI.pkMonat = new Date(d0.getFullYear(), d0.getMonth(), 1);
-      pd.addEventListener('input', () => { const d = new Date(pd.value+'T00:00'); if(!isNaN(d)) UI.pkMonat = new Date(d.getFullYear(), d.getMonth(), 1); pkalZeichnen(); });
+      pdt.addEventListener('input', () => { pd.value = datumLesen(pdt.value); if(pd.value){ const d = new Date(pd.value+'T00:00'); UI.pkMonat = new Date(d.getFullYear(), d.getMonth(), 1); } pkalZeichnen(); });
+      pdt.addEventListener('blur', () => { if(pd.value) pdt.value = fmt(pd.value); });
+      pz.addEventListener('blur', () => { const z = zeitLesen(pz.value); if(z!==null) pz.value = z; });
+      pz.addEventListener('input', () => puhrZeichnen());
       pkalZeichnen(); pgwFuellen();
     });
 }
@@ -2773,9 +2790,46 @@ function pkalZeichnen(){
   box.innerHTML = `<div class="pkal-kopf"><button type="button" data-kalm="-1" aria-label="Monat zurück">‹</button><b>${m.toLocaleDateString('de-DE',{month:'long',year:'numeric'})}</b><button type="button" data-kalm="1" aria-label="Monat vor">›</button></div>
     <div class="pkal-grid">${['Mo','Di','Mi','Do','Fr','Sa','So'].map(x => `<span class="pkal-wt">${x}</span>`).join('')}${zellen.join('')}</div>`;
 }
+/* Eingetipptes Datum „8.11.26“ oder „08.11.2026“ → 2026-11-08; ungültig → '' */
+function datumLesen(t){
+  const m = String(t||'').trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/); if(!m) return '';
+  const j = m[3].length===2 ? 2000 + +m[3] : +m[3], d = new Date(j, m[2]-1, +m[1]);
+  return d.getDate()===+m[1] && d.getMonth()===m[2]-1 ? iso(d) : '';
+}
+/* Eingetippte Uhrzeit „8“, „830“, „8:30“, „8.30“ → „08:30“; leer → ''; ungültig → null */
+function zeitLesen(t){
+  t = String(t||'').trim(); if(!t) return '';
+  const m = t.match(/^(\d{1,2})(?:[:.,]?(\d{2}))?$/); if(!m) return null;
+  const hh = +m[1], mm = +(m[2]||0); if(hh>23 || mm>59) return null;
+  return pad(hh)+':'+pad(mm);
+}
+/* Eigene Uhrzeit-Auswahl: erst Stunde, dann Minute */
+function puhrZeichnen(){
+  const box = document.getElementById('puhr'), pz = document.getElementById('pz'); if(!box || !pz || box.hidden) return;
+  const z = zeitLesen(pz.value) || '', hh = z ? +z.slice(0,2) : -1, mm = z ? +z.slice(3) : -1;
+  const std = []; for(let i = 6; i <= 20; i++) std.push(i);
+  box.innerHTML = `<small>Stunde</small><div class="puhr-grid">${std.map(i => `<button type="button" data-uhrh="${i}" class="${i===hh?'sel':''}">${pad(i)}</button>`).join('')}</div>
+    <small>Minute</small><div class="puhr-grid min">${[0,15,30,45].map(i => `<button type="button" data-uhrm="${i}" class="${i===mm?'sel':''}">:${pad(i)}</button>`).join('')}</div>
+    <div class="puhr-fuss"><button type="button" data-uhrleer>Keine Uhrzeit</button><button type="button" data-uhrzu>Fertig</button></div>`;
+}
+function puhrAuf(auf){
+  const box = document.getElementById('puhr'), k = document.querySelector('[data-uhr]'); if(!box) return;
+  box.hidden = !auf; k && k.setAttribute('aria-expanded', auf ? 'true' : 'false'); puhrZeichnen();
+}
 modal.addEventListener('click', e => {
+  const pz = document.getElementById('pz'), box = document.getElementById('puhr');
+  if(pz && box){
+    const z = zeitLesen(pz.value) || '';
+    if(e.target.closest('[data-uhr]')){ puhrAuf(box.hidden); return; }
+    const uh = e.target.closest('[data-uhrh]'), um = e.target.closest('[data-uhrm]');
+    if(uh){ pz.value = pad(+uh.dataset.uhrh)+':'+(z ? z.slice(3) : '00'); puhrZeichnen(); return; }
+    if(um){ pz.value = (z ? z.slice(0,2) : '08')+':'+pad(+um.dataset.uhrm); puhrAuf(false); return; }
+    if(e.target.closest('[data-uhrleer]')){ pz.value = ''; puhrAuf(false); return; }
+    if(e.target.closest('[data-uhrzu]')){ puhrAuf(false); return; }
+    if(!box.hidden && !e.target.closest('.puhr-feld')) puhrAuf(false);
+  }
   const tag = e.target.closest('[data-kal]'), mb = e.target.closest('[data-kalm]');
-  if(tag){ const pd = document.getElementById('pd'); if(pd){ pd.value = tag.dataset.kal; pkalZeichnen(); } }
+  if(tag){ const pd = document.getElementById('pd'), pdt = document.getElementById('pdt'); if(pd){ pd.value = tag.dataset.kal; if(pdt) pdt.value = fmt(pd.value); pkalZeichnen(); } }
   else if(mb){ const m = UI.pkMonat; UI.pkMonat = new Date(m.getFullYear(), m.getMonth() + +mb.dataset.kalm, 1); pkalZeichnen(); }
 });
 /* Bei Umfang „Gruppen auswählen“: Gruppen der gewählten Anlage zum Anhaken */
@@ -3106,6 +3160,9 @@ modal.addEventListener('submit', e => {
     })();
   }
   if(kind==='planen'){
+    if(!f.get('datum')){ toast('Bitte ein gültiges Datum eingeben, z. B. 12.11.2026'); return; }
+    const zeit = zeitLesen(f.get('zeit')); if(zeit===null){ toast('Bitte eine gültige Uhrzeit eingeben, z. B. 08:30'); return; }
+    f.set('zeit', zeit);
     const aid = f.get('anlage'), umfang = f.get('umfang'), gruppen = f.getAll('gruppe').map(Number);
     if(umfang==='gruppen' && !gruppen.length){ toast('Bitte mindestens eine Gruppe auswählen'); return; }
     const techs = f.getAll('tech');
