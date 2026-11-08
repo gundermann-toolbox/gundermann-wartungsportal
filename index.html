@@ -2493,13 +2493,16 @@ function vApp(){
   const ks = auftragKomps(A), done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done).length;
   if(sc==='auftrag'){
     let lastG = 0;
-    const info = `<div class="card"><div><b style="font-size:17px">${h(o.name)}</b><div class="muted small">${h(o.adresse)}, ${h(o.ort)}</div></div>${routeKnoepfe(o)}
-      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${kontaktText(A) ? `<br><span class="muted">Ansprechpartner:</span> ${kontaktText(A)}` : ''}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`
-      + ((a.notizen||[]).length ? `<div class="card"><b>Notizen</b>${notizList(a, true)}</div>` : '')
+    const geplant = A.status==='geplant';
+    const kopf = `<div class="card"><div><b style="font-size:17px">${h(o.name)}</b><div class="muted small">${h(o.adresse)}, ${h(o.ort)}</div></div>${routeKnoepfe(o)}
+      ${geplant ? `<button class="btn pri block" data-act="appstart">Auftrag starten</button>` : ''}
+      <div class="small"><span class="muted">Kunde:</span> ${h(k.name)}<br><span class="muted">Termin:</span> ${aDatum(A)}${kontaktText(A) ? `<br><span class="muted">Ansprechpartner:</span> ${kontaktText(A)}` : ''}${a.hinweis ? `<br><span class="muted">Hinweis:</span> ${h(a.hinweis)}` : ''}</div></div>`;
+    const extras = ((a.notizen||[]).length ? `<div class="card"><b>Notizen</b>${notizList(a, true)}</div>` : '')
       + ((a.dateien||[]).length ? `<div class="card"><b>Dokumente zur Anlage</b>${dokList(a, true)}</div>` : '');
-    if(A.status==='geplant') return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
-      info + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small ${c.sub ? 'ksubk' : ''}">${kNr(c)} ${h(tname(typOf(c)))} · ${h(kText(c))}</div>`).join('')}</div>`,
-      `<button class="btn pri block" data-act="appstart">Auftrag starten</button>`);
+    const info = kopf + extras;
+    // Geplant: „Auftrag starten“ direkt unter „Route starten“, darunter die Komponenten
+    if(geplant) return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
+      kopf + `<div class="card"><b>${ks.length} Komponenten zu prüfen</b>${ks.map(c => `<div class="small ${c.sub ? 'ksubk' : ''}">${kNr(c)} ${h(tname(typOf(c)))} · ${h(kText(c))}</div>`).join('')}</div>` + extras);
     if(A.status==='erledigt') return appShell(appBar(A.nr, 'Wartung · '+h(o.nr), 'liste'),
       info + `<div class="card">${pill('ok','Bericht übermittelt')}<div class="small">Am ${fmt(A.erstGesendet || A.abgeschlossen)} ans Büro geschickt${A.korrektur ? `, korrigierte Fassung ${A.korrektur}` : ''}. Das Büro hat den Bericht als PDF.</div>
         ${korrekturMoeglich(A) ? `<div class="small muted">${A.korrekturFrei ? 'Das Büro hat den Bericht zur Korrektur freigegeben.' : `Korrigieren ist noch bis ${fmt(korrekturBis(A))} möglich.`}</div>` : ''}</div>`,
@@ -2525,7 +2528,7 @@ function vApp(){
       <div class="card"><b>Fotos</b><div class="fotos">${p.fotos.map((f,i) => `<div class="foto"><img src="${f}" alt="Foto ${i+1}"><button data-act="fotodel" data-c="${c.id}" data-i="${i}" aria-label="Foto entfernen">×</button></div>`).join('')}
         <label class="btn sm upl">Foto aufnehmen<input type="file" accept="image/*" capture="environment" data-foto="${c.id}"></label></div></div>`,
       `<button class="btn pri block" data-act="appkdone" data-c="${c.id}">Prüfung speichern</button>
-       <div class="row" style="justify-content:space-between"><button class="btn ghost" data-act="allio" data-c="${c.id}">Offene Punkte i.O. setzen</button><button class="btn danger" data-act="stoerneu" data-c="${c.id}" data-nr="${A.nr}">Störung melden</button></div>`);
+       <div class="row" style="justify-content:space-between"><button class="btn ghost" data-act="allio" data-c="${c.id}">${(p.allio||[]).length ? 'i.O. wieder zurücknehmen' : 'Offene Punkte i.O. setzen'}</button><button class="btn danger" data-act="stoerneu" data-c="${c.id}" data-nr="${A.nr}">Störung melden</button></div>`);
   }
   if(sc==='abschluss') return appShell(appBar('Abschluss', A.nr+' · '+h(o.nr), 'auftrag'),
     `<div class="card"><b>${done} von ${ks.length} Komponenten geprüft</b>${done < ks.length ? `<div class="small muted">Nicht geprüfte Komponenten erscheinen im Bericht als offen.</div>` : ''}</div>    <div class="card"><label class="f" for="pbem">Bemerkung zum Bericht<textarea id="pbem" data-in="bem" placeholder="z. B. Kunde über Störungen informiert">${h(A.bem)}</textarea></label>
@@ -3540,8 +3543,17 @@ const ACT = {
   },
   allio: d => {
     const A = curA(), p = prOf(A,d.c), c = by(S.komponenten,d.c);
+    // Zweiter Druck nimmt genau die automatisch gesetzten Punkte wieder zurück (falls inzwischen nicht von Hand geändert)
+    if((p.allio||[]).length){
+      p.allio.forEach(id => { const x = clFor(A,c).find(y => y.id===id), cur = p.f[id]; if(!x || !cur) return;
+        if(cur.v!==(x.typ==='checkbox' ? true : 'io')) return;
+        if(Object.keys(cur).length===1) delete p.f[id]; else p.f[id] = Object.assign({}, cur, {v:null}); });
+      p.allio = []; save(); render(); toast('i.O. zurückgenommen'); return;
+    }
+    const gesetzt = [];
     clFor(A,c).forEach(x => { const cur = p.f[x.id]; if(cur && cur.v!=null && cur.v!=='') return;
-      if(x.typ==='ionv' || x.typ==='ion') p.f[x.id] = {v:'io'}; if(x.typ==='checkbox') p.f[x.id] = {v:true}; });
+      if(x.typ==='ionv' || x.typ==='ion'){ p.f[x.id] = {v:'io'}; gesetzt.push(x.id); } if(x.typ==='checkbox'){ p.f[x.id] = {v:true}; gesetzt.push(x.id); } });
+    p.allio = gesetzt;
     save(); render();
   },
   fotodel: d => { prOf(curA(),d.c).fotos.splice(+d.i,1); save(); render(); },
