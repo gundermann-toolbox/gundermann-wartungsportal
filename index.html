@@ -619,8 +619,6 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .pkal-tag.alt{opacity:.45}
 .pkal-tag.heute{border-color:var(--accent)}
 .pkal-tag.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.pkal-tag i{position:absolute;right:2px;top:1px;font-style:normal;font-size:10px;font-weight:700;line-height:14px;min-width:14px;border-radius:7px;background:var(--ink);color:var(--surface)}
-.pkal-leg{font-size:12px;color:var(--muted)}
 @media (max-width:520px){ .pkal-tag{min-height:38px} }
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
 ul.list{margin:0;padding-left:20px;display:grid;gap:6px}
@@ -2761,21 +2759,19 @@ function planenModal(aid, datum, techId){
       pkalZeichnen(); pgwFuellen();
     });
 }
-/* Großer Monatskalender zum Antippen; die Zahl am Tag zeigt, wie viele offene Aufträge dort schon geplant sind */
+/* Monatskalender zum Anklicken im Fenster „Auftrag planen“ */
 function pkalZeichnen(){
   const box = document.getElementById('pkal'), pd = document.getElementById('pd'); if(!box || !pd) return;
   const m = UI.pkMonat, jahr = m.getFullYear(), mon = m.getMonth(), erster = (new Date(jahr, mon, 1).getDay()+6)%7, tage = new Date(jahr, mon+1, 0).getDate();
-  const proTag = {}; S.auftraege.forEach(A => { if(A.status!=='erledigt' && A.datum) proTag[A.datum] = (proTag[A.datum]||0) + 1; });
   const zellen = [];
   for(let i = 0; i < erster; i++) zellen.push('<span></span>');
   for(let t = 1; t <= tage; t++){
-    const d = new Date(jahr, mon, t), w = iso(d), wt = d.getDay(), n = proTag[w];
+    const d = new Date(jahr, mon, t), w = iso(d), wt = d.getDay();
     const kl = ['pkal-tag', (wt===0||wt===6) && 'we', d < TODAY && 'alt', w===iso(TODAY) && 'heute', w===pd.value && 'sel'].filter(Boolean).join(' ');
-    zellen.push(`<button type="button" class="${kl}" data-kal="${w}" aria-label="${d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})}${n ? `, ${n} Auftr${n===1?'ag':'äge'}` : ''}">${t}${n ? `<i>${n}</i>` : ''}</button>`);
+    zellen.push(`<button type="button" class="${kl}" data-kal="${w}" aria-label="${d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})}">${t}</button>`);
   }
   box.innerHTML = `<div class="pkal-kopf"><button type="button" data-kalm="-1" aria-label="Monat zurück">‹</button><b>${m.toLocaleDateString('de-DE',{month:'long',year:'numeric'})}</b><button type="button" data-kalm="1" aria-label="Monat vor">›</button></div>
-    <div class="pkal-grid">${['Mo','Di','Mi','Do','Fr','Sa','So'].map(x => `<span class="pkal-wt">${x}</span>`).join('')}${zellen.join('')}</div>
-    <div class="pkal-leg">Zahl am Tag = dort schon geplante offene Aufträge</div>`;
+    <div class="pkal-grid">${['Mo','Di','Mi','Do','Fr','Sa','So'].map(x => `<span class="pkal-wt">${x}</span>`).join('')}${zellen.join('')}</div>`;
 }
 modal.addEventListener('click', e => {
   const tag = e.target.closest('[data-kal]'), mb = e.target.closest('[data-kalm]');
