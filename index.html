@@ -611,6 +611,10 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .bliste td .small{font-size:11.5px;margin-top:2px}
 .doc tr.ksubk td:first-child{padding-left:20px}
 .bvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.bvwrap{position:relative;display:grid}
+.bvx{position:absolute;top:6px;right:6px;width:28px;height:28px;border:0;border-radius:6px;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+.bvx:hover{background:var(--line);color:var(--bad)}
+.bvwrap .bvkarte{padding-right:36px}
 .bvkarte{display:grid;gap:4px;text-align:left;font:inherit;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:12px 14px;cursor:pointer}
 .bvkarte span{font-size:13px;color:var(--muted);line-height:1.4}
 .bvkarte:hover{border-color:var(--accent)}
@@ -2002,7 +2006,7 @@ function bBeispiel(){
   return (UI.bBsp = A);
 }
 function vBerichtAdmin(){
-  const b = (S.settings.bericht = S.settings.bericht || {}), v = bVorlage(b.vorlage), B = bCfg(), eigen = Object.keys(b.eigen||{}).length;
+  const b = (S.settings.bericht = S.settings.bericht || {}), v = bVorlage(b.vorlage), B = bCfg(), eigen = Object.keys(b.eigen||{}).length, aus = S.settings.berichtAus || [];
   const beispiele = S.auftraege.filter(A => Object.values(A.pr||{}).some(p => p && p.done)).sort((x,y) => String(y.datum).localeCompare(String(x.datum)));
   if(UI.bA!=='_bsp' && !by(beispiele, UI.bA)) UI.bA = (beispiele[0] || {id:'_bsp'}).id;
   const A = UI.bA==='_bsp' ? bBeispiel() : by(S.auftraege, UI.bA);
@@ -2011,7 +2015,8 @@ function vBerichtAdmin(){
   const txt = (k, label, ph, lang) => `<label class="f" for="bo_${k}">${label}${lang ? `<textarea id="bo_${k}" data-bopt="${k}" placeholder="${ph}" style="min-height:64px">${h(B[k]||'')}</textarea>` : `<input id="bo_${k}" data-bopt="${k}" value="${h(B[k]||'')}" placeholder="${ph}" autocomplete="off">`}</label>`;
   return `<section class="panel"><div class="panel-h"><h2>Berichtsvorlage</h2>${eigen ? pill('warn','angepasst') : ''}</div>
       <p class="muted" style="margin:0">So sieht der Wartungsbericht aus, den das Büro als PDF bekommt. Die Auswahl gilt für alle Berichte, auch für schon vorhandene beim nächsten Öffnen oder Drucken.</p>
-      <div class="bvgrid">${B_VORLAGEN.map(x => `<button class="bvkarte ${x.id===v.id?'on':''}" data-act="bvorlage" data-v="${x.id}" aria-pressed="${x.id===v.id}"><b>${h(x.name)}</b><span>${h(x.text)}</span></button>`).join('')}</div>
+      <div class="bvgrid">${B_VORLAGEN.filter(x => !aus.includes(x.id)).map(x => `<div class="bvwrap"><button class="bvkarte ${x.id===v.id?'on':''}" data-act="bvorlage" data-v="${x.id}" aria-pressed="${x.id===v.id}"><b>${h(x.name)}</b><span>${h(x.text)}</span></button>${x.id===v.id ? '' : `<button class="bvx" data-act="bvaus" data-v="${x.id}" aria-label="Vorlage ${h(x.name)} entfernen" title="Vorlage entfernen">×</button>`}</div>`).join('')}</div>
+      ${aus.length ? `<div class="row"><span class="muted small">${aus.length} ${aus.length===1 ? 'Vorlage' : 'Vorlagen'} entfernt</span><button class="btn sm ghost" data-act="bvein">Wieder einblenden</button></div>` : ''}
     </section>
     <section class="panel"><div class="panel-h"><h2>Anpassen</h2>${eigen ? `<button class="btn sm ghost" data-act="bzurueck">Auf „${h(v.name)}“ zurücksetzen</button>` : ''}</div>
       <div class="fgrid">
@@ -3516,6 +3521,8 @@ const ACT = {
   appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
   pdf: () => pdfSpeichern(curA()),
   bvorlage: d => { S.settings.bericht = {vorlage:d.v}; save(); const y = window.scrollY; render(); window.scrollTo(0, y); toast(`Vorlage „${bVorlage(d.v).name}“ gewählt`); },
+  bvaus: d => { const aus = (S.settings.berichtAus = S.settings.berichtAus || []); if(!aus.includes(d.v)) aus.push(d.v); save(); const y = window.scrollY; render(); window.scrollTo(0, y); toast(`Vorlage „${bVorlage(d.v).name}“ entfernt`); },
+  bvein: () => { S.settings.berichtAus = []; save(); const y = window.scrollY; render(); window.scrollTo(0, y); },
   bzurueck: () => { (S.settings.bericht = S.settings.bericht || {}).eigen = {}; save(); const y = window.scrollY; render(); window.scrollTo(0, y); },
   bpdf: () => pdfSpeichern(UI.bA==='_bsp' ? bBeispiel() : by(S.auftraege, UI.bA)),
   gstoer: () => { UI.view = 'stoerungen'; UI.sf = 'alle'; UI.menu = false; render(); window.scrollTo(0,0); },
