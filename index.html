@@ -1719,6 +1719,16 @@ function vAuftraege(){
   <div class="chips">${[['offen','Offen'],['erledigt','Erledigt'],['alle','Alle']].map(([v,l]) => `<button class="chip ${UI.af===v?'on':''}" data-act="af" data-v="${v}">${l}</button>`).join('')}</div>
   <section class="panel">${auftragTable(list)}</section>`;
 }
+/* Nachträglich angelegte Komponenten kommen in offene Aufträge ihrer Anlage (passend zum Umfang) */
+function nachtragen(neu){
+  const nrn = new Set();
+  neu.forEach(c => S.auftraege.forEach(A => {
+    if(!isOpen(A) || A.anlageId!==c.anlageId || A.kompIds.includes(c.id)) return;
+    if(A.umfang==='gruppen' && !(A.gruppen||[]).includes(c.gruppe)) return;
+    A.kompIds.push(c.id); (A.nachtrag = A.nachtrag || {})[c.id] = true; nrn.add(A.nr);
+  }));
+  return nrn.size ? `, auch in Auftrag ${[...nrn].join(', ')} übernommen` : '';
+}
 function auftragKomps(A){ return A.kompIds.map(id => by(S.komponenten,id)).filter(Boolean).sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0)); }
 function vAuftrag(){
   const A = curA(); if(!A) return vAuftraege();
@@ -2564,7 +2574,7 @@ function appKompList(A){
     const offen = q || !zu[g];
     return `<button class="gtoggle" data-act="appgrp" data-v="${g}" aria-expanded="${!!offen}">
         <span>${offen ? '▾' : '▸'} Gruppe ${g} · ${gname(g)}</span><span class="small">${gd}/${gk.length} geprüft</span></button>
-      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow ${c.sub ? 'ksubk' : ''}" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}</b><span class="muted small" style="display:block">${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}</span>${c.hinweis ? `<span class="small" style="display:block;color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}</span>${kompState(A,c)}</button>`; }).join('') : ''}`;
+      ${offen ? gk.map(c => { const t = typOf(c); return `<button class="krow ${c.sub ? 'ksubk' : ''}" data-act="appkomp" data-c="${c.id}"><span><b><span class="mono">${kNr(c)}</span> ${h(tname(t))}${tcode(t)}${A.nachtrag && A.nachtrag[c.id] ? ' <span class="pill warn">neu</span>' : ''}</b><span class="muted small" style="display:block">${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}</span>${c.hinweis ? `<span class="small" style="display:block;color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}</span>${kompState(A,c)}</button>`; }).join('') : ''}`;
   }).join('');
 }
 function kompState(A,c){
@@ -3257,7 +3267,7 @@ modal.addEventListener('submit', e => {
     const m = by(S.komponenten, UI.kSubVon); if(!m) return closeModal();
     const sub = Math.max(0, ...kSubsVon(m).map(x => x.sub)) + 1;
     const c = {id:'c'+uid(), anlageId:m.anlageId, gruppe:m.gruppe, nr:m.nr, sub, typId:kMsrTyp(m.gruppe).id, standort:'', sn:'', baujahr:'', letzte:null, ...kFelderLesen(f)};
-    S.komponenten.push(c); save(); closeModal(); render(); toast(`Unterkomponente ${kNr(c)} angelegt`);
+    S.komponenten.push(c); const zus = nachtragen([c]); save(); closeModal(); render(); toast(`Unterkomponente ${kNr(c)} angelegt${zus}`);
   }
   if(kind==='kedit'){
     const c = by(S.komponenten, UI.kEdit); if(!c) return closeModal();
@@ -3380,28 +3390,31 @@ const ACT = {
   spwegauf: () => { S.komponenten.forEach(c => delete c.spWeg); save(); render(); },
   spzurueck: () => { let n = 0; S.komponenten.forEach(c => { if(c.spAus){ spEinzelnZurueck(c); n++; } }); save(); render(); toast(`Einordnung bei ${n} Komponenten zurückgenommen`); },
   xiweg: () => { UI.xi = null; render(); },
-  xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.anlage && c.gruppe===x.gruppe).map(c => c.nr));
+  xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x), vor = S.komponenten.length; let nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.anlage && c.gruppe===x.gruppe).map(c => c.nr));
     plan.upd.forEach(p => Object.assign(p.c, p.w));
     plan.neu.forEach(p => { nr++; S.komponenten.push({id:'c'+uid(), anlageId:x.anlage, gruppe:x.gruppe, nr, sub:0, typId:x.typ, standort:'', sn:'', baujahr:'', letzte:null, ...p.w}); });
+    const zus = nachtragen(S.komponenten.slice(vor));
     UI.xi = null; UI.kOpen = true; save(); render();
-    toast(`${plan.upd.length} ergänzt${plan.neu.length ? `, ${plan.neu.length} neu angelegt` : ''}`); },
+    toast(`${plan.upd.length} ergänzt${plan.neu.length ? `, ${plan.neu.length} neu angelegt` : ''}${zus}`); },
   kwweg: () => { UI.kw = null; render(); },
   kwalle: () => { const x = UI.kw; if(!x) return; const an = !x.zeilen.every(z => z.an); x.zeilen.forEach(z => z.an = an); render(); },
-  kwstart: () => { const x = UI.kw; if(!x) return; const offen = x.zeilen.filter(z => z.g==='').length;
+  kwstart: () => { const x = UI.kw; if(!x) return; const offen = x.zeilen.filter(z => z.g==='').length, vor = S.komponenten.length;
     if(offen){ toast(`Bei ${offen} Zeilen fehlt noch die Gruppe. Oder „Nicht übernehmen“ wählen.`); return; }
     let summe = 0;
     x.zeilen.filter(z => z.g!=='x').forEach(z => { const g = +z.g, w = kwFelder(z.w); let nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.aid && c.gruppe===g).map(c => c.nr));
       for(let i=0; i<z.n; i++){ nr++; summe++; S.komponenten.push({id:'c'+uid(), anlageId:x.aid, gruppe:g, nr, sub:0, typId:z.t, standort:'', sn:'', baujahr:'', letzte:null, ...w}); } });
-    UI.kw = null; UI.kOpen = true; save(); render(); toast(`${summe} Komponenten angelegt. Jetzt kann die Brandschutz-Liste folgen.`); },
+    const zus = nachtragen(S.komponenten.slice(vor));
+    UI.kw = null; UI.kOpen = true; save(); render(); toast(`${summe} Komponenten angelegt${zus}. Jetzt kann die Brandschutz-Liste folgen.`); },
   imweg: () => { UI.kw = null; UI.xi = null; render(); },
   imkopf: d => { const x = UI.kw || UI.xi; if(!x) return; x.kopf = +d.z; x.aus = {}; if(x===UI.kw) kwErkennen(x); else xiErkennen(x); render(); },
   xiweg: () => { UI.xi = null; render(); },
-  xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x); let nr = 0;
+  xistart: () => { const x = UI.xi; if(!x) return; const plan = xiPlan(x), vor = S.komponenten.length; let nr = 0;
     plan.upd.forEach(p => Object.assign(p.c, p.w));
     plan.neu.forEach(p => { nr = nr || Math.max(0, ...S.komponenten.filter(c => c.anlageId===x.anlage && c.gruppe===x.gruppe).map(c => c.nr)); nr++;
       S.komponenten.push({id:'c'+uid(), anlageId:x.anlage, gruppe:x.gruppe, nr, sub:0, typId:x.typ, standort:'', sn:'', baujahr:'', letzte:null, ...p.w}); });
+    const zus = nachtragen(S.komponenten.slice(vor));
     const aid = x.anlage; UI.xi = null; save(); UI.view = 'anlage'; UI.anlage = aid; UI.kOpen = true; render(); window.scrollTo(0,0);
-    toast(`${plan.upd.length} ergänzt, ${plan.neu.length} neu angelegt`); },
+    toast(`${plan.upd.length} ergänzt, ${plan.neu.length} neu angelegt${zus}`); },
   kfgruppe: d => { UI.fg = +d.v; render(); },
   kfschieb: d => { const g = +d.g, l = kfListe(g).filter(k => k!=='letzte'), i = l.indexOf(d.k), j = i + +d.v; if(i<0 || j<0 || j>=l.length) return; [l[i], l[j]] = [l[j], l[i]]; kfSetzen(g, l); },
   kfweg: d => { const g = +d.g, name = kLabel(d.k, g); const cfg = S.feldCfg = S.feldCfg || {};
@@ -3646,7 +3659,7 @@ app.addEventListener('submit', e => {
     const gr = parseInt(f.get('gruppe'),10) || t.gruppe;
     const nr = Math.max(0, ...S.komponenten.filter(c => c.anlageId===UI.anlage && c.gruppe===gr).map(c => c.nr)) + 1;
     const c = {id:'c'+uid(), anlageId:UI.anlage, gruppe:gr, nr, typId, standort:'', sn:'', baujahr:'', letzte:null, ...kFelderLesen(f)};
-    S.komponenten.push(c); save(); render(); toast(`Komponente ${kNr(c)} angelegt`);
+    S.komponenten.push(c); const zus = nachtragen([c]); save(); render(); toast(`Komponente ${kNr(c)} angelegt${zus}`);
   }
   if(kind==='fadd'){
     const typ = f.get('typ'), max = String(f.get('max')||'').trim();
