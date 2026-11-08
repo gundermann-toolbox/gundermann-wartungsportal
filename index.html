@@ -584,6 +584,38 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .pinline{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:12.5px;line-height:1.5;padding:1px 0 3px}
 .doc .pk{max-width:100%}
 .doc .pk b{font-size:11.5px;margin-right:2px}
+.doc-logo{height:58px;width:auto;display:block;max-width:100%}
+.doc .sigs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,300px));gap:16px 48px}
+.doc .b-text{white-space:pre-wrap}
+.doc .alle-io{color:var(--paper-ok);font-weight:600;font-size:12.5px;padding:2px 0}
+.doc .ftgrp{background:var(--paper-sunk);font-weight:700;font-size:12px;padding:6px 12px;border-bottom:1px solid var(--paper-line)}
+.doc .bkz{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.doc .bkz div{border:1.5px solid var(--paper-line);border-radius:6px;padding:10px 12px;display:grid;gap:2px;font-size:12px;color:var(--paper-muted)}
+.doc .bkz b{font:700 24px/1.1 var(--f-display);color:var(--paper-ink)}
+.doc .bkz .io b{color:var(--paper-ok)} .doc .bkz .nio b{color:var(--paper-bad)} .doc .bkz .nio{border-color:var(--paper-bad)}
+.doc .bkopf-tab{display:grid;gap:8px}
+.doc .bkopf-tab .bk-zeile{font-size:12px}
+.doc .bkopf-tab table{width:100%;border:1px solid var(--paper-line);border-collapse:collapse;table-layout:fixed}
+.doc .bkopf-tab th{background:#c3ced6;color:var(--paper-ink);border:0;text-align:left;font-size:11.5px;padding:5px 8px}
+.doc .bkopf-tab td{border:0;border-right:1px solid var(--paper-line);vertical-align:top;font-size:12px;padding:6px 8px}
+.doc .bkopf-leiste{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;background:var(--paper-brand);color:#fff;border-radius:6px;padding:12px 16px;font-size:12.5px}
+.doc .bkopf-leiste span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#f7a8d3;font-weight:700;margin-bottom:2px}
+.doc.b-leiste .doc-head{border-bottom-color:var(--paper-mag)}
+.doc .kblock.ftab{border-radius:0;border-width:1px}
+.doc .ftab .fthead,.doc .ftab .ftrow{display:grid;grid-template-columns:12% 24% minmax(0,1fr) 13%;gap:8px;padding:6px 10px;align-items:start}
+.doc .ftab .fthead{background:#c3ced6;font-weight:700;font-size:11.5px}
+.doc .ftab .ftrow{font-size:12.5px;border-bottom:1px solid var(--paper-line)}
+.doc .ftab .ftrow > span:last-child{text-align:right}
+.doc .ftab > .pgrp,.doc .ftab > .fotos{margin-left:12%;padding-left:10px}
+.doc .ftab + .ftab{margin-top:-14px}
+.doc .bliste td .small{font-size:11.5px;margin-top:2px}
+.doc tr.ksubk td:first-child{padding-left:20px}
+.bvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.bvkarte{display:grid;gap:4px;text-align:left;font:inherit;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:12px 14px;cursor:pointer}
+.bvkarte span{font-size:13px;color:var(--muted);line-height:1.4}
+.bvkarte:hover{border-color:var(--accent)}
+.bvkarte.on{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);background:color-mix(in srgb, var(--accent) 6%, var(--surface))}
+@media (max-width:620px){ .doc .bkz{grid-template-columns:repeat(2,minmax(0,1fr))} .doc .bkopf-leiste{grid-template-columns:1fr} .doc .ftab > .pgrp,.doc .ftab > .fotos{margin-left:0} }
 .doc .pk b.io{color:var(--paper-ok)} .doc .pk b.nv,.doc .pk b.leer{color:var(--paper-muted)} .doc .pk b.ja{color:var(--paper-ink)}
 .doc .pgrp.kz{padding:4px 12px 5px}
 .doc .pgt-in{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--paper-brand);margin-right:2px}
@@ -996,7 +1028,8 @@ const dueText = s => s.d==null ? '' : s.d < 0 ? `seit ${-s.d} Tagen` : s.d===0 ?
 const me = () => by(S.users, S.currentUser) || S.users[0];
 const userName = id => (by(S.users,id)||{}).name || '–';
 const techNames = ids => ids && ids.length ? ids.map(userName).join(', ') : 'Nicht zugeteilt';
-const appUsers = () => S.users.filter(u => u.app);
+const appUsers = () => S.users.filter(u => u.app && !u.entfernt);
+const aktiveUser = () => S.users.filter(u => !u.entfernt);
 const offeneSt = () => S.stoerungen.filter(x => x.status==='offen');
 const clOf = c => by(S.checklisten, typOf(c).checklisteId) || by(S.checklisten, 'cl-sonst') || S.checklisten[0];
 const clFor = (A, c) => (A && A.felder && A.felder[c.id]) || clOf(c).felder;
@@ -1187,7 +1220,7 @@ function renderChrome(){
   if(S.mode==='annette' && !u.web) S.mode = 'app';
   document.getElementById('modes').innerHTML = [['web','Büro (Web)'],['app','Techniker (App)'],['annette','🌸 Annette']].map(([m,l]) =>
     `<button data-act="mode" data-v="${m}" class="${S.mode===m?'on':''}" ${(m==='app'?u.app:u.web)?'':'disabled'} aria-pressed="${S.mode===m}">${l}</button>`).join('');
-  document.getElementById('who').innerHTML = S.users.map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
+  document.getElementById('who').innerHTML = aktiveUser().map(x => `<option value="${x.id}" ${x.id===u.id?'selected':''}>${h(x.name)} · ${ROLLEN[x.rolle]}</option>`).join('');
   document.getElementById('shell').classList.toggle('appmode', S.mode==='app');
   const cur = {anlage:'kunden', kunde:'kunden', auftrag:'auftraege', faellig:'start', luecken:'start'}[UI.view] || UI.view;
   const band = document.querySelector('.band'), mb = document.getElementById('menubtn');
@@ -1876,7 +1909,7 @@ function vFelder(){
 const kfWerte = t => [...new Set(String(t||'').split(',').map(x => x.trim()).filter(Boolean))];
 function vAdmin(){
   if(me().rolle!=='admin') return `<div class="empty">Nur Administratoren haben Zugriff.</div>`;
-  const tabs = [['ideen','Notizen'],['gruppen','Gruppen'],['typen','Komponenten-Typen'],['felder','Felder'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['import','Import'],['pruefen',`Standort prüfen${spOffenZahl() ? ' ('+spOffenZahl()+')' : ''}`],['it','IT & Einrichtung']];
+  const tabs = [['ideen','Notizen'],['gruppen','Gruppen'],['typen','Komponenten-Typen'],['felder','Felder'],['checklisten','Checklisten'],['benutzer','Benutzer & Rechte'],['mail','E-Mail'],['bericht','Bericht'],['import','Import'],['pruefen',`Standort prüfen${spOffenZahl() ? ' ('+spOffenZahl()+')' : ''}`],['it','IT & Einrichtung']];
   let body = '';
   if(UI.at==='gruppen'){ const liste = alleGruppen();
     body = `<section class="panel"><p class="muted" style="margin:0">Die Nummer ist der erste Teil der Komponentennummer (z. B. 4.2) und bleibt deshalb fest. Der Name lässt sich jederzeit ändern und gilt überall sofort.</p>
@@ -1921,16 +1954,18 @@ function vAdmin(){
       </tbody></table></div>
       <p class="muted small" style="margin:0">Pro Person lässt sich Web- und App-Zugang zusätzlich einzeln ein- oder ausschalten. Anmeldung später mit der Firmen-E-Mail über euren eigenen Server.</p></section>
     <section class="panel"><h2>Benutzer</h2>
-      <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>E-Mail (Login)</th><th>Rolle</th><th>Web</th><th>App</th><th>Aufträge vor Ort</th></tr></thead><tbody>
-      ${S.users.map(u => `<tr><td>${h(u.name)}</td><td class="mono">${h(u.email||'–')}</td>
+      <p class="muted small" style="margin:0">Name und E-Mail direkt im Feld ändern, gespeichert wird beim Verlassen des Felds. Im Prototyp ist jede E-Mail erlaubt, z. B. „test1“.</p>
+      <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>E-Mail (Login)</th><th>Rolle</th><th>Web</th><th>App</th><th>Aufträge vor Ort</th><th></th></tr></thead><tbody>
+      ${aktiveUser().map(u => `<tr><td><input data-uin="name" data-id="${u.id}" value="${h(u.name)}" aria-label="Name" autocomplete="off" style="min-width:150px"></td><td><input data-uin="email" data-id="${u.id}" value="${h(u.email||'')}" aria-label="E-Mail ${h(u.name)}" autocomplete="off" style="min-width:180px"></td>
         <td><select data-uin="rolle" data-id="${u.id}" aria-label="Rolle ${h(u.name)}" style="width:auto">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${u.rolle===v?'selected':''}>${l}</option>`).join('')}</select></td>
         <td><input type="checkbox" data-uin="web" data-id="${u.id}" ${u.web?'checked':''} aria-label="Web-Zugang ${h(u.name)}"></td>
         <td><input type="checkbox" data-uin="app" data-id="${u.id}" ${u.app?'checked':''} aria-label="App-Zugang ${h(u.name)}"></td>
-        <td><input type="checkbox" data-uin="eigen" data-id="${u.id}" ${u.eigen?'checked':''} ${u.app?'':'disabled'} aria-label="Darf Aufträge vor Ort anlegen: ${h(u.name)}"></td></tr>`).join('')}
+        <td><input type="checkbox" data-uin="eigen" data-id="${u.id}" ${u.eigen?'checked':''} ${u.app?'':'disabled'} aria-label="Darf Aufträge vor Ort anlegen: ${h(u.name)}"></td>
+        <td style="text-align:right">${u.id===me().id ? '<span class="muted small">angemeldet</span>' : `<button class="btn sm danger" data-act="udel" data-id="${u.id}">Entfernen</button>`}</td></tr>`).join('')}
       </tbody></table></div>
       <form class="fgrid inset" data-form="uadd">
         <label class="f" for="un">Name<input id="un" name="name" required></label>
-        <label class="f" for="ue">Firmen-E-Mail<input id="ue" name="email" type="email" required placeholder="vorname.nachname@firma.de"></label>
+        <label class="f" for="ue">E-Mail (im Prototyp beliebig)<input id="ue" name="email" placeholder="z. B. test1 oder vorname.nachname@firma.de" autocomplete="off"></label>
         <label class="f" for="ur">Rolle<select id="ur" name="rolle">${Object.entries(ROLLEN).map(([v,l]) => `<option value="${v}" ${v==='techniker'?'selected':''}>${l}</option>`).join('')}</select></label>
         <button class="btn pri" type="submit">Benutzer anlegen</button>
       </form></section>`;
@@ -1939,12 +1974,73 @@ function vAdmin(){
   if(UI.at==='ideen') body = vIdeen();
   if(UI.at==='import') body = vImport();
   if(UI.at==='pruefen') body = vSpKarte() + siPanel();
+  if(UI.at==='bericht') body = vBerichtAdmin();
   if(UI.at==='mail') body = `<section class="panel"><h2>Berichte per E-Mail</h2>
     <p class="muted" style="margin:0">Jeder zurückgeschickte Bericht wird als PDF im Kundenordner gespeichert und zusätzlich an diese Adresse geschickt, damit das Büro ihn weiterleiten kann.</p>
     <form class="fgrid inset" data-form="mail"><label class="f" for="bm">Empfänger im Büro<input id="bm" name="an" type="email" value="${h(S.settings.bueroMail)}" required></label><button class="btn pri" type="submit">Speichern</button></form></section>`;
   return `<div><h1>Administration</h1><p class="sub">Einstellungen, Checklisten und Zugänge.</p></div>
   <div class="chips admtabs">${tabs.map(([v,l]) => `<button class="chip ${UI.at===v?'on':''}" data-act="at" data-v="${v}">${l}</button>`).join('')}</div>${body}`;
 }
+
+/* ---------- Administration: Bericht ---------- */
+/* Erfundener Beispielauftrag für die Vorschau, wenn es noch keinen geprüften Auftrag gibt. Wird nicht gespeichert. */
+function bBeispiel(){
+  if(UI.bBsp && by(S.anlagen, UI.bBsp.anlageId)) return UI.bBsp;
+  const kandidaten = S.anlagen.filter(a => !a.stillgelegt && kompsOf(a.id).length >= 3);
+  const a = kandidaten.find(a => new Set(kompsOf(a.id).map(c => c.gruppe)).size >= 2) || kandidaten[0] || S.anlagen.find(a => kompsOf(a.id).length); if(!a) return null;
+  const ks = kompsOf(a.id).slice(0, 8), A = {id:'_bsp', nr:'A-Beispiel', anlageId:a.id, datum:iso(TODAY), zeit:'08:00', techIds:[me().id], status:'erledigt', umfang:'ganz', kompIds:ks.map(c => c.id), pr:{}, bem:'', kunde:'', sigTech:null, sigKunde:null};
+  let mangel = null;
+  ks.forEach((c, i) => { const f = {};
+    clFor(A, c).forEach(x => {
+      if(x.typ==='ion' || x.typ==='ionv') f[x.id] = {v:'io'};
+      else if(x.typ==='checkbox') f[x.id] = {v:true};
+      else if(x.typ==='janein' || x.typ==='janeinnv') f[x.id] = {v:'ja'};
+      else if(x.typ==='wert') f[x.id] = {v:String(x.max ? Math.round(x.max*0.8) : 1250)}; });
+    if(i===1){ const x = clFor(A, c).find(x => x.typ==='ion' || x.typ==='ionv'); if(x){ f[x.id] = {v:'nio', m:'Keilriemen verschlissen'}; mangel = {nr:1283, kompId:c.id, titel:'Keilriemen verschlissen', text:'Keilriemen rissig, Austausch angeboten.', schwere:'Mangel'}; } }
+    A.pr[c.id] = {f, fotos:[], done:true}; });
+  A._st = mangel ? [mangel] : [];
+  return (UI.bBsp = A);
+}
+function vBerichtAdmin(){
+  const b = (S.settings.bericht = S.settings.bericht || {}), v = bVorlage(b.vorlage), B = bCfg(), eigen = Object.keys(b.eigen||{}).length;
+  const beispiele = S.auftraege.filter(A => Object.values(A.pr||{}).some(p => p && p.done)).sort((x,y) => String(y.datum).localeCompare(String(x.datum)));
+  if(UI.bA!=='_bsp' && !by(beispiele, UI.bA)) UI.bA = (beispiele[0] || {id:'_bsp'}).id;
+  const A = UI.bA==='_bsp' ? bBeispiel() : by(S.auftraege, UI.bA);
+  const sel = (k, label, opts) => `<label class="f" for="bo_${k}">${label}<select id="bo_${k}" data-bopt="${k}">${opts.map(([w,l]) => `<option value="${w}" ${String(B[k])===w?'selected':''}>${l}</option>`).join('')}</select></label>`;
+  const chk = (k, label) => `<label><input type="checkbox" data-bopt="${k}" ${B[k]?'checked':''}>${label}</label>`;
+  const txt = (k, label, ph, lang) => `<label class="f" for="bo_${k}">${label}${lang ? `<textarea id="bo_${k}" data-bopt="${k}" placeholder="${ph}" style="min-height:64px">${h(B[k]||'')}</textarea>` : `<input id="bo_${k}" data-bopt="${k}" value="${h(B[k]||'')}" placeholder="${ph}" autocomplete="off">`}</label>`;
+  return `<section class="panel"><div class="panel-h"><h2>Berichtsvorlage</h2>${eigen ? pill('warn','angepasst') : ''}</div>
+      <p class="muted" style="margin:0">So sieht der Wartungsbericht aus, den das Büro als PDF bekommt. Die Auswahl gilt für alle Berichte, auch für schon vorhandene beim nächsten Öffnen oder Drucken.</p>
+      <div class="bvgrid">${B_VORLAGEN.map(x => `<button class="bvkarte ${x.id===v.id?'on':''}" data-act="bvorlage" data-v="${x.id}" aria-pressed="${x.id===v.id}"><b>${h(x.name)}</b><span>${h(x.text)}</span></button>`).join('')}</div>
+    </section>
+    <section class="panel"><div class="panel-h"><h2>Anpassen</h2>${eigen ? `<button class="btn sm ghost" data-act="bzurueck">Auf „${h(v.name)}“ zurücksetzen</button>` : ''}</div>
+      <div class="fgrid">
+        ${txt('titel','Titel','Wartungsbericht')}
+        ${txt('kompTitel','Überschrift über den Komponenten','Geprüfte Komponenten')}
+        ${sel('kopf','Kopfdaten',[['karten','Nebeneinander (Kunde, Objekt, Techniker)'],['tabelle','Tabelle wie Foxtag'],['leiste','Dunkelblaue Leiste']])}
+        ${sel('komp','Komponenten',[['karten','Als Karten'],['tabelle','Als Tabelle (Nr., Typ, Details, Ergebnis)']])}
+        ${sel('detail','Prüfpunkte',[['kompakt','Kompakt: unauffällige als Fließtext'],['voll','Ausführlich: jeder Punkt eine Zeile'],['befund','Nur Befunde: Mängel, Messwerte, Bemerkungen'],['liste','Keine: eine Zeile je Komponente']])}
+        ${sel('maengel','Mängel / Störungen',[['unten','Am Ende'],['oben','Vorne, vor den Komponenten']])}
+      </div>
+      <div class="checks">${chk('ergebnis','Ergebnissatz (z. B. „Alle Komponenten ohne Mängel“)')}${chk('kennzahlen','Kennzahlen als Kacheln')}${chk('uebersicht','Übersicht nach Typ')}${chk('gruppenKopf','Gruppenüberschriften')}${chk('fotos','Fotos')}${chk('sigKunde','Unterschrift Kunde')}</div>
+      <div class="fgrid">${txt('einleitung','Text unter den Kopfdaten','z. B. Die Wartung erfolgte nach VDMA 24186.', true)}${txt('schluss','Text vor der Unterschrift','z. B. Nächste Wartung in 6 Monaten.', true)}</div>
+    </section>
+    <section class="panel"><div class="panel-h"><h2>Vorschau</h2>
+      ${A ? `<div class="row"><select data-bbeispiel aria-label="Beispielauftrag">${beispiele.slice(0,40).map(x => { const o = ctx(x.anlageId).o; return `<option value="${x.id}" ${x.id===UI.bA?'selected':''}>${h(x.nr)} · ${h(o ? o.nr+' '+o.name : '')}</option>`; }).join('')}<option value="_bsp" ${UI.bA==='_bsp'?'selected':''}>Beispiel mit erfundenen Werten</option></select><button class="btn pri" data-act="bpdf">${ico('pdf')} Als PDF testen</button></div>` : ''}</div>
+      ${A ? `<div style="overflow-x:auto;display:grid;justify-items:center">${vBericht(A)}</div>` : `<div class="empty">Für die Vorschau braucht es einen Auftrag mit mindestens einer geprüften Komponente.</div>`}
+    </section>`;
+}
+function bSetzen(k, w){
+  const b = (S.settings.bericht = S.settings.bericht || {}), basis = {...B_STANDARD, ...bVorlage(b.vorlage).o};
+  b.eigen = b.eigen || {};
+  if(basis[k]===w) delete b.eigen[k]; else b.eigen[k] = w;
+  save(); const y = window.scrollY; render(); window.scrollTo(0, y);
+}
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(t.matches && t.matches('[data-bopt]')){ bSetzen(t.dataset.bopt, t.type==='checkbox' ? t.checked : t.value); }
+  if(t.matches && t.matches('[data-bbeispiel]')){ UI.bA = t.value; const y = window.scrollY; render(); window.scrollTo(0, y); }
+});
 
 /* ---------- IT & Einrichtung ---------- */
 /* Vorübergehend: Notizen für Ideen unterwegs. Liegen nur auf diesem Gerät (eigener Speicher, übersteht auch „Beispieldaten zurücksetzen“). */
@@ -2348,6 +2444,21 @@ function vInfo(eingebettet){
 function calc(){}
 
 /* ---------- Wartungsbericht (Dokument) ---------- */
+/* Berichtsvorlagen: eine Vorlage ist ein Satz Einstellungen. In der Administration auswählbar und einzeln anpassbar. */
+const B_STANDARD = {titel:'Wartungsbericht', kompTitel:'Geprüfte Komponenten', kopf:'karten', komp:'karten', detail:'kompakt', ergebnis:true, kennzahlen:false, uebersicht:true, maengel:'unten', fotos:true, gruppenKopf:false, sigKunde:false, einleitung:'', schluss:''};
+const B_VORLAGEN = [
+  {id:'standard', name:'Standard', text:'Wie bisher: Kopfdaten, Ergebnissatz, Übersicht nach Typ, jede Komponente als Karte mit allen Prüfpunkten kompakt.', o:{}},
+  {id:'foxtag', name:'Wie Foxtag, Seite 1 gefüllt', text:'Kopf als Tabelle (Kunde, Standort, Durchgeführt von), danach direkt die Prüfergebnisse als Tabelle Nr. / Typ / Details / Ergebnis mit allen Prüfpunkten. Keine leere erste Seite.', o:{kopf:'tabelle', komp:'tabelle', detail:'voll', ergebnis:false, uebersicht:false, kompTitel:'Prüfergebnisse'}},
+  {id:'zusammenfassung', name:'Zusammenfassung vorne', text:'Seite 1 mit Kennzahlen, Übersicht und Mängelliste. Danach die Komponenten im Detail. Gut für Kunden, die nur das Ergebnis lesen.', o:{kennzahlen:true, maengel:'oben', gruppenKopf:true}},
+  {id:'kurz', name:'Kurzbericht', text:'Eine Zeile je Komponente mit Ergebnis, Mängel stehen vorne. Ohne einzelne Prüfpunkte und ohne Fotos. Wenige Seiten auch bei großen Anlagen.', o:{detail:'liste', maengel:'oben', fotos:false, kompTitel:'Prüfergebnisse'}},
+  {id:'befund', name:'Nur Befunde ausführlich', text:'Komponenten ohne Befund nur mit „Alle Prüfpunkte in Ordnung“. Ausführlich nur Mängel, Messwerte und Bemerkungen.', o:{detail:'befund', kennzahlen:true, maengel:'oben', gruppenKopf:true}},
+  {id:'ausfuehrlich', name:'Ausführlich', text:'Jeder Prüfpunkt als eigene Zeile mit Ergebnis, zweispaltig, nach Prüfgruppen. Mit Übersicht und Fotos.', o:{detail:'voll', gruppenKopf:true}},
+  {id:'modern', name:'Modern mit Farbleiste', text:'Kopfdaten in einer dunkelblauen Leiste, Kennzahlen als Kacheln, Komponenten als Karten nach Gruppen.', o:{kopf:'leiste', kennzahlen:true, uebersicht:false, gruppenKopf:true}},
+  {id:'klassisch', name:'Klassische Tabelle', text:'Kopf als Tabelle, Komponenten als Tabelle mit kompakten Prüfpunkten, Übersicht nach Typ. Mängel am Ende.', o:{kopf:'tabelle', komp:'tabelle', kompTitel:'Prüfergebnisse'}},
+  {id:'unterschrift', name:'Mit Kundenunterschrift', text:'Wie Standard, zusätzlich Unterschriftsfeld für den Kunden und Abschlusstext zur Bestätigung.', o:{sigKunde:true, schluss:'Die Wartung wurde wie oben beschrieben durchgeführt. Festgestellte Mängel wurden dem Kunden mitgeteilt.'}},
+];
+const bVorlage = id => B_VORLAGEN.find(v => v.id===id) || B_VORLAGEN[0];
+function bCfg(){ const b = (S.settings && S.settings.bericht) || {}; return {...B_STANDARD, ...bVorlage(b.vorlage).o, ...(b.eigen||{})}; }
 function prOf(A, cid){ if(!A.pr[cid]) A.pr[cid] = {f:{}, fotos:[], done:false}; return A.pr[cid]; }
 function kompErgebnis(A, c){
   const p = A.pr[c.id]; if(!p) return null;
@@ -2359,7 +2470,7 @@ function vBericht(A){
   const ks = auftragKomps(A);
   const done = ks.filter(c => A.pr[c.id] && A.pr[c.id].done);
   const vorschau = A.status==='laeuft';
-  const st_ = S.stoerungen.filter(x => x.auftragNr===A.nr).slice();
+  const st_ = (A._st || S.stoerungen.filter(x => x.auftragNr===A.nr)).slice();
   if(vorschau) done.forEach(c => { const punkte = stoerPunkte(A, c); if(!punkte.length) return;
     const da = st_.find(x => x.kompId===c.id);
     if(da) st_[st_.indexOf(da)] = {...da, text:[da.text, 'Bei der Prüfung nicht in Ordnung:\n'+punkte.join('\n')].filter(Boolean).join('\n\n')};
@@ -2383,59 +2494,93 @@ function vBericht(A){
         return `<div class="pi ${d && (d.v==='nio' || d.over) ? 'bad' : ''}"><span class="pl">${h(x.label)}</span><span class="pr">${res(x,d,c)}</span>${d && d.v==='nio' && d.m ? `<span class="pm">${h(d.m)}</span>` : ''}</div>`; }).join('')}
     </div></div>`).join('');
   };
-  return `
-  <article class="doc">
-    ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: ${A.korrektur ? `Korrigierte Fassung ${A.korrektur}, noch nicht abgeschickt.` : 'Der Bericht ist noch nicht abgeschickt.'}</div>` : ''}
-    ${!vorschau && A.korrektur ? (() => { const b = aktBericht(A); return `<div class="summary">Korrigierte Fassung ${A.korrektur}${b && b.ersetztVom ? `, ersetzt den Bericht vom ${fmt(b.ersetztVom)}` : ''}.</div>`; })() : ''}
-    <div class="doc-head">
-      <div><div class="doc-firm">GUNDERMANN</div><div class="doc-sub">LÜFTUNG<i>/</i>KLIMA<i>/</i>REGELUNG</div><div style="color:var(--paper-muted);margin-top:6px">Gundermann GmbH · 76846 Hauenstein</div></div>
-      <div class="r"><div class="doc-type">Wartungsbericht</div><div class="mono" style="margin-top:6px">Auftrag ${A.nr}</div><div>${aDatum(A)}</div></div>
-    </div>
-    <dl class="doc-meta">
+  const B = bCfg(), titel = B.titel || 'Wartungsbericht';
+  const istMangel = c => kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id);
+  const nM = done.filter(istMangel).length, nOk = done.length - nM;
+  const wichtig = (x, d) => d && (d.v==='nio' || d.over || (['wert','text'].includes(x.typ) && String(d.v||'').trim()));
+  const fotos = (c, p) => B.fotos && p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : '';
+  const kDetails = c => [kText(c), c.sn ? 'S/N '+c.sn : '', c.baujahr ? 'Baujahr '+c.baujahr : ''].filter(Boolean).join(' · ');
+  // Unauffällige Punkte als Fließliste, Mängel/Messwerte/Bemerkungen als eigene Zeilen
+  const kompaktHtml = (felder, f, c) => {
+    const gruppen = [{titel:'', items:[]}];
+    felder.forEach(x => { if(x.typ==='ueberschrift') gruppen.push({titel:x.label, items:[]}); else gruppen[gruppen.length-1].items.push(x); });
+    return gruppen.map(g => {
+      const normal = g.items.filter(x => x.typ!=='text' && !wichtig(x, f[x.id]));
+      const extra = g.items.filter(x => wichtig(x, f[x.id]));
+      if(!normal.length && !extra.length) return '';
+      const pk = x => { const d = f[x.id] || {}, v = d.v;
+        const m = v==='io' ? ['io','✓'] : x.typ==='checkbox' && v ? ['io','✓'] : v==='ja' ? ['ja','Ja'] : v==='nein' ? ['ja','Nein'] : v==='nv' ? ['nv','n.v.'] : ['leer','–'];
+        return `<span class="pk"><b class="${m[0]}">${m[1]}</b> ${h(x.label)}</span>`; };
+      const gt = g.titel ? `<span class="pgt-in">${h(g.titel)}</span>` : '';
+      return `<div class="pgrp kz">${normal.length ? `<div class="pinline">${gt}${normal.map(pk).join('')}</div>` : (g.titel ? `<div class="pgt">${h(g.titel)}</div>` : '')}
+        ${extra.length ? punkteHtml(extra, f, c).replace(/^<div class="pgrp">|<\/div>$/g, '') : ''}</div>`;
+    }).join('');
+  };
+  // Prüfpunkte je nach Detailstufe
+  const punkte = c => { const p = A.pr[c.id], cl = clFor(A,c);
+    if(B.detail==='voll') return punkteHtml(cl, p.f, c);
+    if(B.detail==='befund'){ const ex = cl.filter(x => x.typ==='ueberschrift' || wichtig(x, p.f[x.id]));
+      return ex.some(x => x.typ!=='ueberschrift') ? punkteHtml(ex, p.f, c) : `<div class="pgrp"><div class="alle-io">Alle Prüfpunkte in Ordnung</div></div>`; }
+    return kompaktHtml(cl, p.f, c); };
+  const ergebnis = c => `<span class="kres ${istMangel(c) ? 'nio' : 'io'}">${istMangel(c) ? 'Mangel' : 'i.O.'}</span>`;
+  // Komponenten als Karten oder als Tabelle wie bei Foxtag
+  const komponenten = () => {
+    if(!done.length) return '';
+    if(B.detail==='liste') return `<section class="bliste"><h3>${h(B.kompTitel)}</h3><div class="tbl-wrap"><table><thead><tr><th style="width:11%">Nr.</th><th style="width:27%">Komponente</th><th>Details</th><th class="r" style="width:13%">Ergebnis</th></tr></thead><tbody>
+      ${done.map(c => `<tr class="${c.sub ? 'ksubk' : ''}"><td class="mono">${kNr(c)}</td><td>${h(typLabel(typOf(c)))}</td><td>${h(kDetails(c))}${istMangel(c) ? `<div class="nio small">${h(st_.filter(x => x.kompId===c.id).map(x => x.titel).join(', ') || stoerPunkte(A,c).join(', '))}</div>` : ''}</td><td class="r">${ergebnis(c)}</td></tr>`).join('')}</tbody></table></div></section>`;
+    let lastG = null;
+    const bloecke = done.map((c, i) => {
+      const grp = c.gruppe!==lastG ? `<div class="ftgrp">${c.gruppe} ${h(gname(c.gruppe))}</div>` : ''; lastG = c.gruppe;
+      if(B.komp==='tabelle') return `<section class="kblock ftab">${i===0 ? `<div class="fthead"><span>Nr.</span><span>Typ</span><span>Details</span><span>Ergebnis</span></div>` : ''}${grp}
+        <div class="ftrow ${c.sub ? 'ksubk' : ''}"><span class="mono">${kNr(c)}</span><span><b>${h(typLabel(typOf(c)))}</b></span><span>${h(kDetails(c))}</span><span>${ergebnis(c)}</span></div>
+        ${punkte(c)}${fotos(c, A.pr[c.id])}</section>`;
+      return `<section class="kblock">${B.gruppenKopf ? grp : ''}<div class="khead ${c.sub ? 'ksubk' : ''}"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(typOf(c)))}</b><small>${h(kDetails(c))}</small></div>${ergebnis(c)}</div>${punkte(c)}${fotos(c, A.pr[c.id])}</section>`;
+    });
+    return `<h3 class="doc-h">${h(B.kompTitel)}</h3>` + bloecke.join('');
+  };
+  const maengel = () => st_.length ? `<section><h3>${B.maengel==='oben' ? 'Festgestellte Mängel' : 'Störungen'}</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
+      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
+  const kundeTxt = `${h(k.name)}<br>${h(k.adresse||'')}${k.adresse && k.ort ? '<br>' : ''}${h(k.ort||'')}`;
+  const objTxt = `${h(o.name)}<br>${h(o.adresse||'')}${o.adresse && o.ort ? '<br>' : ''}${h(o.ort||'')}`;
+  const techTxt = `Gundermann GmbH<br>${h(techNames(A.techIds))}`;
+  const meta = B.kopf==='tabelle'
+    ? `<div class="bkopf-tab"><div class="bk-zeile">Bericht vom ${fmt(A.abgeschlossen || A.datum)} | Auftragsnummer: ${h(A.nr)} | Objektnummer: ${h(o.nr)}</div>
+        <table><thead><tr><th>Kunde</th><th>Standort der Anlage</th><th>Durchgeführt von</th></tr></thead><tbody><tr><td>${kundeTxt}</td><td>${objTxt}</td><td>${techTxt}</td></tr></tbody></table></div>`
+    : B.kopf==='leiste'
+    ? `<div class="bkopf-leiste"><div><span>Kunde</span>${kundeTxt}</div><div><span>Objekt ${h(o.nr)}</span>${objTxt}</div><div><span>Auftrag</span>${h(A.nr)}<br>${aDatum(A)}<br>${h(techNames(A.techIds))}</div></div>`
+    : `<dl class="doc-meta">
       <div><dt>Kunde</dt><dd>${h(k.nr)}<br>${h(k.name)}<br>${h([k.adresse,k.ort].filter(Boolean).join(', '))}</dd></div>
       <div><dt>Objekt</dt><dd>${h(o.nr)}<br>${h(o.name)}<br>${h(o.adresse)}, ${h(o.ort)}</dd></div>
       <div><dt>Techniker</dt><dd>${h(techNames(A.techIds))}${A.vorOrt ? `<br><span style="color:var(--paper-muted);font-size:12px">Auftrag vor Ort angelegt von ${h(A.angelegtVon)}</span>` : ''}</dd></div>
       <div><dt>Geprüfte Komponenten</dt><dd>${done.length}</dd></div>
-    </dl>
-    <div class="summary ${st_.length?'nio':'io'}">${st_.length ? `${st_.length} ${st_.length===1?'Störung':'Störungen'} festgestellt, siehe Störungsliste.` : 'Alle geprüften Komponenten ohne Mängel.'}</div>
-    <section><h3>Übersicht</h3><div class="tbl-wrap"><table class="sumtbl"><thead><tr><th>Typ</th><th class="r">i.O.</th><th class="r">Mangel</th><th class="r">Gesamt</th></tr></thead><tbody>
+    </dl>`;
+  const logo = (document.querySelector('.brand .logo') || {}).src;
+  return `
+  <article class="doc b-${B.kopf} b-${B.komp}">
+    ${vorschau ? `<div class="vorschau-hinweis summary" style="color:var(--warn)">Vorschau: ${A.korrektur ? `Korrigierte Fassung ${A.korrektur}, noch nicht abgeschickt.` : 'Der Bericht ist noch nicht abgeschickt.'}</div>` : ''}
+    ${!vorschau && A.korrektur ? (() => { const b = aktBericht(A); return `<div class="summary">Korrigierte Fassung ${A.korrektur}${b && b.ersetztVom ? `, ersetzt den Bericht vom ${fmt(b.ersetztVom)}` : ''}.</div>`; })() : ''}
+    <div class="doc-head">
+      <div>${logo ? `<img class="doc-logo" src="${logo}" alt="Gundermann Lüftung Klima Regelung">` : `<div class="doc-firm">GUNDERMANN</div><div class="doc-sub">LÜFTUNG<i>/</i>KLIMA<i>/</i>REGELUNG</div>`}<div style="color:var(--paper-muted);margin-top:6px">Gundermann GmbH · 76846 Hauenstein</div></div>
+      <div class="r"><div class="doc-type">${h(titel)}</div>${B.kopf==='tabelle' ? '' : `<div class="mono" style="margin-top:6px">Auftrag ${A.nr}</div><div>${aDatum(A)}</div>`}</div>
+    </div>
+    ${meta}
+    ${B.einleitung ? `<div class="b-text">${h(B.einleitung)}</div>` : ''}
+    ${B.kennzahlen ? `<div class="bkz"><div><b>${done.length}</b>Komponenten geprüft</div><div class="io"><b>${nOk}</b>ohne Mängel</div><div class="${nM ? 'nio' : ''}"><b>${nM}</b>mit Mängeln</div><div class="${st_.length ? 'nio' : 'io'}"><b>${st_.length ? '!' : '✓'}</b>${st_.length ? `${st_.length} ${st_.length===1 ? 'Störung' : 'Störungen'} festgestellt` : 'Anlage in Ordnung'}</div></div>`
+      : B.ergebnis ? `<div class="summary ${st_.length?'nio':'io'}">${st_.length ? `${st_.length} ${st_.length===1?'Störung':'Störungen'} festgestellt, siehe ${B.maengel==='oben' ? 'unten' : 'Störungsliste'}.` : 'Alle geprüften Komponenten ohne Mängel.'}</div>` : ''}
+    ${B.uebersicht && done.length ? `<section><h3>Übersicht</h3><div class="tbl-wrap"><table class="sumtbl"><thead><tr><th>Typ</th><th class="r">i.O.</th><th class="r">Mangel</th><th class="r">Gesamt</th></tr></thead><tbody>
       ${Object.entries(sum).map(([t,v]) => `<tr><td>${h(t)}</td><td class="r io">${v.ok}</td><td class="r nio">${v.m}</td><td class="r">${v.ok+v.m}</td></tr>`).join('')}
-    </tbody></table></div></section>
-    <h3 class="doc-h">Geprüfte Komponenten</h3>
-    ${(() => {
-      // Kompakt: Komponenten ohne Befund als Tabellenzeile, sonst nur Mängel, Messwerte und Bemerkungen
-      const wichtig = (x, d) => d && (d.v==='nio' || d.over || (['wert','text'].includes(x.typ) && String(d.v||'').trim()));
-      const kopf = (c, mangel) => `<div class="khead ${c.sub ? 'ksubk' : ''}"><span class="knr">${kNr(c)}</span><div class="kname"><b>${h(typLabel(typOf(c)))}</b><small>${h(kText(c))}${c.sn ? ' · S/N '+h(c.sn) : ''}${c.baujahr ? ' · Baujahr '+h(c.baujahr) : ''}</small></div>
-        <span class="kres ${mangel ? 'nio' : 'io'}">${mangel ? 'Mangel' : 'i.O.'}</span></div>`;
-      const fotos = (c, p) => p.fotos && p.fotos.length ? `<div class="fotos">${p.fotos.map(f => `<img src="${f}" alt="Foto ${kNr(c)}">`).join('')}</div>` : '';
-      const istMangel = c => kompErgebnis(A,c)==='mangel' || st_.some(x => x.kompId===c.id);
-      // Jedes Bauteil mit allen Prüfpunkten: unauffällige Punkte als Fließliste, Mängel/Messwerte/Bemerkungen als eigene Zeilen
-      const kompaktHtml = (felder, f, c) => {
-        const gruppen = [{titel:'', items:[]}];
-        felder.forEach(x => { if(x.typ==='ueberschrift') gruppen.push({titel:x.label, items:[]}); else gruppen[gruppen.length-1].items.push(x); });
-        return gruppen.map(g => {
-          const normal = g.items.filter(x => x.typ!=='text' && !wichtig(x, f[x.id]));
-          const extra = g.items.filter(x => wichtig(x, f[x.id]));
-          if(!normal.length && !extra.length) return '';
-          const pk = x => { const d = f[x.id] || {}, v = d.v;
-            const m = v==='io' ? ['io','✓'] : x.typ==='checkbox' && v ? ['io','✓'] : v==='ja' ? ['ja','Ja'] : v==='nein' ? ['ja','Nein'] : v==='nv' ? ['nv','n.v.'] : ['leer','–'];
-            return `<span class="pk"><b class="${m[0]}">${m[1]}</b> ${h(x.label)}</span>`; };
-          const titel = g.titel ? `<span class="pgt-in">${h(g.titel)}</span>` : '';
-          return `<div class="pgrp kz">${normal.length ? `<div class="pinline">${titel}${normal.map(pk).join('')}</div>` : (g.titel ? `<div class="pgt">${h(g.titel)}</div>` : '')}
-            ${extra.length ? punkteHtml(extra, f, c).replace(/^<div class="pgrp">|<\/div>$/g, '') : ''}</div>`;
-        }).join('');
-      };
-      return done.map(c => { const p = A.pr[c.id];
-        return `<section class="kblock">${kopf(c, istMangel(c))}${kompaktHtml(clFor(A,c), p.f, c)}${fotos(c, p)}</section>`; }).join('');
-    })()}
-    ${st_.length ? `<section><h3>Störungen</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
-      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
+    </tbody></table></div></section>` : ''}
+    ${B.maengel==='oben' ? maengel() : ''}
+    ${komponenten()}
+    ${B.maengel==='unten' ? maengel() : ''}
     ${['cl-vor','cl-nach'].map(id => { const cl = by(S.checklisten, id), p = A.pr['_'+id]; if(!cl || !p) return '';
       const zeilen = cl.felder.filter(x => x.typ!=='ueberschrift' && p.f[x.id] && p.f[x.id].v!=null && p.f[x.id].v!=='' && p.f[x.id].v!==false);
       return zeilen.length ? `<section class="kblock"><div class="khead"><div class="kname"><b>${h(cl.name)}</b></div></div>${punkteHtml(zeilen, p.f, null)}</section>` : ''; }).join('')}
     ${A.bem ? `<section><h3>Bemerkung</h3><div>${h(A.bem)}</div></section>` : ''}
+    ${B.schluss ? `<div class="b-text">${h(B.schluss)}</div>` : ''}
     <div class="sigs">
       <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.datum)}</div></div>
+      ${B.sigKunde ? `<div>${A.sigKunde ? `<img src="${A.sigKunde}" alt="Unterschrift Kunde" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.kunde || 'Kunde')}</b>${A.kunde ? '' : ', Name in Druckbuchstaben'}</div></div>` : ''}
     </div>
   </article>`;
 }
@@ -3279,6 +3424,10 @@ modal.addEventListener('submit', e => {
     save(); closeModal(); render(); toast('Ansprechpartner gespeichert');
   }
   if(kind==='loeschen'){ loeschAusfuehren(); return; }
+  if(kind==='udel'){ const u = by(S.users, UI.uDel); if(!u) return closeModal();
+    u.entfernt = true; u.web = false; u.app = false;
+    S.auftraege.forEach(A => { if(!isOpen(A) || !A.techIds.includes(u.id)) return; A.techIds = A.techIds.filter(x => x!==u.id); if(!A.techIds.length) A.status = 'planung'; });
+    save(); closeModal(); render(); toast(`${u.name} entfernt`); return; }
   if(kind==='ksub'){
     const m = by(S.komponenten, UI.kSubVon); if(!m) return closeModal();
     const sub = Math.max(0, ...kSubsVon(m).map(x => x.sub)) + 1;
@@ -3366,6 +3515,9 @@ const ACT = {
     A.verlauf = (A.verlauf||[]).concat(`${fmt(iso(TODAY))} ${nowTime()}: ${me().name} hat den Bericht zur Korrektur freigegeben`); save(); render(); toast(`${A.nr}: Techniker kann den Bericht jetzt korrigieren`); },
   appvorschau: () => { UI.app.screen = 'vorschau'; render(); window.scrollTo(0,0); },
   pdf: () => pdfSpeichern(curA()),
+  bvorlage: d => { S.settings.bericht = {vorlage:d.v}; save(); const y = window.scrollY; render(); window.scrollTo(0, y); toast(`Vorlage „${bVorlage(d.v).name}“ gewählt`); },
+  bzurueck: () => { (S.settings.bericht = S.settings.bericht || {}).eigen = {}; save(); const y = window.scrollY; render(); window.scrollTo(0, y); },
+  bpdf: () => pdfSpeichern(UI.bA==='_bsp' ? bBeispiel() : by(S.auftraege, UI.bA)),
   gstoer: () => { UI.view = 'stoerungen'; UI.sf = 'alle'; UI.menu = false; render(); window.scrollTo(0,0); },
   itcopy: () => {
     const el = document.getElementById('itguide'); if(!el) return;
@@ -3389,6 +3541,15 @@ const ACT = {
   neukunde: () => neuKundeModal(),
   kundeedit: d => { const k = by(S.kunden, d.id); if(k) kundeModal(k); },
   kundedel: d => loeschModal('kunde', d.id),
+  udel: d => { const u = by(S.users, d.id); if(!u) return;
+    if(u.id===me().id){ toast('Du kannst dich nicht selbst entfernen'); return; }
+    if(u.rolle==='admin' && !aktiveUser().some(x => x!==u && x.rolle==='admin' && x.web)){ toast('Mindestens ein Administrator mit Web-Zugang muss bleiben'); return; }
+    const offen = S.auftraege.filter(A => isOpen(A) && A.techIds.includes(u.id)), allein = offen.filter(A => A.techIds.length===1);
+    UI.uDel = u.id;
+    openModal(`<h2>Benutzer entfernen?</h2><p style="margin:0"><b>${h(u.name)}</b> kann sich danach nicht mehr anmelden und steht nicht mehr zur Auswahl.</p>
+      ${offen.length ? `<p style="margin:0">Aus ${offen.length} offenen ${offen.length===1 ? 'Auftrag' : 'Aufträgen'} wird ${h(u.name)} herausgenommen${allein.length ? `. ${allein.length===1 ? 'Ein Auftrag hat' : allein.length+' Aufträge haben'} dann keinen Techniker mehr und ${allein.length===1 ? 'geht' : 'gehen'} zurück auf „In Planung“` : ''}.</p>` : ''}
+      <p class="muted small" style="margin:0">In erledigten Aufträgen und Berichten bleibt der Name stehen.</p>
+      <form data-form="udel" class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit" style="background:var(--bad);border-color:var(--bad)">Entfernen</button></form>`); },
   objektdel: d => loeschModal('objekt', d.id),
   objektedit: d => { const o = by(S.objekte, d.id); if(o) objektModal(o); },
   impwahl: d => { UI.impA = d.id; UI.impQ = ''; UI.kw = null; UI.xi = null; render(); },
@@ -3623,9 +3784,12 @@ app.addEventListener('change', e => {
   const t = e.target;
   if(t.dataset.uin){
     const u = by(S.users, t.dataset.id), f = t.dataset.uin;
+    if(f==='name' || f==='email'){ const w = t.value.trim();
+      if(f==='name' && !w){ toast('Der Name darf nicht leer sein'); render(); return; }
+      u[f] = w; save(); toast(f==='name' ? 'Name geändert' : 'E-Mail geändert'); return; }
     if(f==='rolle'){ u.rolle = t.value; u.web = t.value!=='techniker'; u.app = t.value!=='buero'; }
     else u[f] = t.checked;
-    if(!S.users.some(x => x.rolle==='admin' && x.web)){ toast('Mindestens ein Administrator mit Web-Zugang muss bleiben'); u.rolle = 'admin'; u.web = true; }
+    if(!aktiveUser().some(x => x.rolle==='admin' && x.web)){ toast('Mindestens ein Administrator mit Web-Zugang muss bleiben'); u.rolle = 'admin'; u.web = true; }
     if(!u.web && !u.app){ u[f==='web' ? 'app' : 'web'] = true; toast('Jeder Benutzer braucht mindestens einen Zugang'); }
     save(); render(); return;
   }
@@ -3684,7 +3848,7 @@ app.addEventListener('submit', e => {
   }
   if(kind==='uadd'){
     const rolle = f.get('rolle');
-    S.users.push({id:'u'+uid(), name:f.get('name'), email:f.get('email'), rolle, web:rolle!=='techniker', app:rolle!=='buero', eigen:rolle!=='buero'});
+    S.users.push({id:'u'+uid(), name:String(f.get('name')).trim(), email:String(f.get('email')||'').trim(), rolle, web:rolle!=='techniker', app:rolle!=='buero', eigen:rolle!=='buero'});
     save(); render(); toast('Benutzer angelegt');
   }
   if(kind==='mail'){ S.settings.bueroMail = f.get('an'); save(); render(); toast('E-Mail-Empfänger gespeichert'); }
@@ -3845,11 +4009,12 @@ function druckZeilen(doc, tb){
   let vor = [], nKb = 0;
   [...kopie.children].forEach(n => {
     if(n.matches('h3.doc-h')){ vor = [n]; return; }
-    if(n.matches('.kblock')){ const hoch = hoehen[nKb++] > 760, teile = [...n.children];
-      if(!hoch || teile.length < 3){ zeile([...vor, n]); vor = []; return; }
-      const stuecke = [teile.slice(0,2), ...teile.slice(2).map(x => [x])];
+    if(n.matches('.kblock')){ const hoch = hoehen[nKb++] > 220, teile = [...n.children], kopfAb = Math.max(0, teile.findIndex(x => x.matches('.khead,.ftrow'))) + 2;
+      if(!hoch || teile.length <= kopfAb){ zeile([...vor, n]); vor = []; return; }
+      // Kopf der Komponente mit der ersten Prüfgruppe zusammen, danach jede Prüfgruppe einzeln: so füllt der Browser jede Seite bis unten
+      const stuecke = [teile.slice(0, kopfAb), ...teile.slice(kopfAb).map(x => [x])];
       stuecke.forEach((st, i) => { const sec = document.createElement('section'), ende = i===stuecke.length-1;
-        sec.className = 'kblock kteil' + (i===0 ? ' oben' : '') + (ende ? ' unten' : ''); st.forEach(x => sec.appendChild(x));
+        sec.className = n.className + ' kteil' + (i===0 ? ' oben' : '') + (ende ? ' unten' : ''); st.forEach(x => sec.appendChild(x));
         zeile(i===0 ? [...vor, sec] : [sec], ende); });
       vor = []; return; }
     const reihen = n.matches('section') && !n.querySelector('.sumtbl') ? [...n.querySelectorAll('table > tbody > tr')] : [];
