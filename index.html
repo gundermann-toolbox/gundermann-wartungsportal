@@ -278,6 +278,9 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   #druck .druck-tb > thead > tr > td,#druck .druck-tb > tbody > tr > td,#druck .druck-tb > tfoot > tr > td{padding:0 15mm 0 21mm;border:0;background:none}
   #druck .druck-kopf{height:44mm}
   #druck .druck-fuss{height:24mm}
+  #druck.ohnefuss .druck-bg{clip-path:inset(0 0 10.5% 0)}
+  #druck.ohnefuss .druck-fuss{height:12mm}
+  #druck .doc-fuss{display:none}
   #druck .doc{max-width:none;width:100%;padding:0;box-shadow:none;border-radius:0;background:none;gap:12px;font-size:11.5px;line-height:1.35}
   #druck .druck-tb > tbody > tr{break-inside:avoid}
   #druck .doc.dzl{padding-bottom:12px}
@@ -584,6 +587,8 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .pinline{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:12.5px;line-height:1.5;padding:1px 0 3px}
 .doc .pk{max-width:100%}
 .doc .pk b{font-size:11.5px;margin-right:2px}
+.doc .doc-fuss{aspect-ratio:1240/150;background:url(briefbogen.jpg) center bottom/100% auto no-repeat;margin:8px -44px -40px}
+@media (max-width:620px){ .doc .doc-fuss{margin:8px 0 0} }
 .doc-logo{height:58px;width:auto;display:block;max-width:100%}
 .doc .sigs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,300px));gap:16px 48px}
 .doc .b-text{white-space:pre-wrap}
@@ -2027,7 +2032,7 @@ function vBerichtAdmin(){
         ${sel('detail','Prüfpunkte',[['kompakt','Kompakt: unauffällige als Fließtext'],['voll','Ausführlich: jeder Punkt eine Zeile'],['befund','Nur Befunde: Mängel, Messwerte, Bemerkungen'],['liste','Keine: eine Zeile je Komponente']])}
         ${sel('maengel','Mängel / Störungen',[['unten','Am Ende'],['oben','Vorne, vor den Komponenten']])}
       </div>
-      <div class="checks">${chk('ergebnis','Ergebnissatz (z. B. „Alle Komponenten ohne Mängel“)')}${chk('kennzahlen','Kennzahlen als Kacheln')}${chk('uebersicht','Übersicht nach Typ')}${chk('gruppenKopf','Gruppenüberschriften')}${chk('fotos','Fotos')}${chk('sigKunde','Unterschrift Kunde')}</div>
+      <div class="checks">${chk('ergebnis','Ergebnissatz (z. B. „Alle Komponenten ohne Mängel“)')}${chk('kennzahlen','Kennzahlen als Kacheln')}${chk('uebersicht','Übersicht nach Typ')}${chk('gruppenKopf','Gruppenüberschriften')}${chk('fotos','Fotos')}${chk('sigKunde','Unterschrift Kunde')}${chk('fusszeile','Fußzeile mit Firmenangaben und Bankverbindung')}</div>
       <div class="fgrid">${txt('einleitung','Text unter den Kopfdaten','z. B. Die Wartung erfolgte nach VDMA 24186.', true)}${txt('schluss','Text vor der Unterschrift','z. B. Nächste Wartung in 6 Monaten.', true)}</div>
     </section>
     <section class="panel"><div class="panel-h"><h2>Vorschau</h2>
@@ -2450,7 +2455,7 @@ function calc(){}
 
 /* ---------- Wartungsbericht (Dokument) ---------- */
 /* Berichtsvorlagen: eine Vorlage ist ein Satz Einstellungen. In der Administration auswählbar und einzeln anpassbar. */
-const B_STANDARD = {titel:'Wartungsbericht', kompTitel:'Geprüfte Komponenten', kopf:'karten', komp:'karten', detail:'kompakt', ergebnis:true, kennzahlen:false, uebersicht:true, maengel:'unten', fotos:true, gruppenKopf:false, sigKunde:false, einleitung:'', schluss:''};
+const B_STANDARD = {titel:'Wartungsbericht', kompTitel:'Geprüfte Komponenten', kopf:'karten', komp:'karten', detail:'kompakt', ergebnis:true, kennzahlen:false, uebersicht:true, maengel:'unten', fotos:true, gruppenKopf:false, sigKunde:false, fusszeile:true, einleitung:'', schluss:''};
 const B_VORLAGEN = [
   {id:'standard', name:'Standard', text:'Wie bisher: Kopfdaten, Ergebnissatz, Übersicht nach Typ, jede Komponente als Karte mit allen Prüfpunkten kompakt.', o:{}},
   {id:'foxtag', name:'Wie Foxtag, Seite 1 gefüllt', text:'Kopf als Tabelle (Kunde, Standort, Durchgeführt von), danach direkt die Prüfergebnisse als Tabelle Nr. / Typ / Details / Ergebnis mit allen Prüfpunkten. Keine leere erste Seite.', o:{kopf:'tabelle', komp:'tabelle', detail:'voll', ergebnis:false, uebersicht:false, kompTitel:'Prüfergebnisse'}},
@@ -2587,6 +2592,7 @@ function vBericht(A){
       <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.datum)}</div></div>
       ${B.sigKunde ? `<div>${A.sigKunde ? `<img src="${A.sigKunde}" alt="Unterschrift Kunde" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.kunde || 'Kunde')}</b>${A.kunde ? '' : ', Name in Druckbuchstaben'}</div></div>` : ''}
     </div>
+    ${B.fusszeile ? `<div class="doc-fuss" role="img" aria-label="Fußzeile: Gundermann GmbH, Adresse, Bankverbindung, Geschäftsführer"></div>` : ''}
   </article>`;
 }
 
@@ -4015,6 +4021,7 @@ function druckZeilen(doc, tb){
     box.className = 'doc dz' + (luft ? ' dzl' : ''); nodes.forEach(n => box.appendChild(n)); td.appendChild(box); tr.appendChild(td); tb.appendChild(tr); };
   let vor = [], nKb = 0;
   [...kopie.children].forEach(n => {
+    if(n.matches('.doc-fuss')) return;
     if(n.matches('h3.doc-h')){ vor = [n]; return; }
     if(n.matches('.kblock')){ const hoch = hoehen[nKb++] > 220, teile = [...n.children], kopfAb = Math.max(0, teile.findIndex(x => x.matches('.khead,.ftrow'))) + 2;
       if(!hoch || teile.length <= kopfAb){ zeile([...vor, n]); vor = []; return; }
@@ -4040,6 +4047,7 @@ async function pdfSpeichern(A){
   const {o} = ctx(A.anlageId), titel = document.title;
   document.getElementById('druck')?.remove();
   const d = document.createElement('div'); d.id = 'druck';
+  if(!bCfg().fusszeile) d.className = 'ohnefuss';
   d.innerHTML = `<img class="druck-bg" src="briefbogen.jpg" alt=""><table class="druck-tb"><thead><tr><td><div class="druck-kopf"></div></td></tr></thead><tbody></tbody><tfoot><tr><td><div class="druck-fuss"></div></td></tr></tfoot></table>`;
   druckZeilen(doc, d.querySelector('tbody'));
   document.body.appendChild(d);
