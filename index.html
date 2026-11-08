@@ -615,6 +615,12 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .pkal-wt{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:2px 0}
 .pkal-tag{position:relative;min-height:32px;font:inherit;font-size:15px;font-weight:600;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);cursor:pointer;padding:0}
 .pkal-tag:hover{background:var(--line)}
+.psuche{position:relative}
+.pliste{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:320px;overflow:auto;padding:4px}
+.pliste button{display:block;width:100%;text-align:left;font:inherit;font-size:15px;color:var(--ink);background:none;border:0;border-radius:6px;padding:7px 10px;cursor:pointer}
+.pliste button small{display:block;font-size:13px;color:var(--muted);font-weight:400}
+.pliste button:hover,.pliste button.akt{background:var(--line)}
+.pliste .leer{padding:10px;font-size:14px;color:var(--muted)}
 .puhr-feld{position:relative}
 .puhr-feld input{padding-right:44px}
 .puhr-knopf{position:absolute;right:4px;bottom:4px;width:36px;height:32px;border:0;border-radius:6px;background:none;color:var(--ink);cursor:pointer;display:grid;place-items:center}
@@ -2766,12 +2772,11 @@ function editModal(A){
     </form>`);
 }
 function planenModal(aid, datum, techId){
-  const opts = S.kunden.map(k => { const os = S.objekte.filter(o => o.kundeId===k.id && S.anlagen.some(a => a.objektId===o.id && !a.stillgelegt)); if(!os.length) return '';
-    return `<optgroup label="${h(k.nr+' '+k.name)}">${os.map(o => S.anlagen.filter(x => x.objektId===o.id && !x.stillgelegt).map(a => `<option value="${a.id}" ${a.id===aid?'selected':''}>${h(o.nr+' '+o.name)}</option>`).join('')).join('')}</optgroup>`; }).join('');
+  const a1 = by(S.anlagen, aid), o1 = a1 && by(S.objekte, a1.objektId);
   openModal(`<h2>Auftrag planen</h2>
     <form data-form="planen" style="display:grid;gap:12px">
       <div class="pspalten"><div>
-      <label class="f" for="pa">Objekt / Anlage<select id="pa" name="anlage">${opts}</select></label>
+      <div class="f psuche"><label for="pas">Objekt / Anlage</label><input id="pas" type="search" autocomplete="off" placeholder="Suchen: W-Nummer, Objekt, Kunde oder Ort" value="${o1 ? h(pName(o1)) : ''}" role="combobox" aria-expanded="false" aria-controls="pliste"><input type="hidden" id="pa" name="anlage" value="${a1 ? a1.id : ''}"><div class="pliste" id="pliste" role="listbox" hidden></div></div>
       <div class="fgrid"><label class="f" for="pdt">Datum<input id="pdt" type="text" inputmode="numeric" autocomplete="off" placeholder="TT.MM.JJJJ" value="${fmt(datum || iso(TODAY))}"><input id="pd" name="datum" type="hidden" value="${datum || iso(TODAY)}"></label>
         <div class="f puhr-feld"><label for="pz">Uhrzeit</label><input id="pz" name="zeit" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--"><button type="button" class="puhr-knopf" data-uhr aria-label="Uhrzeit auswählen" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><div class="puhr" id="puhr" hidden></div></div></div>
       <div class="pkal" id="pkal"></div>
@@ -2791,8 +2796,44 @@ function planenModal(aid, datum, techId){
       pdt.addEventListener('blur', () => { if(pd.value) pdt.value = fmt(pd.value); });
       pz.addEventListener('blur', () => { const z = zeitLesen(pz.value); if(z!==null) pz.value = z; });
       pz.addEventListener('input', () => puhrZeichnen());
-      pkalZeichnen(); pgwFuellen();
+      pkalZeichnen(); pgwFuellen(); psucheStarten();
+      if(!a1) document.getElementById('pas').focus();
     });
+}
+/* Suchfeld für Objekt / Anlage im Fenster „Auftrag planen“ */
+const pName = o => [o.nr, o.name].filter(Boolean).join(' ');
+function psucheTreffer(text){
+  const w = String(text||'').toLowerCase().split(/\s+/).filter(Boolean), l = [];
+  S.anlagen.forEach(a => { if(a.stillgelegt) return; const o = by(S.objekte, a.objektId); if(!o) return; const k = by(S.kunden, o.kundeId) || {};
+    const heu = [o.nr, o.name, k.nr, k.name, o.adresse, o.ort].join(' ').toLowerCase();
+    if(w.every(x => heu.includes(x))) l.push({a, o, k}); });
+  return l.sort((x, y) => String(x.o.nr).localeCompare(String(y.o.nr), 'de', {numeric:true}));
+}
+function psucheStarten(){
+  const ein = document.getElementById('pas'), pa = document.getElementById('pa'), liste = document.getElementById('pliste'); if(!ein) return;
+  let treffer = [], akt = -1;
+  const zeigen = () => {
+    const alle = !ein.value.trim() || ein.value===ein.dataset.gewaehlt;
+    treffer = psucheTreffer(alle ? '' : ein.value).slice(0, 60); akt = treffer.findIndex(t => t.a.id===pa.value);
+    liste.innerHTML = treffer.length ? treffer.map((t, i) => `<button type="button" role="option" data-pwahl="${i}" class="${i===akt?'akt':''}">${h(pName(t.o))}<small>${h([t.k.name, t.o.ort].filter(Boolean).join(' · '))}</small></button>`).join('') : '<div class="leer">Nichts gefunden</div>';
+    liste.hidden = false; ein.setAttribute('aria-expanded', 'true');
+    const b = liste.querySelector('.akt'); b && b.scrollIntoView({block:'nearest'});
+  };
+  const zu = () => { liste.hidden = true; ein.setAttribute('aria-expanded', 'false'); };
+  const waehlen = i => { const t = treffer[i]; if(!t) return; pa.value = t.a.id; ein.value = ein.dataset.gewaehlt = pName(t.o); zu(); pa.dispatchEvent(new Event('change', {bubbles:true})); };
+  ein.dataset.gewaehlt = ein.value;
+  ein.addEventListener('focus', () => { ein.select(); zeigen(); });
+  ein.addEventListener('input', zeigen);
+  ein.addEventListener('click', () => { if(liste.hidden) zeigen(); });
+  ein.addEventListener('keydown', e => {
+    if(e.key==='ArrowDown' || e.key==='ArrowUp'){ e.preventDefault(); if(liste.hidden) return zeigen(); akt = Math.max(0, Math.min(treffer.length-1, akt + (e.key==='ArrowDown' ? 1 : -1)));
+      liste.querySelectorAll('button').forEach((b, i) => b.classList.toggle('akt', i===akt)); const b = liste.querySelector('.akt'); b && b.scrollIntoView({block:'nearest'}); }
+    else if(e.key==='Enter'){ e.preventDefault(); if(!liste.hidden) waehlen(akt >= 0 ? akt : 0); }
+    else if(e.key==='Escape' && !liste.hidden){ e.preventDefault(); e.stopPropagation(); zu(); ein.value = ein.dataset.gewaehlt || ''; }
+  });
+  ein.addEventListener('blur', () => setTimeout(() => { if(!liste.contains(document.activeElement)){ zu(); ein.value = ein.dataset.gewaehlt || ''; } }, 150));
+  liste.addEventListener('mousedown', e => e.preventDefault());
+  liste.addEventListener('click', e => { const b = e.target.closest('[data-pwahl]'); if(b) waehlen(+b.dataset.pwahl); });
 }
 /* Monatskalender zum Anklicken im Fenster „Auftrag planen“ */
 function pkalZeichnen(){
@@ -3180,6 +3221,7 @@ modal.addEventListener('submit', e => {
     })();
   }
   if(kind==='planen'){
+    if(!by(S.anlagen, f.get('anlage'))){ toast('Bitte oben ein Objekt auswählen'); document.getElementById('pas')?.focus(); return; }
     if(!f.get('datum')){ toast('Bitte ein gültiges Datum eingeben, z. B. 12.11.2026'); return; }
     const zeit = zeitLesen(f.get('zeit')); if(zeit===null){ toast('Bitte eine gültige Uhrzeit eingeben, z. B. 08:30'); return; }
     f.set('zeit', zeit);
