@@ -1729,6 +1729,22 @@ function nachtragen(neu){
   }));
   return nrn.size ? `, auch in Auftrag ${[...nrn].join(', ')} übernommen` : '';
 }
+/* Abgleich: fehlende Komponenten der Anlage in offene Aufträge nachtragen (z. B. angelegt, bevor es den Nachtrag gab) */
+function auftraegeAbgleichen(){
+  let n = 0;
+  S.auftraege.forEach(A => {
+    if(!isOpen(A)) return;
+    const drin = new Set(A.kompIds);
+    kompsOf(A.anlageId).forEach(c => {
+      if(c.entfernt || drin.has(c.id)) return;
+      if(A.umfang==='gruppen' && !(A.gruppen||[]).includes(c.gruppe)) return;
+      if(A.umfang==='faellig' && c.letzte) return;
+      A.kompIds.push(c.id); (A.nachtrag = A.nachtrag || {})[c.id] = true; n++;
+    });
+  });
+  if(n) save();
+  return n;
+}
 function auftragKomps(A){ return A.kompIds.map(id => by(S.komponenten,id)).filter(Boolean).sort((x,y) => x.gruppe-y.gruppe || x.nr-y.nr || (x.sub||0)-(y.sub||0)); }
 function vAuftrag(){
   const A = curA(); if(!A) return vAuftraege();
@@ -3910,7 +3926,7 @@ window.addEventListener('popstate', e => {
   render(); window.scrollTo(0, e.state.y || 0);
 });
 function render(){
-  kIdx = null; stillSet = null;
+  kIdx = null; stillSet = null; auftraegeAbgleichen();
   queueMicrotask(() => { const w = document.querySelector('.imgrid-wrap'); if(w){ w.scrollLeft = UI.imSL||0; w.scrollTop = UI.imST||0; } });
   const top = document.querySelector('.top');
   if(brauchtAnmeldung()){
