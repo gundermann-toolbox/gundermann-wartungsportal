@@ -2980,6 +2980,7 @@ function editModal(A){
     </form>`);
 }
 function planenModal(aid, datum, techId){
+  UI.doppelOk = null;
   const a1 = by(S.anlagen, aid), o1 = a1 && by(S.objekte, a1.objektId);
   openModal(`<h2>Auftrag planen</h2>
     <form data-form="planen" style="display:grid;gap:12px">
@@ -3780,7 +3781,7 @@ const ACT = {
   appkomp: d => { UI.app.komp = d.c; UI.app.screen = 'komp'; render(); window.scrollTo(0,0); },
   appkdone: d => { const A = curA(); if(!appBearbeitbar(A)) return;
     const c = by(S.komponenten, d.c), p = prOf(A, d.c);
-    const leer = c ? clFor(A, c).filter(x => !['ueberschrift','text','wert'].includes(x.typ) && (!p.f[x.id] || p.f[x.id].v==null || p.f[x.id].v==='')).length : 0;
+    const leer = c ? clFor(A, c).filter(x => ['ion','ionv','checkbox'].includes(x.typ) && (!p.f[x.id] || p.f[x.id].v==null || p.f[x.id].v==='')).length : 0;
     if(leer && !d.trotzdem){ UI.kdone = d.c;
       openModal(`<h2>Noch ${leer} ${leer===1 ? 'Prüfpunkt' : 'Prüfpunkte'} offen</h2><p style="margin:0">Trotzdem speichern? Die Komponente gilt dann als geprüft, offene Punkte stehen im Bericht als „–“.</p>
         <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Weiter prüfen</button><button class="btn pri" data-act="kdoneok">Trotzdem speichern</button></div>`); return; }
