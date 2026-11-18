@@ -2735,7 +2735,7 @@ function vApp(){
     ${bCfg().sigKunde ? `<div class="card"><label class="f" for="pkn">Name Kunde<input id="pkn" data-in="kunde" value="${h(A.kunde||'')}" placeholder="Name in Druckbuchstaben" autocomplete="off"></label>
       <div class="f">Unterschrift Kunde<canvas class="sig" data-sig="sigKunde" aria-label="Unterschriftenfeld Kunde"></canvas>
       <div class="row"><button class="btn sm sigdel" data-act="sigclear" data-k="sigKunde">${ico('muell')} Löschen</button></div></div></div>` : ''}
-    <div class="card"><div class="f">Unterschrift Techniker, optional<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas>
+    <div class="card"><div class="f">Unterschrift Techniker<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas>
       <div class="signame">${h(A.sigName || me().name)} · Gundermann GmbH</div>
       <div class="row"><button class="btn sm" data-act="sigvoll">${ico('voll')} Vollbild zum Unterschreiben</button><button class="btn sm sigdel" data-act="sigclear" data-k="sigTech">${ico('muell')} Löschen</button></div></div></div>`,
     `<button class="btn block" data-act="appvorschau">${ico('auge')} Bericht ansehen und als PDF speichern</button>
