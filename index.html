@@ -2033,7 +2033,7 @@ function vBerichtAdmin(){
         ${sel('detail','Prüfpunkte',[['kompakt','Kompakt: unauffällige als Fließtext'],['voll','Ausführlich: jeder Punkt eine Zeile'],['befund','Nur Befunde: Mängel, Messwerte, Bemerkungen'],['liste','Keine: eine Zeile je Komponente']])}
         ${sel('maengel','Mängel / Störungen',[['unten','Am Ende'],['oben','Vorne, vor den Komponenten']])}
       </div>
-      <div class="checks">${chk('ergebnis','Ergebnissatz (z. B. „Alle Komponenten ohne Mängel“)')}${chk('kennzahlen','Kennzahlen als Kacheln')}${chk('uebersicht','Übersicht nach Typ')}${chk('gruppenKopf','Gruppenüberschriften')}${chk('fotos','Fotos')}${chk('sigKunde','Unterschrift Kunde')}${chk('fusszeile','Fußzeile mit Firmenangaben und Bankverbindung')}</div>
+      <div class="checks">${chk('ergebnis','Ergebnissatz (z. B. „Alle Komponenten ohne Mängel“)')}${chk('kennzahlen','Kennzahlen als Kacheln')}${chk('uebersicht','Übersicht nach Typ')}${chk('gruppenKopf','Gruppenüberschriften')}${chk('fotos','Fotos')}${chk('fusszeile','Fußzeile mit Firmenangaben und Bankverbindung')}</div>
       <div class="fgrid">${txt('einleitung','Text unter den Kopfdaten','z. B. Die Wartung erfolgte nach VDMA 24186.', true)}${txt('schluss','Text vor der Unterschrift','z. B. Nächste Wartung in 6 Monaten.', true)}</div>
     </section>
     <section class="panel"><div class="panel-h"><h2>Vorschau</h2>
@@ -2466,9 +2466,8 @@ const B_VORLAGEN = [
   {id:'ausfuehrlich', name:'Ausführlich', text:'Jeder Prüfpunkt als eigene Zeile mit Ergebnis, zweispaltig, nach Prüfgruppen. Mit Übersicht und Fotos.', o:{detail:'voll', gruppenKopf:true}},
   {id:'modern', name:'Modern mit Farbleiste', text:'Kopfdaten in einer dunkelblauen Leiste, Kennzahlen als Kacheln, Komponenten als Karten nach Gruppen.', o:{kopf:'leiste', kennzahlen:true, uebersicht:false, gruppenKopf:true}},
   {id:'klassisch', name:'Klassische Tabelle', text:'Kopf als Tabelle, Komponenten als Tabelle mit kompakten Prüfpunkten, Übersicht nach Typ. Mängel am Ende.', o:{kopf:'tabelle', komp:'tabelle', kompTitel:'Prüfergebnisse'}},
-  {id:'unterschrift', name:'Mit Kundenunterschrift', text:'Wie Standard, zusätzlich Unterschriftsfeld für den Kunden und Abschlusstext zur Bestätigung.', o:{sigKunde:true, schluss:'Die Wartung wurde wie oben beschrieben durchgeführt. Festgestellte Mängel wurden dem Kunden mitgeteilt.'}},
 ];
-const bVorlage = id => B_VORLAGEN.find(v => v.id===id) || B_VORLAGEN[0];
+const bVorlage = id => B_VORLAGEN.find(v => v.id===id) || B_VORLAGEN[0]; // „Mit Kundenunterschrift“ gibt es nicht mehr → Standard
 function bCfg(){ const b = (S.settings && S.settings.bericht) || {}; return {...B_STANDARD, ...bVorlage(b.vorlage).o, ...(b.eigen||{})}; }
 /* In der App darf nur ein laufender Auftrag geändert werden */
 /* Techniker aus offenen Aufträgen nehmen. Begonnene Aufträge bleiben „läuft“ (Fortschritt bleibt), andere gehen ohne Techniker auf „In Planung“. */
@@ -2603,7 +2602,6 @@ function vBericht(A){
     ${B.schluss ? `<div class="b-text">${h(B.schluss)}</div>` : ''}
     <div class="sigs">
       <div>${A.sigTech ? `<img src="${A.sigTech}" alt="Unterschrift Techniker" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.sigName || techNames(A.techIds))}</b>, Gundermann GmbH · ${fmt(A.datum)}</div></div>
-      ${B.sigKunde ? `<div>${A.sigKunde ? `<img src="${A.sigKunde}" alt="Unterschrift Kunde" style="height:70px">` : '<div class="sigspace"></div>'}<div class="sigbox"><b style="color:var(--paper-ink)">${h(A.kunde || 'Kunde')}</b>${A.kunde ? '' : ', Name in Druckbuchstaben'}</div></div>` : ''}
     </div>
     ${B.fusszeile ? `<div class="doc-fuss" role="img" aria-label="Fußzeile: Gundermann GmbH, Adresse, Bankverbindung, Geschäftsführer"></div>` : ''}
   </article>`;
@@ -2732,9 +2730,6 @@ function vApp(){
 </div>
     ${['cl-vor','cl-nach'].map(id => { const cl = by(S.checklisten, id); if(!cl || !cl.felder.length) return ''; const pc = {id:'_'+id};
       return `<div class="card clist"><b>${h(cl.name)}</b>${cl.felder.map(x => feldRow(A, pc, x)).join('')}</div>`; }).join('')}
-    ${bCfg().sigKunde ? `<div class="card"><label class="f" for="pkn">Name Kunde<input id="pkn" data-in="kunde" value="${h(A.kunde||'')}" placeholder="Name in Druckbuchstaben" autocomplete="off"></label>
-      <div class="f">Unterschrift Kunde<canvas class="sig" data-sig="sigKunde" aria-label="Unterschriftenfeld Kunde"></canvas>
-      <div class="row"><button class="btn sm sigdel" data-act="sigclear" data-k="sigKunde">${ico('muell')} Löschen</button></div></div></div>` : ''}
     <div class="card"><div class="f">Unterschrift Techniker<canvas class="sig" data-sig="sigTech" aria-label="Unterschriftenfeld Techniker"></canvas>
       <div class="signame">${h(A.sigName || me().name)} · Gundermann GmbH</div>
       <div class="row"><button class="btn sm" data-act="sigvoll">${ico('voll')} Vollbild zum Unterschreiben</button><button class="btn sm sigdel" data-act="sigclear" data-k="sigTech">${ico('muell')} Löschen</button></div></div></div>`,
