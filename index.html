@@ -510,6 +510,12 @@ canvas.sig{width:100%;height:150px;display:block;border:1px dashed var(--line);b
 .appbar{background:var(--brand);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;min-height:58px;border-bottom:4px solid var(--mag)}
 .appbar b{font:700 19px/1.15 var(--f-display);letter-spacing:.01em;display:block}
 .appbar small{opacity:.85;font-size:12.5px}
+.spst{margin-left:auto;flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.spst:empty{display:none}
+.spst.ok{background:#e3f4ea;color:#1f6e43}
+.spst.off{background:#fff3cd;color:#7a5200}
+.spst.err{background:#fff;color:#b02a20;outline:2px solid #fff}
+.spst.alt{opacity:.6}
 .appbar button{border:0;background:rgba(255,255,255,.16);color:var(--accent-ink);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;flex:none}
 .appbody{flex:1;padding:14px;display:grid;gap:12px;align-content:start}
 .appact{padding:12px 14px;background:var(--surface);border-top:1px solid var(--line);display:grid;gap:8px;position:sticky;bottom:0}
@@ -561,6 +567,10 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .doc .sigs img{max-width:100%;object-fit:contain;object-position:left bottom}
 .doc .foot{font-size:11px;color:var(--paper-muted);border-top:1px solid var(--paper-line);padding-top:10px}
 .doc .fotos img{width:110px;height:82px;object-fit:cover;border:1px solid var(--paper-line)}
+.doc .stbilder{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.doc .stbilder img{width:110px;height:82px;object-fit:cover;border:1px solid var(--paper-line)}
+.stfotos{display:flex;gap:6px;flex-wrap:wrap}
+.stfotos:empty{display:none}
 .doc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .doc .sumtbl{max-width:560px}
 .doc .doc-h{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--paper-muted);margin:4px 0 -10px}
@@ -980,7 +990,7 @@ function migrate(){
   S.auftraege.filter(A => A.status==='erledigt' && !S.berichte.some(b => b.auftragId===A.id)).forEach(A => berichtAblegen(A, false));
 }
 let saveT;
-function save(){ clearTimeout(saveT); saveT = setTimeout(async () => { const ok = await saveNow(); if(!ok && !UI.speicherWarnung){ UI.speicherWarnung = true; toast('Achtung: Speichern im Browser ist fehlgeschlagen. Bitte unter „Standort prüfen“ den Stand als Datei sichern.'); } }, 300); return true; }
+function save(){ clearTimeout(saveT); saveT = setTimeout(async () => { const ok = await saveNow(); UI.spZ = ok ? 'ok' : 'fehler'; UI.spZeit = Date.now(); speicherZeigen(); if(!ok && !UI.speicherWarnung){ UI.speicherWarnung = true; toast('Achtung: Speichern im Browser ist fehlgeschlagen. Bitte unter „Standort prüfen“ den Stand als Datei sichern.'); } }, 300); return true; }
 async function saveNow(){
   clearTimeout(saveT);
   const data = JSON.stringify(S);
@@ -1948,7 +1958,7 @@ function vStoerungen(){
     <thead><tr><th>Nr.</th><th>Störung</th><th>Objekt</th><th>Einstufung</th><th>Auftrag</th><th></th></tr></thead>
     <tbody>${list.map(x => { const c = by(S.komponenten,x.kompId); if(!c) return ''; const {o} = ctx(c.anlageId); return `<tr>
       <td class="mono">#${x.nr}</td>
-      <td><b style="font-weight:600">${h(x.titel)}</b>${x.text ? `<span class="t2" style="color:var(--ink);white-space:pre-wrap">${h(x.text)}</span>` : ''}<span class="t2">${kNr(c)} ${h(tname(typOf(c)))} · ${fmt(x.datum)}${x.von ? ' · '+h(x.von) : ''}</span>
+      <td><b style="font-weight:600">${h(x.titel)}</b>${x.text ? `<span class="t2" style="color:var(--ink);white-space:pre-wrap">${h(x.text)}</span>` : ''}<span class="t2">${kNr(c)} ${h(tname(typOf(c)))} · ${fmt(x.datum)}${x.von ? ' · '+h(x.von) : ''}${(x.fotos||[]).length ? ` · ${x.fotos.length} Foto${x.fotos.length>1?'s':''}` : ''}</span>
         <button class="btn ghost sm" data-act="stoeredit" data-id="${x.id}" style="margin-top:4px;padding-inline:0">Bearbeiten</button></td>
       <td><span class="code">${h(o.nr)}</span> ${h(o.name)}</td>
       <td>${schwerePill(x.schwere)}</td>
@@ -2632,7 +2642,7 @@ function vBericht(A){
     return `<h3 class="doc-h">${h(B.kompTitel)}</h3>` + bloecke.join('');
   };
   const maengel = () => st_.length ? `<section><h3>${B.maengel==='oben' ? 'Festgestellte Mängel' : 'Störungen'}</h3><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Komponente</th><th>Beschreibung</th><th>Einstufung</th></tr></thead>
-      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
+      <tbody>${st_.map(x => { const c = by(S.komponenten,x.kompId); return `<tr><td class="mono">${x.nr==='neu' ? 'neu' : '#'+x.nr}</td><td>${c ? kNr(c)+' '+h(tname(typOf(c))) : ''}</td><td><b>${h(x.titel)}</b>${x.text ? `<br><span style="white-space:pre-wrap">${h(x.text)}</span>` : ''}${(x.fotos||[]).length ? `<div class="stbilder">${x.fotos.map(f => `<img src="${f}" alt="Foto zur Störung">`).join('')}</div>` : ''}</td><td>${h(x.schwere)}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
   const kundeTxt = `${h(k.name)}<br>${h(k.adresse||'')}${k.adresse && k.ort ? '<br>' : ''}${h(k.ort||'')}`;
   const objTxt = `${h(o.name)}<br>${h(o.adresse||'')}${o.adresse && o.ort ? '<br>' : ''}${h(o.ort||'')}`;
   const techTxt = `Gundermann GmbH<br>${h(techNames(A.techIds))}`;
@@ -2688,7 +2698,16 @@ function myJobs(){
 function appShell(bar, body, foot){
   return `<div class="appwrap">${bar}<div class="appbody">${body}</div>${foot ? `<div class="appact">${foot}</div>` : ''}</div>`;
 }
-const appBar = (title, sub, back) => `<div class="appbar">${back ? `<button data-act="appback" data-v="${back}" aria-label="Zurück">‹</button>` : ''}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+const appBar = (title, sub, back) => `<div class="appbar">${back ? `<button data-act="appback" data-v="${back}" aria-label="Zurück">‹</button>` : ''}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div>${speicherHtml()}</div>`;
+/* Speicheranzeige in der App: grün gespeichert, gelb ohne Netz (trotzdem auf dem Handy gespeichert), rot bei Fehler */
+function speicherHtml(){
+  const z = UI.spZ; if(!z) return `<span class="spst" id="spst" role="status" aria-live="polite"></span>`;
+  const off = navigator.onLine === false, alt = Date.now() - (UI.spZeit||0) > 3000;
+  const [kl, txt] = z==='fehler' ? ['err', '⚠ Nicht gespeichert!'] : off ? ['off', 'Offline · auf dem Handy gespeichert'] : ['ok', '✓ Gespeichert'];
+  return `<span class="spst ${kl} ${alt && z!=='fehler' ? 'alt' : ''}" id="spst" role="status" aria-live="polite">${txt}</span>`;
+}
+function speicherZeigen(){ const el = document.getElementById('spst'); if(el) el.outerHTML = speicherHtml(); clearTimeout(UI.spT); UI.spT = setTimeout(() => { const e2 = document.getElementById('spst'); if(e2) e2.outerHTML = speicherHtml(); }, 3100); }
+addEventListener('online', speicherZeigen); addEventListener('offline', speicherZeigen);
 /* Route zum Objekt: ein Knopf. Android und PC öffnen Google Maps mit der Route,
    das iPhone die Karten-App. Ziel ist die Adresse, ohne Adresse die gespeicherte Kartenposition. */
 function routeKnoepfe(o){
@@ -3006,13 +3025,26 @@ function stoerPanel(aid){
       <td>${schwerePill(x.schwere)}</td>
       <td><div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="stoeredit" data-id="${x.id}">Bearbeiten</button><button class="btn sm" data-act="sfix" data-id="${x.id}">Behoben</button></div></td></tr>`; }).join('')}</tbody></table></div></section>`;
 }
+/* Fotos im Störungsfenster: werden erst beim Speichern übernommen */
+const stFotoVorschau = () => (UI.stFotos||[]).map((f,i) => `<div class="foto"><img src="${f}" alt="Foto ${i+1}"><button type="button" data-stfweg="${i}" aria-label="Foto entfernen">×</button></div>`).join('');
+function bildVerkleinern(file){ return new Promise((ok, no) => { const fr = new FileReader(); fr.onerror = no; fr.onload = () => { const img = new Image(); img.onerror = () => no(new Error('Bild nicht lesbar'));
+  img.onload = () => { const sc = Math.min(1, 900/Math.max(img.width,img.height)), cv = document.createElement('canvas'); cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc); cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); ok(cv.toDataURL('image/jpeg',.72)); };
+  img.src = fr.result; }; fr.readAsDataURL(file); }); }
+document.addEventListener('change', async e => { if(e.target.id!=='stf' || !e.target.files[0]) return;
+  try{ (UI.stFotos = UI.stFotos || []).push(await bildVerkleinern(e.target.files[0])); }catch(x){ toast('Das Foto konnte nicht gelesen werden'); }
+  e.target.value = ''; const v = document.getElementById('stfv'); if(v) v.innerHTML = stFotoVorschau(); });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-stfweg]'); if(!b) return; e.preventDefault(); e.stopPropagation();
+  (UI.stFotos||[]).splice(+b.dataset.stfweg, 1); const v = document.getElementById('stfv'); if(v) v.innerHTML = stFotoVorschau(); }, true);
 function stoerModal(x, c, auftragNr){
   UI.stoer = {id: x ? x.id : null, kompId: c.id, auftragNr: auftragNr || ''};
+  UI.stFotos = x && x.fotos ? x.fotos.slice() : [];
   openModal(`<h2>${x ? `Störung #${x.nr} bearbeiten` : 'Störung melden'}</h2>
     <p class="muted" style="margin:0"><span class="mono">${kNr(c)}</span> ${h(typLabel(typOf(c)))} · ${h(kText(c))}${auftragNr ? ' · Auftrag '+h(auftragNr) : ''}</p>
     <form data-form="stoer" style="display:grid;gap:12px">
       <label class="f" for="sti">Titel<input id="sti" name="titel" required value="${h(x ? x.titel : '')}" placeholder="z. B. Keilriemen verschlissen"></label>
       <label class="f" for="stt">Beschreibung<textarea id="stt" name="text" placeholder="Was ist los, was muss getan werden?">${h(x ? x.text || '' : '')}</textarea></label>
+      <div class="f">Foto <span class="muted" style="font-weight:400">(optional)</span><div class="stfotos" id="stfv">${stFotoVorschau()}</div>
+        <label class="btn sm upl" style="justify-self:start">${ico('plus')} Foto hinzufügen<input type="file" accept="image/*" capture="environment" id="stf"></label></div>
       <div class="fgrid">
         <label class="f" for="sts">Einstufung<select id="sts" name="schwere">${SCHWERE.map(s => `<option ${(x ? x.schwere : 'Mangel')===s?'selected':''}>${s}</option>`).join('')}</select></label>
         ${x ? `<label class="f" for="stz">Status<select id="stz" name="status"><option value="offen" ${x.status==='offen'?'selected':''}>Offen</option><option value="behoben" ${x.status==='behoben'?'selected':''}>Behoben</option></select></label>` : ''}
@@ -3596,10 +3628,12 @@ modal.addEventListener('submit', e => {
     const st = UI.stoer || {}, titel = String(f.get('titel')||'').trim(); if(!titel) return;
     if(st.id){
       const x = by(S.stoerungen, st.id); if(!x) return closeModal();
-      Object.assign(x, {titel, text:String(f.get('text')||'').trim(), schwere:f.get('schwere'), status:f.get('status') || x.status});
+      Object.assign(x, {titel, text:String(f.get('text')||'').trim(), schwere:f.get('schwere'), status:f.get('status') || x.status, fotos:(UI.stFotos||[]).slice()});
+      if(!x.fotos.length) delete x.fotos;
       save(); closeModal(); render(); toast(`Störung #${x.nr} gespeichert`);
     } else {
       const x = {id:uid(), nr:S.nextStoerung++, auftragNr:st.auftragNr, kompId:st.kompId, titel, text:String(f.get('text')||'').trim(), schwere:f.get('schwere'), status:'offen', datum:iso(TODAY), von:me().name};
+      if((UI.stFotos||[]).length) x.fotos = UI.stFotos.slice();
       S.stoerungen.unshift(x); save(); closeModal(); render(); toast(`Störung #${x.nr} angelegt`);
     }
   }
