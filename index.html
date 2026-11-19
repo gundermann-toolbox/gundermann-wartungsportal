@@ -691,6 +691,36 @@ details.kdet[open]>summary .kdet-hint::after{content:"Zuklappen ▴"}
 .pkal-tag.heute{border-color:var(--accent)}
 .pkal-tag.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 @media (max-width:520px){ .pkal-tag{min-height:38px} }
+/* ---------- Klarere Gestaltung im Büro ---------- */
+.panel{box-shadow:0 1px 3px rgba(15,42,71,.07)}
+.panel-h{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.panel > h2:first-child{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.panel-h h2,.panel > h2:first-child{position:relative;padding-left:13px}
+.panel-h h2::before,.panel > h2:first-child::before{content:'';position:absolute;left:0;top:.12em;height:1.05em;width:4px;border-radius:2px;background:var(--mag)}
+th{background:var(--sunk);color:var(--ink);border-bottom:2px solid var(--line-strong)}
+thead th:first-child{border-top-left-radius:6px} thead th:last-child{border-top-right-radius:6px}
+tbody tr:not(.grp):not(.kform):hover > td{background:#f6f8fb}
+tr.grp td{background:var(--accent);color:#fff;font-weight:700;padding:8px 12px}
+tr.grp td .muted{color:#c9d6e3!important}
+tr.grp td .btn{background:#fff;color:var(--accent);border-color:#fff}
+tr.grp td .btn:hover{filter:brightness(.95)}
+table.kt tr.grp td{background:var(--accent)!important;color:#fff;border-radius:8px}
+.btn{border:1.5px solid var(--line-strong)}
+.btn.ghost{border-color:transparent}
+.btn.danger{color:var(--bad);border-color:#e5b5b0;background:var(--surface)}
+.btn.danger:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.ikon{min-width:36px;padding:4px 8px}
+.gefahr{display:inline-flex;flex-wrap:wrap;gap:8px;padding-left:12px;margin-left:4px;border-left:2px solid var(--line-strong)}
+.facts>div{border-left:3px solid var(--accent-soft);padding-left:10px}
+.steps{gap:0;border:1.5px solid var(--line-strong);border-radius:8px;overflow:hidden;width:max-content;max-width:100%;background:var(--surface)}
+.steps span{border-radius:0;padding:6px 14px;font-size:13px;background:var(--surface)}
+.steps span + span{border-left:1px solid var(--line)}
+.steps span.past{background:#e8f4ed;color:#1f6e43}
+.steps span.past::before{content:'✓ '}
+.steps span.on{background:var(--accent);color:#fff}
+.kpi{border-left-width:6px}
+.head{padding-bottom:14px;border-bottom:2px solid var(--line)}
+@media (max-width:620px){ .gefahr{padding-left:0;margin-left:0;border-left:0;width:100%} .steps{width:100%} .steps span{flex:1;text-align:center;padding:6px 6px;font-size:12px} }
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
 ul.list{margin:0;padding-left:20px;display:grid;gap:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -1189,6 +1219,7 @@ const ICONS = {
   woche:'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2', voll:'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', muell:'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', plus:'M12 5v14M5 12h14', pdf:'M12 4v11M7 10l5 5 5-5M5 20h14', route:'M3 11l18-8-8 18-2-8z', suche:'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
   auge:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
 };
+const STIFT = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14 7l3 3"/></svg>`;
 const ico = n => `<svg class="ico-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 
 /* ---------- GAG: Ansicht „Annette“. Zum Entfernen: diesen Block, ANNETTE_CSS und die Stellen mit „annette“ löschen ---------- */
@@ -1645,7 +1676,7 @@ function vKunde(){
   return `
   <button class="back" data-act="go" data-v="kunden">← Alle Kunden</button>
   <div class="head"><div><div class="eyebrow">Kunde · <span class="code">${h(k.nr)}</span></div><h1>${h(kName(k))}</h1><p class="sub">${h([k.adresse, k.ort].filter(Boolean).join(', '))}</p></div>
-    <div class="row"><button class="btn" data-act="kundeedit" data-id="${k.id}">Kunde bearbeiten</button><button class="btn danger" data-act="kundedel" data-id="${k.id}">Kunde löschen</button><button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button></div></div>
+    <div class="row"><button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button><button class="btn" data-act="kundeedit" data-id="${k.id}">Kunde bearbeiten</button><span class="gefahr"><button class="btn danger" data-act="kundedel" data-id="${k.id}">Kunde löschen</button></span></div></div>
   <section class="panel"><div class="facts">
     <div><span>Kundennummer</span><span class="mono">${h(k.nr)}</span></div>
     <div><span>Objekte</span>${an.length}</div>
@@ -1679,8 +1710,8 @@ function vAnlage(){
   <div class="head"><div><div class="eyebrow">${h(kName(k))} · Anlage ${h(a.name)}</div><h1><span class="mono">${h(o.nr)}</span>${h(o.name)}</h1></div>
     <div class="row">${offen ? `<button class="btn pri" data-act="auftrag" data-id="${offen.id}">Auftrag ${offen.nr} öffnen</button>` : a.stillgelegt ? '' : `<button class="btn pri" data-act="planen" data-a="${aid}">Auftrag planen</button>`}
       <button class="btn" data-act="objektedit" data-id="${o.id}">Objekt bearbeiten</button>
-      ${a.stillgelegt ? '' : `<button class="btn danger" data-act="stilllegen" data-a="${aid}">Wartungsvertrag stilllegen</button>`}
-      <button class="btn danger" data-act="objektdel" data-id="${o.id}">Objekt löschen</button></div></div>
+      <span class="gefahr">${a.stillgelegt ? '' : `<button class="btn danger" data-act="stilllegen" data-a="${aid}">Wartungsvertrag stilllegen</button>`}
+      <button class="btn danger" data-act="objektdel" data-id="${o.id}">Objekt löschen</button></span></div></div>
   ${a.stillgelegt ? `<section class="panel" style="border-color:var(--warn)"><div class="panel-h"><h2>Wartungsvertrag stillgelegt</h2>${pill('warn','Stillgelegt')}</div>
     <p style="margin:0">Seit ${fmt(a.stillgelegt.am)}${a.stillgelegt.grund ? ` · ${h(a.stillgelegt.grund)}` : ''} · eingetragen von ${h(a.stillgelegt.von)}. Die Anlage zählt nicht mehr bei Fälligkeiten, erscheint nicht auf der Karte und kann nicht geplant werden. Berichte, Dateien und Störungen bleiben erhalten.</p>
     <div><button class="btn" data-act="stillauf" data-a="${aid}">Wieder aktivieren</button></div></section>` : ''}
@@ -1723,7 +1754,7 @@ function vAnlage(){
         <td>${h(tname(t))}${tcode(t)}<span class="t2">${t.code ? CODES[t.code][0] : 'alle '+t.intervall+' Monate'}</span></td>
         <td>${h(kText(c))}${c.hinweis ? `<span class="t2" style="color:var(--warn);font-weight:600">Hinweis: ${h(c.hinweis)}</span>` : ''}${c.sn ? `<span class="t2">S/N ${h(c.sn)}</span>` : ''}${c.baujahr ? `<span class="t2">Baujahr ${h(c.baujahr)}</span>` : ''}</td>
         <td>${pill(s.cls,s.label)}<span class="t2">${c.letzte ? fmt(nextDue(c))+' · '+dueText(s) : 'keine Prüfung erfasst'}</span>${e ? `<span class="t2" style="color:var(--bad)">${h(e)}</span>` : ''}${so ? `<span class="t2"><span class="pill bad">${so} Störung${so>1?'en':''}</span></span>` : ''}</td>
-        <td><div class="row" style="flex-wrap:nowrap;gap:4px">${c.vorOrt ? `<span class="pill warn" title="${h(c.vorOrt.von)}, ${fmt(c.vorOrt.am)}, Auftrag ${h(c.vorOrt.auftrag)}">vor Ort angelegt</span>` : c.geaendertVorOrt ? `<span class="pill acc" title="${h(c.geaendertVorOrt.von)}, ${fmt(c.geaendertVorOrt.am)}">vor Ort geändert</span>` : ''}<button class="btn sm" data-act="kedit" data-c="${c.id}">Bearbeiten</button>${c.sub ? '' : `<button class="btn sm" data-act="ksubneu" data-c="${c.id}" aria-label="Unterkomponente zu ${kNr(c)} hinzufügen" title="Unterkomponente hinzufügen">${ico('plus')} Unter</button>`}<button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:4px">${c.vorOrt ? `<span class="pill warn" title="${h(c.vorOrt.von)}, ${fmt(c.vorOrt.am)}, Auftrag ${h(c.vorOrt.auftrag)}">vor Ort angelegt</span>` : c.geaendertVorOrt ? `<span class="pill acc" title="${h(c.geaendertVorOrt.von)}, ${fmt(c.geaendertVorOrt.am)}">vor Ort geändert</span>` : ''}<button class="btn sm ikon" data-act="kedit" data-c="${c.id}" title="Komponente bearbeiten" aria-label="Komponente ${kNr(c)} bearbeiten">${STIFT}</button>${c.sub ? '' : `<button class="btn sm" data-act="ksubneu" data-c="${c.id}" aria-label="Unterkomponente zu ${kNr(c)} hinzufügen" title="Unterkomponente hinzufügen">${ico('plus')} Unter</button>`}<button class="btn sm danger" data-act="stoerneu" data-c="${c.id}">Störung</button></div></td>
       </tr>`; }).join('') : (offen ? '' : `<tr class="kleer"><td colspan="5" class="muted small">Noch keine Komponenten in dieser Gruppe.</td></tr>`)}`; }).join('')}</tbody></table></div>
     </div>
   </details>`;
@@ -1843,7 +1874,7 @@ function vAuftrag(){
   if(isOpen(A)){
     actions += `<button class="btn" data-act="aedit">Bearbeiten</button>`;
     if(A.status!=='planung') actions += `<button class="btn" data-act="azurueck">Vom Techniker zurückziehen</button>`;
-    if(!A.korrektur) actions += `<button class="btn danger" data-act="adel">Löschen</button>`;
+    if(!A.korrektur) actions += `<span class="gefahr"><button class="btn danger" data-act="adel">Auftrag löschen</button></span>`;
   }
   return `
   <button class="back" data-act="go" data-v="auftraege">← Alle Aufträge</button>
