@@ -272,7 +272,7 @@ button.kpi .l::after{content:" ›";color:var(--muted)}
   table.kt td>*{text-align:right}
   table.kt td>.kt-wert{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
   table.kt td>.kt-wert .pill{margin:2px 0 2px 4px}
-  table.kt td[data-l]::before{content:attr(data-l);color:var(--muted);font-size:12px;font-weight:600;text-align:left;flex:none;max-width:42%}
+  table.kt td[data-l]::before{content:attr(data-l);text-transform:uppercase;color:var(--muted);font-size:12px;font-weight:600;text-align:left;flex:none;max-width:42%}
   table.kt tr.grp td{display:block;text-align:left;background:none}
   table.kt tr.click:hover td{background:none}
 }
@@ -4360,7 +4360,7 @@ async function pdfSpeichern(A){
 function tabellenBeschriften(root){
   (root || app).querySelectorAll('table').forEach(t => {
     if(t.closest('.doc') || t.classList.contains('wgrid') || t.classList.contains('imraster')) return;
-    const kopf = [...t.querySelectorAll('thead th')].map(x => x.innerText.trim());
+    const kopf = [...t.querySelectorAll('thead th')].map(x => x.textContent.replace(/\s+/g, ' ').trim()); // textContent: erzwingt keine Layout-Berechnung
     if(!kopf.length) return;
     t.classList.add('kt');
     t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td,i) => { if(td.hasAttribute('colspan') || !kopf[i]) return; td.dataset.l = kopf[i];
