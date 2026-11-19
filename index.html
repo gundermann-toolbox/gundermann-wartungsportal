@@ -976,14 +976,29 @@ function migrate(){
   if((S.v||0) < 12){ // Doppelte Nummern: die spätere bekommt die nächste freie Nummer (Regel aus der Datenbereinigung)
     const um = [];
     const proAnl = {}; S.komponenten.filter(c => !c.entfernt).forEach(c => (proAnl[c.anlageId] = proAnl[c.anlageId] || []).push(c));
-    Object.values(proAnl).forEach(l => { const belegt = new Set();
-      l.forEach(c => { const key = `${c.gruppe}.${c.nr}.${c.sub||0}`; if(!belegt.has(key)){ belegt.add(key); return; }
-        const alt = `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
-        if(c.sub){ let n = c.sub; while(belegt.has(`${c.gruppe}.${c.nr}.${n}`)) n++; c.sub = n; }
-        else { let n = c.nr; while(belegt.has(`${c.gruppe}.${n}.0`)) n++; c.nr = n; }
-        belegt.add(`${c.gruppe}.${c.nr}.${c.sub||0}`); um.push(alt + ' → ' + kNr(c)); }); });
+    Object.values(proAnl).forEach(l => { const gesehen = new Set(), doppelt = [];
+      l.forEach(c => { const key = `${c.gruppe}.${c.nr}.${c.sub||0}`; if(gesehen.has(key)) doppelt.push(c); else gesehen.add(key); });
+      // Nur die späteren Doppelten wandern ans Ende der Gruppe; alle anderen Nummern bleiben, wie sie sind
+      doppelt.forEach(c => { const alt = `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
+        if(c.sub) c.sub = Math.max(0, ...l.filter(x => x!==c && x.gruppe===c.gruppe && x.nr===c.nr).map(x => x.sub||0)) + 1;
+        else c.nr = Math.max(0, ...l.filter(x => x!==c && x.gruppe===c.gruppe).map(x => x.nr)) + 1;
+        um.push(alt + ' → ' + kNr(c)); }); });
     if(um.length) S.umnummeriert = (S.umnummeriert||[]).concat(um);
     S.v = 12;
+  }
+  if((S.v||0) < 13){ // Komponenten ohne gültige Gruppe: der Typ gibt die Gruppe vor, Nummer = nächste freie in dieser Gruppe
+    const um = [];
+    S.komponenten.filter(c => !c.entfernt && !(c.gruppe >= 1)).forEach(c => {
+      const t = by(S.typen, c.typId) || {}, n = String(t.name||'').toLowerCase();
+      const g = t.gruppe >= 1 ? t.gruppe : /dezentral/.test(n) ? 2 : /zentral/.test(n) ? 1 : /brandschutz/.test(n) ? 4 : /rauchmelder/.test(n) ? 5 : 0;
+      if(!g) return;
+      const alt = `${c.gruppe}.${c.nr}${c.sub ? '.'+c.sub : ''}`;
+      c.gruppe = g; c.sub = 0;
+      c.nr = Math.max(0, ...S.komponenten.filter(x => x!==c && !x.entfernt && x.anlageId===c.anlageId && x.gruppe===g).map(x => x.nr)) + 1;
+      um.push(alt + ' → ' + `${c.gruppe}.${c.nr}`);
+    });
+    if(um.length) S.umnummeriert = (S.umnummeriert||[]).concat(um);
+    S.v = 13;
   }
   // Recht „Aufträge vor Ort anlegen“: standardmäßig für alle mit App-Zugang
   S.users.forEach(u => { if(u.eigen===undefined) u.eigen = !!u.app; });
