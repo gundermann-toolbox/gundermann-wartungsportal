@@ -3300,39 +3300,17 @@ const adrFelder = (adresse, ort) => { const t = adrTeilen(adresse, ort); return 
     <label class="f" for="adrH">Hausnummer<input id="adrH" name="hausnr" value="${h(t.hausnr)}" placeholder="z. B. 21" autocomplete="off"></label>
     <label class="f" for="adrP">Postleitzahl<input id="adrP" name="plz" value="${h(t.plz)}" inputmode="numeric" placeholder="z. B. 76846" autocomplete="off"></label>
     <label class="f adr-ort" for="adrO">Ort<input id="adrO" name="ortname" value="${h(t.ortname)}" placeholder="z. B. Hauenstein" autocomplete="off"></label></div>`; };
-/* KWP-Zeile zerlegen, z. B. „STADT LUDWIGSHAFEN1, Stadtverwaltung Ludwigshafen, Donnersbergweg 2, D-67059 Ludwigshafen“ */
-function kwpZeile(text){
-  const roh = String(text||'').replace(/[\r\n\t]+/g, ', ').replace(/\s+/g, ' ').trim(); if(!roh) return null;
-  const wnr = (roh.match(/\bW\d{2}-\d{3,5}\b/) || [])[0] || '';
-  const teile = roh.split(/\s*[,;]\s*/).filter(x => x && x!==wnr);
-  let i = -1; teile.forEach((x, j) => { if(/^(?:D\s*-\s*)?\d{5}\s+\S/.test(x)) i = j; });
-  if(i < 1) return {wnr, nr:'', name:'', adresse:'', ort:''};
-  const plzOrt = teile[i].replace(/^D\s*-\s*/, '').match(/^(\d{5})\s+(.+)$/);
-  // Hinter dem Ort hängt KWP beim Kopieren manchmal noch die Nummer des Links an („… Ludwigshafen GRUNDSCHULE9“)
-  const ortname = plzOrt[2].replace(/\s+[A-ZÄÖÜ][A-ZÄÖÜ0-9 ]*\d$/, '').trim();
-  const nr = i >= 2 ? teile[0] : '', name = teile.slice(nr ? 1 : 0, i - 1).join(', ');
-  return {wnr, nr, name, adresse:teile[i - 1], ort:plzOrt[1] + ' ' + ortname};
-}
-const kwpFeld = art => `<label class="f" for="kwpz">Aus KWP einfügen
-    <input id="kwpz" data-kwp="${art}" placeholder="${art==='kunde' ? 'Primäre Rechnungsadresse aus KWP hier einfügen' : 'Zeile neben der Anlagennr. aus KWP hier einfügen'}" autocomplete="off"></label>
-    <p class="muted small" data-kwpinfo style="margin:-6px 0 0">${art==='kunde' ? 'Füllt Adr-Kürzel, Name und Adresse aus.' : 'Füllt die Adresse aus. Wartungsnummer = Anlagennr., Objektname = Bezeichnung aus KWP.'}</p>`;
-document.addEventListener('input', e => {
-  const t = e.target; if(!t.matches || !t.matches('[data-kwp]')) return;
-  const f = t.closest('form'), z = kwpZeile(t.value), info = f.querySelector('[data-kwpinfo]'); if(!f || !z) return;
-  const setze = (n, v) => { const el = f.querySelector(`[name=${n}]`); if(el && v) el.value = v; };
-  const a = adrTeilen(z.adresse, z.ort); if(/^Postfach\b/i.test(z.adresse)){ a.strasse = z.adresse; a.hausnr = ''; }
-  if(t.dataset.kwp==='kunde'){ setze('knr', z.nr); setze('kname', z.name); }
-  else setze('onr', z.wnr);
-  if(z.adresse){ setze('strasse', a.strasse); f.querySelector('[name=hausnr]').value = a.hausnr; setze('plz', a.plz); setze('ortname', a.ortname); }
-  if(info) info.textContent = z.adresse ? 'Übernommen, bitte kurz prüfen.' : 'Keine Postleitzahl mit Ort erkannt. Bitte die ganze Zeile aus KWP einfügen.';
-});
+/* Hinweis, woher die Angaben in KWP stehen (Wartungswesen) */
+const kwpHinweis = art => `<p class="muted small" style="margin:0">${art==='kunde'
+  ? '<b>Aus KWP:</b> Primäre Rechnungsadresse, vorne das Adr-Kürzel, dann Name und Adresse.'
+  : '<b>Aus KWP:</b> Anlagennr. = Wartungsnummer, Bezeichnung = Objektname, Adresse aus dem Link neben der Anlagennr.'}</p>`;
 const adrLesen = f => { const w = k => String(f.get(k)||'').trim(); return {adresse:[w('strasse'), w('hausnr')].filter(Boolean).join(' '), ort:[w('plz'), w('ortname')].filter(Boolean).join(' ')}; };
 function kundeModal(k){
   UI.kEditId = k ? k.id : null;
   openModal(`<h2>${k ? 'Kunde bearbeiten' : 'Kunde anlegen'}</h2>
     <form data-form="neukunde" style="display:grid;gap:12px">
-      ${kwpFeld('kunde')}
-      <div class="fgrid"><label class="f" for="mkn">Adr-Kürzel<input id="mkn" name="knr" required value="${h(k ? k.nr : '')}" placeholder="KWP: primäre Rechnungsadresse, z. B. STADT LUDWIGSHAFEN1" autocomplete="off"></label>
+      ${kwpHinweis('kunde')}
+      <div class="fgrid"><label class="f" for="mkn">Adr-Kürzel<input id="mkn" name="knr" required value="${h(k ? k.nr : '')}" placeholder="z. B. STADT LUDWIGSHAFEN1" autocomplete="off"></label>
         <label class="f" for="mkname">Name<input id="mkname" name="kname" required value="${h(k ? k.name : '')}" autocomplete="off"></label></div>
       ${adrFelder(k && k.adresse, k && k.ort)}
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">${k ? 'Speichern' : 'Kunde anlegen'}</button></div>
@@ -3344,9 +3322,9 @@ function neuObjektModal(kid){
   openModal(`<h2>Objekt anlegen</h2>
     <form data-form="neuobjekt" style="display:grid;gap:12px">
       <label class="f" for="mk">Kunde<select id="mk" name="k">${S.kunden.slice().sort((x,y) => cmpDe(kName(x), kName(y))).map(k => `<option value="${k.id}" ${UI.neuK===k.id ? 'selected' : ''}>${h(k.nr+' '+k.name)}</option>`).join('')}</select></label>
-      ${kwpFeld('objekt')}
-      <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required placeholder="KWP: Anlagennr., z. B. W26-0413" autocomplete="off" autofocus></label>
-        <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="KWP: Bezeichnung, z. B. Grundschule Langgewann" autocomplete="off"></label></div>
+      ${kwpHinweis('objekt')}
+      <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required placeholder="z. B. W26-0413" autocomplete="off" autofocus></label>
+        <label class="f" for="mona">Objektname<input id="mona" name="oname" required placeholder="z. B. Grundschule Langgewann" autocomplete="off"></label></div>
       ${adrFelder('', '')}
       <p class="muted small" style="margin:0">Ohne Angabe wird die Adresse des Kunden übernommen.</p>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">Anlegen</button></div>
@@ -3356,6 +3334,7 @@ function objektModal(o){
   UI.oEditId = o.id;
   openModal(`<h2>Objekt bearbeiten</h2>
     <form data-form="objektedit" style="display:grid;gap:12px">
+      ${kwpHinweis('objekt')}
       <div class="fgrid"><label class="f" for="mon">Wartungsnummer<input id="mon" name="onr" required value="${h(o.nr)}" autocomplete="off"></label>
         <label class="f" for="mona">Objektname<input id="mona" name="oname" required value="${h(o.name)}" autocomplete="off"></label></div>
       ${adrFelder(o.adresse, o.ort)}
