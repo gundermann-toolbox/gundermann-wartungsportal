@@ -4516,7 +4516,22 @@ addEventListener('online', () => { offlineAnzeigen(); toast('Wieder online'); })
 addEventListener('offline', () => { offlineAnzeigen(); toast('Offline: Du kannst weiterarbeiten, alles wird auf dem Gerät gespeichert.'); });
 offlineAnzeigen();
 if('serviceWorker' in navigator && /github\.io$|^localhost$/.test(location.hostname)){
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  const hatteVersion = !!navigator.serviceWorker.controller; let hinweisDa = false;
+  navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(reg => {
+    // Offene Tabs fragen regelmäßig nach einer neuen Version: beim Zurückkommen auf den Tab und alle 30 Minuten
+    const pruefen = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') pruefen(); });
+    setInterval(pruefen, 30 * 60 * 1000);
+  }).catch(() => {});
+  // Neue Version übernommen: Hinweis mit Knopf, nicht selbst neu laden (sonst geht eine angefangene Eingabe verloren)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(!hatteVersion || hinweisDa) return; hinweisDa = true;
+    const d = document.createElement('div'); d.setAttribute('role', 'status');
+    d.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:var(--brand,#12355b);color:#fff;padding:10px 12px 10px 16px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);font-size:14px';
+    d.innerHTML = '<span>Neue Version des Portals ist da.</span><button class="btn" type="button" style="white-space:nowrap;background:#fff;color:var(--brand,#12355b);border-color:#fff">Neu laden</button>';
+    d.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(d);
+  });
 }
 Promise.all([load(), datenPruefen()]).then(render).catch(e => {
   app.innerHTML = `<section class="panel" style="max-width:640px"><h2>Die Seite konnte nicht geladen werden</h2>

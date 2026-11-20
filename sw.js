@@ -2,12 +2,12 @@
    Seite: erst Netz (für Updates), bei fehlendem Netz aus dem Speicher.
    Bibliotheken, Schriften, Symbole: aus dem Speicher, im Hintergrund aktualisiert.
    Kartenkacheln werden nicht gespeichert (Karte braucht Internet). */
-const VERSION = 'gm-wartung-88';
+const VERSION = 'gm-wartung-89';
 const GRUNDDATEIEN = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png', './favicon-32.png', './briefbogen.jpg'];
 const FREMDE_QUELLEN = ['https://cdnjs.cloudflare.com/', 'https://fonts.googleapis.com/', 'https://fonts.gstatic.com/'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(GRUNDDATEIEN)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(GRUNDDATEIEN.map(u => new Request(u, {cache: 'reload'}))) /* am Browser-Zwischenspeicher vorbei, sonst landet eine alte Seite in der neuen Version */).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -19,7 +19,7 @@ self.addEventListener('activate', e => {
 async function erstNetz(req){
   const cache = await caches.open(VERSION);
   try{
-    const antwort = await Promise.race([fetch(req), new Promise((_, rej) => setTimeout(() => rej(new Error('zu langsam')), 4000))]);
+    const antwort = await Promise.race([fetch(req.url, {cache: 'no-cache', credentials: 'same-origin'}) /* immer beim Server nachfragen, GitHub erlaubt sonst 10 Minuten alte Seiten */, new Promise((_, rej) => setTimeout(() => rej(new Error('zu langsam')), 4000))]);
     if(antwort.ok) cache.put('./index.html', antwort.clone());
     return antwort;
   }catch(err){
