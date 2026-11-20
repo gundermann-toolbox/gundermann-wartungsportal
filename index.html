@@ -1632,7 +1632,7 @@ function stVon(aids){
 }
 function vKunden(){
   const modus = UI.km || 'kunden';
-  const sorts = modus==='kunden' ? [['name','Name'],['nummer','Kundennummer'],['faellig','Fälligkeit']] : [['nummer','Wartungsnummer'],['name','Name'],['faellig','Fälligkeit']];
+  const sorts = modus==='kunden' ? [['name','Name'],['nummer','Adr-Kürzel'],['faellig','Fälligkeit']] : [['nummer','Wartungsnummer'],['name','Name'],['faellig','Fälligkeit']];
   if(!sorts.some(([v]) => v===UI.ks)) UI.ks = sorts[0][0];
   return `
   <div class="head"><div><h1>Kunden & Anlagen</h1><p class="sub">${S.kunden.length} Kunden · ${S.objekte.length} Objekte · ${S.komponenten.filter(c => !c.entfernt).length} Komponenten</p></div>
@@ -1640,7 +1640,7 @@ function vKunden(){
   <section class="panel">
     <div class="row" style="justify-content:space-between;gap:12px">
       <div class="modes" role="group" aria-label="Ansicht">${[['kunden','Kunden'],['objekte','Objekte']].map(([v,l]) => `<button data-act="kmodus" data-v="${v}" class="${modus===v?'on':''}" aria-pressed="${modus===v}">${l}</button>`).join('')}</div>
-      <input id="q" type="search" placeholder="${modus==='kunden' ? 'Suchen: Kundennummer, Name oder Ort' : 'Suchen: Wartungsnummer (z. B. W26-0603), Name oder Ort'}" value="${h(UI.q)}" data-in="q" style="flex:1 1 280px">
+      <input id="q" type="search" placeholder="${modus==='kunden' ? 'Suchen: Adr-Kürzel, Name oder Ort' : 'Suchen: Wartungsnummer (z. B. W26-0603), Name oder Ort'}" value="${h(UI.q)}" data-in="q" style="flex:1 1 280px">
     </div>
     <div class="row" style="justify-content:space-between;gap:8px">
       <div class="chips" aria-label="Anfangsbuchstabe">${['', ...buchstaben()].map(b => `<button class="chip ${(UI.kb||'')===b?'on':''}" data-act="kbuch" data-v="${b}" style="min-width:34px;padding-inline:8px">${b || 'Alle'}</button>`).join('')}</div>
@@ -1661,7 +1661,7 @@ function kundenList(){
     if(!rows.length) return `<div class="empty">Keine Kunden${UI.q ? ` für „${h(UI.q)}“` : ''}.</div>`;
     rows.sort(sort==='nummer' ? (x,y) => cmpDe(x.k.nr, y.k.nr) : sort==='faellig' ? faelligSort : (x,y) => cmpDe(kName(x.k), kName(y.k)));
     return `<div class="muted small">${rows.length} ${rows.length===1 ? 'Kunde' : 'Kunden'}</div>
-      <div class="tbl-wrap"><table><thead><tr><th>Kunden-Nr.</th><th>Kunde</th><th>Adresse</th><th style="text-align:right">Objekte</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table><thead><tr><th>Adr-Kürzel</th><th>Kunde</th><th>Adresse</th><th style="text-align:right">Objekte</th><th style="text-align:right">Komp.</th><th>Fälligkeit</th></tr></thead><tbody>
       ${rows.map(r => `<tr class="click" data-act="kunde" data-id="${r.k.id}">
         <td class="mono" style="white-space:nowrap">${h(r.k.nr)}</td>
         <td><b style="font-weight:600">${h(kName(r.k))}</b></td>
@@ -1703,7 +1703,7 @@ function vKunde(){
   <div class="head"><div><div class="eyebrow">Kunde · <span class="code">${h(k.nr)}</span></div><h1>${h(kName(k))}</h1><p class="sub">${h([k.adresse, k.ort].filter(Boolean).join(', '))}</p></div>
     <div class="row"><button class="btn pri" data-act="neuobjekt" data-k="${k.id}">Objekt anlegen</button><button class="btn" data-act="kundeedit" data-id="${k.id}">Kunde bearbeiten</button><span class="gefahr"><button class="btn danger" data-act="kundedel" data-id="${k.id}">Kunde löschen</button></span></div></div>
   <section class="panel"><div class="facts">
-    <div><span>Kundennummer</span><span class="mono">${h(k.nr)}</span></div>
+    <div><span>Adr-Kürzel</span><span class="mono">${h(k.nr)}</span></div>
     <div><span>Objekte</span>${an.length}</div>
     <div><span>Nächste Fälligkeit</span>${fmt(naechsteVon([...aids]))}</div>
     <div><span>Offene Störungen</span>${offeneSt ? `<span class="pill bad">${offeneSt}</span>` : '–'}</div>
@@ -3315,7 +3315,7 @@ function kwpZeile(text){
 }
 const kwpFeld = art => `<label class="f" for="kwpz">Aus KWP einfügen
     <input id="kwpz" data-kwp="${art}" placeholder="${art==='kunde' ? 'Primäre Rechnungsadresse aus KWP hier einfügen' : 'Zeile neben der Anlagennr. aus KWP hier einfügen'}" autocomplete="off"></label>
-    <p class="muted small" data-kwpinfo style="margin:-6px 0 0">${art==='kunde' ? 'Füllt Kundennummer, Name und Adresse aus.' : 'Füllt die Adresse aus. Wartungsnummer = Anlagennr., Objektname = Bezeichnung aus KWP.'}</p>`;
+    <p class="muted small" data-kwpinfo style="margin:-6px 0 0">${art==='kunde' ? 'Füllt Adr-Kürzel, Name und Adresse aus.' : 'Füllt die Adresse aus. Wartungsnummer = Anlagennr., Objektname = Bezeichnung aus KWP.'}</p>`;
 document.addEventListener('input', e => {
   const t = e.target; if(!t.matches || !t.matches('[data-kwp]')) return;
   const f = t.closest('form'), z = kwpZeile(t.value), info = f.querySelector('[data-kwpinfo]'); if(!f || !z) return;
@@ -3332,7 +3332,7 @@ function kundeModal(k){
   openModal(`<h2>${k ? 'Kunde bearbeiten' : 'Kunde anlegen'}</h2>
     <form data-form="neukunde" style="display:grid;gap:12px">
       ${kwpFeld('kunde')}
-      <div class="fgrid"><label class="f" for="mkn">Kundennummer<input id="mkn" name="knr" required value="${h(k ? k.nr : '')}" placeholder="KWP: primäre Rechnungsadresse, z. B. STADT LUDWIGSHAFEN1" autocomplete="off"></label>
+      <div class="fgrid"><label class="f" for="mkn">Adr-Kürzel<input id="mkn" name="knr" required value="${h(k ? k.nr : '')}" placeholder="KWP: primäre Rechnungsadresse, z. B. STADT LUDWIGSHAFEN1" autocomplete="off"></label>
         <label class="f" for="mkname">Name<input id="mkname" name="kname" required value="${h(k ? k.name : '')}" autocomplete="off"></label></div>
       ${adrFelder(k && k.adresse, k && k.ort)}
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Abbrechen</button><button class="btn pri" type="submit">${k ? 'Speichern' : 'Kunde anlegen'}</button></div>
@@ -3740,7 +3740,7 @@ modal.addEventListener('submit', e => {
   if(kind==='neukunde'){
     const nr = String(f.get('knr')||'').trim(), name = String(f.get('kname')||'').trim(); if(!nr || !name) return;
     const alt = UI.kEditId && by(S.kunden, UI.kEditId);
-    if(S.kunden.some(k => k.nr===nr && k!==alt)){ toast(`Kundennummer ${nr} gibt es schon`); return; }
+    if(S.kunden.some(k => k.nr===nr && k!==alt)){ toast(`Adr-Kürzel ${nr} gibt es schon`); return; }
     if(alt){ Object.assign(alt, {nr, name}, adrLesen(f)); save(); closeModal(); render(); toast('Kunde gespeichert'); return; }
     const kid = 'k'+uid(); S.kunden.push({id:kid, nr, name, ...adrLesen(f)});
     save(); closeModal(); UI.view = 'kunde'; UI.kunde = kid; render(); window.scrollTo(0,0); toast('Kunde angelegt. Jetzt ein Objekt anlegen.');
